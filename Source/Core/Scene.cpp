@@ -1,0 +1,520 @@
+#include "Core/Scene.hpp"
+#include "Core/Camera.hpp"
+#include "Core/vectorUtils.hpp"
+#include "Core/Sampler.hpp"
+#include "Render/PBR.hpp"
+
+#include <algorithm>
+#include <thread>
+
+#include "stbi_image_write.h"
+#include "glm/ext.hpp"
+#include "glm/gtx/compatibility.hpp"
+
+namespace Scene
+{
+
+    enum MaterialType : uint32_t
+    {
+        Albedo = 1,
+        Diffuse = 1 << 1,
+        Normals = 1 << 2,
+        Roughness = 1 << 3,
+        Gloss = 1 << 4,
+        Metalness = 1 << 5,
+        Specular = 1 << 6,
+        CombinedMetalnessRoughness = 1 << 7,
+        AmbientOcclusion = 1 << 8,
+        Emisive = 1 << 9,
+        CombinedSpecularGloss = 1 << 10,
+        HeightMap = 1 << 11,
+
+        AlphaTested = 1 << 20,
+        Transparent = 1 << 21
+    };
+
+    Scene::Scene() :
+        mPrimitiveMaterialID{}
+    {
+        //updateCPUAccelerationStructure(scene);
+
+        nanort::BVHBuildStatistics stats = mAccelerationStructure.GetStatistics();
+    }
+
+    void Scene::renderSceneToMemory(const Camera& camera, const uint32_t x, const uint32_t y, uint8_t* memory, ThreadPool& threadPool) const
+    {
+        const glm::vec3 forward = camera.getDirection();
+        const glm::vec3 up = camera.getUp();
+        const glm::vec3 right = camera.getRight();
+
+        const glm::vec3 origin = camera.getPosition();
+        const float farPlane = camera.getFarPlane();
+        const float aspect = camera.getAspect();
+
+        auto trace_ray = [&](const uint32_t pix, const uint32_t piy) -> glm::vec4
+        {
+            glm::vec3 dir = {((float(pix) / float(x)) - 0.5f) * aspect, (float(piy) / float(y)) - 0.5f, 1.0f};
+            dir = glm::normalize((dir.z * forward) + (dir.y * up) + (dir.x * right));
+
+            nanort::Ray<float> ray;
+            ray.dir[0] = dir.x;
+            ray.dir[1] = dir.y;
+            ray.dir[2] = dir.z;
+
+            ray.org[0] = origin.x;
+            ray.org[1] = origin.y;
+            ray.org[2] = origin.z;
+
+            ray.min_t = 0.0f;
+            ray.max_t = farPlane;
+            //ray.type = nanort::RAY_TYPE_PRIMARY;
+
+            InterpolatedVertex frag;
+            const bool hit = traceRay(ray, &frag);
+            if(hit)
+            {
+                return shadePoint(frag, glm::vec4(origin, 1.0f), 10, 5);
+            }
+            else
+            {
+                return mSkybox->sample_cube4(dir);
+            }
+        };
+
+        auto trace_rays = [&](const uint32_t start, const uint32_t stepSize)
+        {
+            uint32_t location = start;
+            while(location < (x * y))
+            {
+                const uint32_t pix = location % x;
+                const uint32_t piy = location / x;
+                const uint32_t colour = Core::pack_colour(trace_ray(pix, piy));
+                memcpy(&memory[(pix + (piy * x)) * 4], &colour, sizeof(uint32_t));
+
+                location += stepSize;
+            }
+        };
+
+        const uint32_t processor_count = threadPool.getWorkerCount(); // use this many threads for tracing rays.
+        std::vector<std::future<void>> handles{};
+        for(uint32_t i = 1; i < processor_count; ++i)
+        {
+            handles.push_back(threadPool.addTask(trace_rays, i, processor_count));
+        }
+
+        trace_rays(0, processor_count);
+
+        for(auto& thread : handles)
+            thread.wait();
+    }
+
+
+    void Scene::renderSceneToFile(const Camera& camera, const uint32_t x, const uint32_t y, const char* path, ThreadPool& threadPool) const
+    {
+        uint8_t* memory = new uint8_t[x * y * 4];
+
+        renderSceneToMemory(camera, x, y, memory, threadPool);
+
+        stbi_write_jpg(path, x, y, 4, memory, 100);
+
+        delete[] memory;
+    }
+
+
+    Scene::InterpolatedVertex Scene::interpolateFragment(const uint32_t primID, const float u, const float v) const
+    {
+
+        const uint32_t baseIndiciesIndex = primID * 3;
+
+        const uint32_t firstIndex = mIndexBuffer[baseIndiciesIndex];
+        const glm::vec3& firstPosition = mPositions[firstIndex];
+        const glm::vec2& firstuv = mUVs[firstIndex];
+        const glm::vec4& firstNormal = mNormals[firstIndex];
+        const glm::vec4 firstColour = mVertexColours[firstIndex];
+
+        const uint32_t secondIndex = mIndexBuffer[baseIndiciesIndex + 1];
+        const glm::vec3& secondPosition = mPositions[secondIndex];
+        const glm::vec2& seconduv = mUVs[secondIndex];
+        const glm::vec4& secondNormal = mNormals[secondIndex];
+        const glm::vec4& secondColour = mVertexColours[secondIndex];
+
+        const uint32_t thirdIndex = mIndexBuffer[baseIndiciesIndex + 2];
+        const glm::vec3& thirdPosition = mPositions[thirdIndex];
+        const glm::vec2& thirduv = mUVs[thirdIndex];
+        const glm::vec4& thirdNormal = mNormals[thirdIndex];
+        const glm::vec4& thirdColour = mVertexColours[thirdIndex];
+
+        InterpolatedVertex frag{};
+        frag.mPosition = glm::vec4(((1.0f - v - u) * firstPosition) + (u * secondPosition) + (v * thirdPosition), 1.0f);
+        frag.mUV = ((1.0f - v - u) * firstuv) + (u * seconduv) + (v * thirduv);
+        frag.mNormal = glm::normalize(glm::vec3(((1.0f - v - u) * firstNormal) + (u * secondNormal) + (v * thirdNormal)));
+        frag.mVertexColour = ((1.0f - v - u) * firstColour) + (u * secondColour) + (v * thirdColour);
+        frag.mPrimID = primID;
+
+        return frag;
+    }
+
+
+    bool Scene::traceRay(const nanort::Ray<float>& ray, InterpolatedVertex *result) const
+    {
+        nanort::TriangleIntersector triangle_intersecter(reinterpret_cast<const float*>(mPositions.data()), mIndexBuffer.data(), sizeof(glm::vec3));
+        nanort::TriangleIntersection intersection;
+        bool hit = mAccelerationStructure.Traverse(ray, triangle_intersecter, &intersection);
+
+        if(hit) // check for alpha tested geometry.
+        {
+            *result= interpolateFragment(intersection.prim_id, intersection.u, intersection.v);
+
+            const MaterialInfo& matInfo = mPrimitiveMaterialID[result->mPrimID];
+
+            if(matInfo.materialFlags & MaterialType::Albedo || matInfo.materialFlags & MaterialType::Diffuse)
+            {
+
+                const Core::Image& diffuseTexture = mMaterials[matInfo.materialIndex];
+                const glm::vec4 colour = diffuseTexture.sample4(result->mUV);
+
+                if(colour.a == 0.0f) // trace another ray.
+                {
+                    nanort::Ray<float> newRay{};
+                    newRay.org[0] = result->mPosition.x;
+                    newRay.org[1] = result->mPosition.y;
+                    newRay.org[2] = result->mPosition.z;
+                    newRay.dir[0] = ray.dir[0];
+                    newRay.dir[1] = ray.dir[1];
+                    newRay.dir[2] = ray.dir[2];
+                    newRay.min_t = 0.01f;
+                    newRay.max_t = 2000.0f;
+
+                    hit = traceRay(newRay, result);
+                }
+            }
+        }
+
+        return hit;
+    }
+
+
+    bool Scene::traceRayNonAlphaTested(const nanort::Ray<float> &ray, InterpolatedVertex *result) const
+    {
+        nanort::TriangleIntersector triangle_intersecter(reinterpret_cast<const float*>(mPositions.data()), mIndexBuffer.data(), sizeof(glm::vec3));
+        nanort::TriangleIntersection intersection;
+        const bool hit = mAccelerationStructure.Traverse(ray, triangle_intersecter, &intersection);
+
+        if(hit)
+        {
+            *result = interpolateFragment(intersection.prim_id, intersection.u, intersection.v);
+        }
+
+        return hit;
+    }
+
+
+    bool Scene::intersectsMesh(const nanort::Ray<float>& ray, uint64_t *instanceID)
+    {
+        InterpolatedVertex vertex;
+        if(traceRay(ray, &vertex))
+        {
+            const MaterialInfo& matInfo = mPrimitiveMaterialID[vertex.mPrimID];
+            *instanceID = matInfo.instanceID;
+
+            return true;
+        }
+
+        return false;
+    }
+
+
+    glm::vec4 Scene::traceDiffuseRays(const InterpolatedVertex& frag, const glm::vec4& origin, const uint32_t sampleCount, const uint32_t depth) const
+    {
+        // interpolate uvs.
+        const MaterialInfo& matInfo = mPrimitiveMaterialID[frag.mPrimID];
+        Material mat = calculateMaterial(frag, matInfo);
+        glm::vec4 diffuse = mat.diffuse;
+        const glm::vec3 V = glm::normalize(glm::vec3(origin - frag.mPosition));
+
+        Render::DiffuseSampler sampler(sampleCount * depth);
+
+        glm::vec4 result = glm::vec4{0.0f, 0.0f, 0.0f, 0.0f};
+        float weight = 0.0f;
+        for(uint32_t i = 0; i < sampleCount; ++i)
+        {
+            Render::Sample sample = sampler.generateSample(frag.mNormal);
+            weight += sample.P;
+
+            const float NdotV = glm::clamp(glm::dot(glm::vec3(mat.normal), V), 0.0f, 1.0f);
+            const float NdotL = glm::clamp(glm::dot(glm::vec3(mat.normal), sample.L), 0.0f, 1.0f);
+            const glm::vec3 H = glm::normalize(V + sample.L);
+            const float LdotH  = glm::clamp(glm::dot(sample.L, H), 0.0f, 1.0f);
+
+            const float diffuseFactor = Render::disney_diffuse(NdotV, NdotL, LdotH, mat.specularRoughness.w);
+
+            nanort::Ray<float> newRay{};
+            newRay.org[0] = frag.mPosition.x;
+            newRay.org[1] = frag.mPosition.y;
+            newRay.org[2] = frag.mPosition.z;
+            newRay.dir[0] = sample.L.x;
+            newRay.dir[1] = sample.L.y;
+            newRay.dir[2] = sample.L.z;
+            newRay.min_t = 0.01f;
+            newRay.max_t = 2000.0f;
+
+            InterpolatedVertex intersection;
+            const bool hit = traceRay(newRay, &intersection);
+            if(hit)
+            {
+                result += sample.P * diffuseFactor * shadePoint(intersection, frag.mPosition, sampleCount, depth - 1);
+            }
+            else
+            {
+                result += sample.P * diffuseFactor * mSkybox->sample_cube4(sample.L); // miss so sample skybox.
+            }
+        }
+
+        diffuse *= result / weight;
+
+        return diffuse;// + glm::vec4(mat.emissiveOcclusion.x, mat.emissiveOcclusion.y, mat.emissiveOcclusion.z, 1.0f);
+    }
+
+
+    glm::vec4 Scene::traceSpecularRays(const InterpolatedVertex& frag, const glm::vec4 &origin, const uint32_t sampleCount, const uint32_t depth) const
+    {
+        // interpolate uvs.
+        const MaterialInfo& matInfo = mPrimitiveMaterialID[frag.mPrimID];
+        Material mat = calculateMaterial(frag, matInfo);
+        glm::vec4 specular = glm::vec4(mat.specularRoughness.x, mat.specularRoughness.y, mat.specularRoughness.z, 1.0f);
+
+        Render::SpecularSampler sampler(sampleCount * depth);
+
+        const glm::vec3 V = glm::normalize(glm::vec3(origin - frag.mPosition));
+
+        glm::vec4 result = glm::vec4{0.0f, 0.0f, 0.0f, 0.0f};
+        float weight = 0.0f;
+        for(uint32_t i = 0; i < sampleCount; ++i)
+        {
+            Render::Sample sample = sampler.generateSample(frag.mNormal, V, mat.specularRoughness.w);
+            weight += sample.P;
+
+            nanort::Ray<float> newRay{};
+            newRay.org[0] = frag.mPosition.x;
+            newRay.org[1] = frag.mPosition.y;
+            newRay.org[2] = frag.mPosition.z;
+            newRay.dir[0] = sample.L.x;
+            newRay.dir[1] = sample.L.y;
+            newRay.dir[2] = sample.L.z;
+            newRay.min_t = 0.01f;
+            newRay.max_t = 2000.0f;
+
+            const float specularFactor = Render::specular_GGX(mat.normal, V, sample.L, mat.specularRoughness.w, glm::vec3(mat.specularRoughness.x, mat.specularRoughness.y, mat.specularRoughness.z));
+
+            InterpolatedVertex intersection;
+            const bool hit = traceRay(newRay, &intersection);
+            if(hit)
+            {
+                result += specularFactor * sample.P * shadePoint(intersection, frag.mPosition, sampleCount, depth - 1);
+            }
+            else
+            {
+                result += specularFactor * sample.P * mSkybox->sample_cube4(sample.L); // miss so sample skybox.
+            }
+        }
+
+        specular *= result / weight;
+
+        return glm::all(glm::isnan(specular)) ? glm::vec4(0.0f, 0.0f, 0.0f, 1.0f) : specular;// + glm::vec4(mat.emissiveOcclusion.x, mat.emissiveOcclusion.y, mat.emissiveOcclusion.z, 1.0f);
+    }
+
+
+    Scene::Material Scene::calculateMaterial(const InterpolatedVertex& frag, const MaterialInfo& info) const
+    {
+        Material mat;
+        mat.diffuse = frag.mVertexColour;
+        mat.normal = glm::normalize(frag.mNormal);
+        mat.specularRoughness = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        mat.emissiveOcclusion = glm::vec4(0.0f, 0.0f, 0.0f, 1.0);
+
+        auto fresnelSchlickRoughness = [](const float cosTheta, const glm::vec3 F0, const float roughness)
+        {
+            return F0 + (glm::max(glm::vec3(1.0f - roughness), F0) - F0) * std::pow(1.0f - cosTheta, 5.0f);
+        };
+
+        uint32_t nextMaterialSlot = 0;
+
+        if(info.materialFlags & MaterialType::Diffuse)
+        {
+            mat.diffuse = mMaterials[info.materialIndex].sample4(frag.mUV);
+            ++nextMaterialSlot;
+        }
+        else if(info.materialFlags & MaterialType::Albedo)
+            ++nextMaterialSlot;
+
+        if(info.materialFlags & MaterialType::Normals)
+        {
+            ++nextMaterialSlot; // TODO work out how to do this without derivitives!!.
+        }
+
+        if(info.materialFlags & MaterialType::Roughness)
+        {
+            mat.specularRoughness.w = mMaterials[info.materialIndex + nextMaterialSlot].sample(frag.mUV);
+            ++nextMaterialSlot;
+        }
+        else if(info.materialFlags & MaterialType::Gloss)
+        {
+            mat.specularRoughness.w = 1.0f - mMaterials[info.materialIndex + nextMaterialSlot].sample(frag.mUV);
+            ++nextMaterialSlot;
+        }
+
+        float metalness = 0.0f;
+        if(info.materialFlags & MaterialType::Specular)
+        {
+            const glm::vec3 spec = mMaterials[info.materialIndex + nextMaterialSlot].sample4(frag.mUV);
+            mat.specularRoughness.x = spec.x;
+            mat.specularRoughness.y = spec.y;
+            mat.specularRoughness.z = spec.z;
+            ++nextMaterialSlot;
+        }
+        else if(info.materialFlags & MaterialType::CombinedSpecularGloss)
+        {
+            mat.specularRoughness = mMaterials[info.materialIndex + nextMaterialSlot].sample4(frag.mUV);
+            mat.specularRoughness.w = 1.0f - mat.specularRoughness.w;
+            ++nextMaterialSlot;
+        }
+        else if(info.materialFlags & MaterialType::Metalness)
+        {
+            metalness = mMaterials[info.materialIndex + nextMaterialSlot].sample(frag.mUV);
+            ++nextMaterialSlot;
+        }
+        else if(info.materialFlags & MaterialType::CombinedMetalnessRoughness)
+        {
+            const glm::vec4 metalnessRoughness = mMaterials[info.materialIndex + nextMaterialSlot].sample4(frag.mUV);
+            metalness = metalnessRoughness.z;
+            mat.specularRoughness.w = metalnessRoughness.y;
+            ++nextMaterialSlot;
+        }
+
+        if(info.materialFlags & MaterialType::Albedo)
+        {
+            const glm::vec4 albedo = mMaterials[info.materialIndex].sample4(frag.mUV);
+            mat.diffuse = albedo * (1.0f - 0.04f) * (1.0f - metalness);
+            mat.diffuse.w = albedo.w;// Preserve the alpha chanle.
+
+            const glm::vec3 F0 = glm::lerp(glm::vec3(0.04f, 0.04f, 0.04f), glm::vec3(albedo), metalness);
+            mat.specularRoughness.x = F0.x;
+            mat.specularRoughness.y = F0.y;
+            mat.specularRoughness.z = F0.z;
+        }
+
+        if(info.materialFlags & MaterialType::Emisive)
+        {
+            const glm::vec3 emissive = mMaterials[info.materialIndex + nextMaterialSlot].sample4(frag.mUV);
+            mat.emissiveOcclusion.x = emissive.x;
+            mat.emissiveOcclusion.y = emissive.y;
+            mat.emissiveOcclusion.z = emissive.z;
+            ++nextMaterialSlot;
+        }
+
+        if(info.materialFlags & MaterialType::AmbientOcclusion)
+        {
+            mat.emissiveOcclusion.w = mMaterials[info.materialIndex + nextMaterialSlot].sample(frag.mUV);
+        }
+
+        return mat;
+    }
+
+
+    bool Scene::isVisibleFrom(const glm::vec3& dst, const glm::vec3& src) const
+    {
+        const glm::vec3 direction = dst - src;
+        const glm::vec3 normalizedDir = glm::normalize(direction);
+
+        nanort::Ray ray{};
+        ray.dir[0] = normalizedDir.x;
+        ray.dir[1] = normalizedDir.y;
+        ray.dir[2] = normalizedDir.z;
+        ray.org[0] = src.x;
+        ray.org[1] = src.y;
+        ray.org[2] = src.z;
+        ray.min_t = 0.001f;
+        ray.max_t = 200.0f;
+
+        InterpolatedVertex frag;
+        const bool hit = traceRay(ray, &frag);
+        if(hit)
+        {
+            const float dist = glm::length(direction);
+            const float distToHit = glm::length(glm::vec3(frag.mPosition) - src);
+
+            return distToHit >= dist;
+        }
+
+        return true;
+    }
+
+
+    glm::vec4 Scene::shadePoint(const InterpolatedVertex& frag, const glm::vec4 &origin, const uint32_t sampleCount, const uint32_t depth) const
+    {
+        if(depth == 0)
+            return glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+
+        const glm::vec4 diffuse = traceDiffuseRays(frag, origin, sampleCount, depth);
+        const glm::vec4 specular = traceSpecularRays(frag, origin, sampleCount, depth);
+
+        return diffuse + specular;// * (shadowed ? 0.15f : 1.0f);
+    }
+
+
+    void Scene::updateCPUAccelerationStructure(const Scene* scene)
+    {
+        /*uint64_t vertexOffset = 0;
+        InstanceID instanceID = 0;
+        for (const auto& [id, entry] : scene->getInstanceMap())
+        {
+            const MeshInstance* instance = scene->getMeshInstance(id);
+            const StaticMesh* mesh = instance->getMesh();
+            const uint32_t vertexStride = mesh->getVertexStride();
+
+            // add Index data.
+            const auto& indexBuffer = mesh->getIndexData();
+            std::transform(indexBuffer.begin(), indexBuffer.end(), std::back_inserter(mIndexBuffer), [vertexOffset](const uint32_t index)
+            {
+                return vertexOffset + index;
+            });
+
+            // add material mappings
+            for (uint32_t i = 0; i < indexBuffer.size() / 3; ++i)
+            {
+                mPrimitiveMaterialID.push_back({ instanceID, instance->getMaterialIndex(0), instance->getMaterialFlags(0) });
+            }
+
+            // Transform and add vertex data.
+            const auto& vertexData = mesh->getVertexData();
+            for (uint32_t i = 0; i < vertexData.size(); i += vertexStride)
+            {
+                const unsigned char* vert = &vertexData[i];
+                const float* positionPtr = reinterpret_cast<const float*>(vert);
+
+                const glm::vec4 position = glm::vec4{ positionPtr[0], positionPtr[1], positionPtr[2], positionPtr[3] };
+                const glm::vec4 transformedPosition = instance->getTransMatrix() * position;
+
+               mPositions.emplace_back(transformedPosition.x, transformedPosition.y, transformedPosition.z);
+
+                const glm::vec2 uv = glm::vec2{ positionPtr[4], positionPtr[5] };
+                mUVs.push_back(uv);
+
+                const glm::vec4 normal = unpackNormal(*reinterpret_cast<const uint32_t*>(&positionPtr[6]));
+                mNormals.push_back(normal);
+
+                const glm::vec4 colour = unpackColour(*reinterpret_cast<const uint32_t*>(&positionPtr[7]));
+                mVertexColours.push_back(colour);
+            }
+
+            vertexOffset += mesh->getVertexCount();
+            ++instanceID;
+        }
+
+        mMeshes = std::make_unique<nanort::TriangleMesh<float>>(reinterpret_cast<float*>(mPositions.data()), mIndexBuffer.data(), sizeof(glm::vec3));
+        mPred = std::make_unique<nanort::TriangleSAHPred<float>>(reinterpret_cast<float*>(mPositions.data()), mIndexBuffer.data(), sizeof(glm::vec3));
+
+        bool success = mAccelerationStructure.Build(mIndexBuffer.size() / 3, *mMeshes, *mPred);*/
+    }
+
+}
