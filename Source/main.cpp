@@ -1,6 +1,7 @@
 
 #include "Util/Options.hpp"
 #include "Util/FrameBuffer.hpp"
+#include "Core/ThreadPool.hpp"
 
 #include "GLFW/glfw3.h"
 
