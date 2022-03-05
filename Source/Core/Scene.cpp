@@ -1,7 +1,7 @@
 #include "Core/Scene.hpp"
 #include "Core/Camera.hpp"
 #include "Core/vectorUtils.hpp"
-#include "Core/Sampler.hpp"
+#include "Render/Sampler.hpp"
 #include "Render/PBR.hpp"
 
 #include <algorithm>
@@ -33,15 +33,16 @@ namespace Scene
         Transparent = 1 << 21
     };
 
-    Scene::Scene() :
+    Scene::Scene(ThreadPool& pool, const std::string& sceneFile) :
+        m_threadPool(pool),
         mPrimitiveMaterialID{}
     {
         //updateCPUAccelerationStructure(scene);
 
-        nanort::BVHBuildStatistics stats = mAccelerationStructure.GetStatistics();
+        //nanort::BVHBuildStatistics stats = mAccelerationStructure.GetStatistics();
     }
 
-    void Scene::renderSceneToMemory(const Camera& camera, const uint32_t x, const uint32_t y, uint8_t* memory, ThreadPool& threadPool) const
+    void Scene::renderSceneToMemory(const Camera& camera, const RenderParams& params) const
     {
         const glm::vec3 forward = camera.getDirection();
         const glm::vec3 up = camera.getUp();
@@ -53,7 +54,7 @@ namespace Scene
 
         auto trace_ray = [&](const uint32_t pix, const uint32_t piy) -> glm::vec4
         {
-            glm::vec3 dir = {((float(pix) / float(x)) - 0.5f) * aspect, (float(piy) / float(y)) - 0.5f, 1.0f};
+            glm::vec3 dir = {((float(pix) / float(params.m_Width)) - 0.5f) * aspect, (float(piy) / float(params.m_Height)) - 0.5f, 1.0f};
             dir = glm::normalize((dir.z * forward) + (dir.y * up) + (dir.x * right));
 
             nanort::Ray<float> ray;
@@ -73,7 +74,7 @@ namespace Scene
             const bool hit = traceRay(ray, &frag);
             if(hit)
             {
-                return shadePoint(frag, glm::vec4(origin, 1.0f), 10, 5);
+                return shadePoint(frag, glm::vec4(origin, 1.0f), params.m_maxSamples, params.m_maxRayDepth);
             }
             else
             {
@@ -84,22 +85,22 @@ namespace Scene
         auto trace_rays = [&](const uint32_t start, const uint32_t stepSize)
         {
             uint32_t location = start;
-            while(location < (x * y))
+            while(location < (params.m_Height * params.m_Width))
             {
-                const uint32_t pix = location % x;
-                const uint32_t piy = location / x;
+                const uint32_t pix = location % params.m_Height;
+                const uint32_t piy = location / params.m_Height;
                 const uint32_t colour = Core::pack_colour(trace_ray(pix, piy));
-                memcpy(&memory[(pix + (piy * x)) * 4], &colour, sizeof(uint32_t));
+                memcpy(&params.m_Pixels[(pix + (piy * params.m_Height)) * 4], &colour, sizeof(uint32_t));
 
                 location += stepSize;
             }
         };
 
-        const uint32_t processor_count = threadPool.getWorkerCount(); // use this many threads for tracing rays.
+        const uint32_t processor_count = m_threadPool.getWorkerCount(); // use this many threads for tracing rays.
         std::vector<std::future<void>> handles{};
         for(uint32_t i = 1; i < processor_count; ++i)
         {
-            handles.push_back(threadPool.addTask(trace_rays, i, processor_count));
+            handles.push_back(m_threadPool.addTask(trace_rays, i, processor_count));
         }
 
         trace_rays(0, processor_count);
@@ -109,49 +110,11 @@ namespace Scene
     }
 
 
-    void Scene::renderSceneToFile(const Camera& camera, const uint32_t x, const uint32_t y, const char* path, ThreadPool& threadPool) const
+    void Scene::renderSceneToFile(const Camera& camera, RenderParams& params, const char* path) const
     {
-        uint8_t* memory = new uint8_t[x * y * 4];
+        renderSceneToMemory(camera, params);
 
-        renderSceneToMemory(camera, x, y, memory, threadPool);
-
-        stbi_write_jpg(path, x, y, 4, memory, 100);
-
-        delete[] memory;
-    }
-
-
-    Scene::InterpolatedVertex Scene::interpolateFragment(const uint32_t primID, const float u, const float v) const
-    {
-
-        const uint32_t baseIndiciesIndex = primID * 3;
-
-        const uint32_t firstIndex = mIndexBuffer[baseIndiciesIndex];
-        const glm::vec3& firstPosition = mPositions[firstIndex];
-        const glm::vec2& firstuv = mUVs[firstIndex];
-        const glm::vec4& firstNormal = mNormals[firstIndex];
-        const glm::vec4 firstColour = mVertexColours[firstIndex];
-
-        const uint32_t secondIndex = mIndexBuffer[baseIndiciesIndex + 1];
-        const glm::vec3& secondPosition = mPositions[secondIndex];
-        const glm::vec2& seconduv = mUVs[secondIndex];
-        const glm::vec4& secondNormal = mNormals[secondIndex];
-        const glm::vec4& secondColour = mVertexColours[secondIndex];
-
-        const uint32_t thirdIndex = mIndexBuffer[baseIndiciesIndex + 2];
-        const glm::vec3& thirdPosition = mPositions[thirdIndex];
-        const glm::vec2& thirduv = mUVs[thirdIndex];
-        const glm::vec4& thirdNormal = mNormals[thirdIndex];
-        const glm::vec4& thirdColour = mVertexColours[thirdIndex];
-
-        InterpolatedVertex frag{};
-        frag.mPosition = glm::vec4(((1.0f - v - u) * firstPosition) + (u * secondPosition) + (v * thirdPosition), 1.0f);
-        frag.mUV = ((1.0f - v - u) * firstuv) + (u * seconduv) + (v * thirduv);
-        frag.mNormal = glm::normalize(glm::vec3(((1.0f - v - u) * firstNormal) + (u * secondNormal) + (v * thirdNormal)));
-        frag.mVertexColour = ((1.0f - v - u) * firstColour) + (u * secondColour) + (v * thirdColour);
-        frag.mPrimID = primID;
-
-        return frag;
+        stbi_write_jpg(path, params.m_Width, params.m_Height, 4, params.m_Pixels, 100);
     }
 
 
@@ -464,57 +427,7 @@ namespace Scene
 
     void Scene::updateCPUAccelerationStructure(const Scene* scene)
     {
-        /*uint64_t vertexOffset = 0;
-        InstanceID instanceID = 0;
-        for (const auto& [id, entry] : scene->getInstanceMap())
-        {
-            const MeshInstance* instance = scene->getMeshInstance(id);
-            const StaticMesh* mesh = instance->getMesh();
-            const uint32_t vertexStride = mesh->getVertexStride();
 
-            // add Index data.
-            const auto& indexBuffer = mesh->getIndexData();
-            std::transform(indexBuffer.begin(), indexBuffer.end(), std::back_inserter(mIndexBuffer), [vertexOffset](const uint32_t index)
-            {
-                return vertexOffset + index;
-            });
-
-            // add material mappings
-            for (uint32_t i = 0; i < indexBuffer.size() / 3; ++i)
-            {
-                mPrimitiveMaterialID.push_back({ instanceID, instance->getMaterialIndex(0), instance->getMaterialFlags(0) });
-            }
-
-            // Transform and add vertex data.
-            const auto& vertexData = mesh->getVertexData();
-            for (uint32_t i = 0; i < vertexData.size(); i += vertexStride)
-            {
-                const unsigned char* vert = &vertexData[i];
-                const float* positionPtr = reinterpret_cast<const float*>(vert);
-
-                const glm::vec4 position = glm::vec4{ positionPtr[0], positionPtr[1], positionPtr[2], positionPtr[3] };
-                const glm::vec4 transformedPosition = instance->getTransMatrix() * position;
-
-               mPositions.emplace_back(transformedPosition.x, transformedPosition.y, transformedPosition.z);
-
-                const glm::vec2 uv = glm::vec2{ positionPtr[4], positionPtr[5] };
-                mUVs.push_back(uv);
-
-                const glm::vec4 normal = unpackNormal(*reinterpret_cast<const uint32_t*>(&positionPtr[6]));
-                mNormals.push_back(normal);
-
-                const glm::vec4 colour = unpackColour(*reinterpret_cast<const uint32_t*>(&positionPtr[7]));
-                mVertexColours.push_back(colour);
-            }
-
-            vertexOffset += mesh->getVertexCount();
-            ++instanceID;
-        }
-
-        mMeshes = std::make_unique<nanort::TriangleMesh<float>>(reinterpret_cast<float*>(mPositions.data()), mIndexBuffer.data(), sizeof(glm::vec3));
-        mPred = std::make_unique<nanort::TriangleSAHPred<float>>(reinterpret_cast<float*>(mPositions.data()), mIndexBuffer.data(), sizeof(glm::vec3));
-
-        bool success = mAccelerationStructure.Build(mIndexBuffer.size() / 3, *mMeshes, *mPred);*/
     }
 
 }

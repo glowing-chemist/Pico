@@ -8,9 +8,13 @@ set(SOURCE
 	Source/main.cpp
 	Source/Core/Image.cpp
 	Source/Core/Scene.cpp
-	Source/Core/Sampler.cpp
 	Source/Core/Camera.cpp
+	Source/Core/UpperLevelBVH.cpp
+	Source/Core/LowerLevelMeshBVH.cpp
+	Source/Core/LowerLevelImplicitShapesBVH.cpp
+	Source/Core/AABB.cpp
 
+	Source/Render/Sampler.cpp
 	Source/Render/PBR.cpp
 
 	Source/Util/Options.cpp

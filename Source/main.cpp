@@ -29,7 +29,7 @@ int main(int argc, const char **argv)
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-        auto* window = glfwCreateWindow(512, 512, "Pico", nullptr, nullptr);
+        auto* window = glfwCreateWindow(1920, 1080, "Pico", nullptr, nullptr);
 
         glfwSetErrorCallback(error_callback);
         glfwMakeContextCurrent(window);
@@ -41,9 +41,6 @@ int main(int argc, const char **argv)
 
         while(!glfwWindowShouldClose(window))
         {
-            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT);
-
             frame_buffer.set_image(frame_memory);
 
             glfwSwapBuffers(window);

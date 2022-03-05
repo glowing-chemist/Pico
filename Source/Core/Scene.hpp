@@ -5,8 +5,9 @@
 #include "ThirdParty/nanort/nanort.h"
 
 #include "Image.hpp"
-#include "Core/Sampler.hpp"
 #include "Core/ThreadPool.hpp"
+#include "Core/LowerLevelBVH.hpp"
+#include "Render/Sampler.hpp"
 
 #include <memory>
 #include <vector>
@@ -15,27 +16,30 @@
 namespace Scene
 {
 
+    struct RenderParams
+    {
+        uint32_t m_maxRayDepth;
+        uint32_t m_maxSamples;
+        float    m_maxVariance;
+        uint32_t m_Height;
+        uint32_t m_Width;
+
+        uint32_t* m_Pixels;
+        uint32_t* m_SampleCount;
+        float*    m_variance;
+    };
+
     class Camera;
 
     class Scene
     {
     public:
 
-        Scene();
+        Scene(ThreadPool&, const std::string& sceneFile);
         ~Scene() = default;
 
-        void renderSceneToMemory(const Camera&, const uint32_t x, const uint32_t y, uint8_t *, ThreadPool&) const;
-        void renderSceneToFile(const Camera&, const uint32_t x, const uint32_t y, const char*, ThreadPool&) const;
-
-        struct InterpolatedVertex
-        {
-            glm::vec4 mPosition;
-            glm::vec2 mUV;
-            glm::vec3 mNormal;
-            glm::vec4 mVertexColour;
-            uint32_t  mPrimID;
-        };
-        InterpolatedVertex interpolateFragment(const uint32_t primID, const float u, const float v) const;
+        void renderSceneToMemory(const Camera&, const RenderParams&) const;
+        void renderSceneToFile(const Camera&, RenderParams&, const char*) const;
 
         struct MaterialInfo
         {
@@ -51,11 +55,11 @@ namespace Scene
             glm::vec3 normal;
             glm::vec4 emissiveOcclusion; // xyz emisive w ambient occlusion.
         };
-        Material calculateMaterial(const InterpolatedVertex&, const MaterialInfo&) const;
+        Material calculateMaterial(const Core::BVH::InterpolatedVertex&, const MaterialInfo&) const;
 
         bool isVisibleFrom(const glm::vec3& dst, const glm::vec3& src) const;
 
-        bool traceRayNonAlphaTested(const nanort::Ray<float>& ray, InterpolatedVertex* result) const;
+        bool traceRayNonAlphaTested(const nanort::Ray<float>& ray, Core::BVH::InterpolatedVertex* result) const;
 
         bool intersectsMesh(const nanort::Ray<float>& ray, uint64_t* instanceID);
 
@@ -63,13 +67,13 @@ namespace Scene
 
     private:
 
-        bool traceRay(const nanort::Ray<float>& ray, InterpolatedVertex* result) const;
+        glm::vec4 traceDiffuseRays(const Core::BVH::InterpolatedVertex& frag, const glm::vec4 &origin, const uint32_t sampleCount, const uint32_t depth) const;
 
-        glm::vec4 traceDiffuseRays(const InterpolatedVertex& frag, const glm::vec4 &origin, const uint32_t sampleCount, const uint32_t depth) const;
+        glm::vec4 traceSpecularRays(const Core::BVH::InterpolatedVertex& frag, const glm::vec4 &origin, const uint32_t sampleCount, const uint32_t depth) const;
 
-        glm::vec4 traceSpecularRays(const InterpolatedVertex& frag, const glm::vec4 &origin, const uint32_t sampleCount, const uint32_t depth) const;
+        glm::vec4 shadePoint(const Core::BVH::InterpolatedVertex& frag, const glm::vec4 &origin, const uint32_t sampleCount, const uint32_t depth) const;
 
-        glm::vec4 shadePoint(const InterpolatedVertex& frag, const glm::vec4 &origin, const uint32_t sampleCount, const uint32_t depth) const;
+        ThreadPool& m_threadPool;
 
         std::vector<glm::vec3> mPositions;
         std::vector<glm::vec2> mUVs;
