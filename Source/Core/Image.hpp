@@ -32,27 +32,15 @@ namespace Core
 
         ~Image();
 
-        float sample(const glm::vec2& uv) const;
-        glm::vec2 sample2(const glm::vec2& uv) const;
-        glm::vec3 sample3(const glm::vec2& uv) const;
-        glm::vec4 sample4(const glm::vec2& uv) const;
-
-        float sample_cube(const glm::vec3& uv) const;
-        glm::vec2 sample_cube2(const glm::vec3& uv) const;
-        glm::vec3 sample_cube3(const glm::vec3& uv) const;
-        glm::vec4 sample_cube4(const glm::vec3& uv) const;
-
         const ImageExtent& get_extent() const
         {
             return mExtent;
         }
 
-    private:
+    protected:
 
         const unsigned char* get_data_ptr(const glm::vec2& uv) const;
         const unsigned char* get_data_ptr(const glm::vec2& uv, const uint32_t face) const;
-
-        void resolve_cubemap_UV(const glm::vec3& v, uint32_t& faceIndex, glm::vec2& uvOut) const;
 
         std::vector<unsigned char> mData;
         ImageExtent mExtent;
@@ -60,6 +48,38 @@ namespace Core
         uint32_t mPixelSize;
     };
 
+
+    class Image2D : public Image
+    {
+    public:
+
+        Image2D(std::vector<unsigned char>&& data, const ImageExtent& extent, const Format format);
+
+        float sample(const glm::vec2& uv) const;
+        glm::vec2 sample2(const glm::vec2& uv) const;
+        glm::vec3 sample3(const glm::vec2& uv) const;
+        glm::vec4 sample4(const glm::vec2& uv) const;
+
+    };
+
+
+    class ImageCube : public Image
+    {
+    public:
+
+        ImageCube(std::vector<unsigned char>&& data, const ImageExtent& extent, const Format format);
+
+
+        float sample(const glm::vec3& uv) const;
+        glm::vec2 sample2(const glm::vec3& uv) const;
+        glm::vec3 sample3(const glm::vec3& uv) const;
+        glm::vec4 sample4(const glm::vec3& uv) const;
+
+    private:
+
+        void resolve_cubemap_UV(const glm::vec3& v, uint32_t& faceIndex, glm::vec2& uvOut) const;
+
+    };
 }
 
 #endif

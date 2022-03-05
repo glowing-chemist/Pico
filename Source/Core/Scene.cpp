@@ -78,7 +78,7 @@ namespace Scene
             }
             else
             {
-                return mSkybox->sample_cube4(dir);
+                return mSkybox->sample4(dir);
             }
         };
 
@@ -229,7 +229,7 @@ namespace Scene
             }
             else
             {
-                result += sample.P * diffuseFactor * mSkybox->sample_cube4(sample.L); // miss so sample skybox.
+                result += sample.P * diffuseFactor * mSkybox->sample4(sample.L); // miss so sample skybox.
             }
         }
 
@@ -277,7 +277,7 @@ namespace Scene
             }
             else
             {
-                result += specularFactor * sample.P * mSkybox->sample_cube4(sample.L); // miss so sample skybox.
+                result += specularFactor * sample.P * mSkybox->sample4(sample.L); // miss so sample skybox.
             }
         }
 

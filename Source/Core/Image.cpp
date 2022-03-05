@@ -8,7 +8,7 @@ namespace Core
 
     }
 
-    float Image::sample(const glm::vec2& uv) const
+    float Image2D::sample(const glm::vec2& uv) const
     {
         const unsigned char* data = get_data_ptr(uv);
 
@@ -30,7 +30,7 @@ namespace Core
     }
 
 
-    glm::vec2 Image::sample2(const glm::vec2& uv) const
+    glm::vec2 Image2D::sample2(const glm::vec2& uv) const
     {
         const unsigned char* data = get_data_ptr(uv);
 
@@ -57,7 +57,7 @@ namespace Core
     }
 
 
-    glm::vec3 Image::sample3(const glm::vec2& uv) const
+    glm::vec3 Image2D::sample3(const glm::vec2& uv) const
     {
         const unsigned char* data = get_data_ptr(uv);
 
@@ -86,7 +86,7 @@ namespace Core
     }
 
 
-    glm::vec4 Image::sample4(const glm::vec2& uv) const
+    glm::vec4 Image2D::sample4(const glm::vec2& uv) const
     {
         const unsigned char* data = get_data_ptr(uv);
 
@@ -117,7 +117,7 @@ namespace Core
     }
 
 
-    float Image::sample_cube(const glm::vec3& d) const
+    float ImageCube::sample(const glm::vec3& d) const
     {
         uint32_t faceIndex;
         glm::vec2 uv;
@@ -143,7 +143,7 @@ namespace Core
     }
 
 
-    glm::vec2 Image::sample_cube2(const glm::vec3& d) const
+    glm::vec2 ImageCube::sample2(const glm::vec3& d) const
     {
         uint32_t faceIndex;
         glm::vec2 uv;
@@ -174,7 +174,7 @@ namespace Core
     }
 
 
-    glm::vec3 Image::sample_cube3(const glm::vec3& d) const
+    glm::vec3 ImageCube::sample3(const glm::vec3& d) const
     {
         uint32_t faceIndex;
         glm::vec2 uv;
@@ -207,7 +207,7 @@ namespace Core
     }
 
 
-    glm::vec4 Image::sample_cube4(const glm::vec3& d) const
+    glm::vec4 ImageCube::sample4(const glm::vec3& d) const
     {
         uint32_t faceIndex;
         glm::vec2 uv;
@@ -268,7 +268,7 @@ namespace Core
     }
 
 
-    void Image::resolve_cubemap_UV(const glm::vec3& v, uint32_t& faceIndex, glm::vec2& uvOut) const
+    void ImageCube::resolve_cubemap_UV(const glm::vec3& v, uint32_t& faceIndex, glm::vec2& uvOut) const
     {
         glm::vec3 vAbs = abs(v);
         float ma;

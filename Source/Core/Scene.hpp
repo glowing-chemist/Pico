@@ -88,8 +88,8 @@ namespace Scene
 
         std::vector<MaterialInfo> mPrimitiveMaterialID; // maps prim ID to material ID.
 
-        std::unique_ptr<Core::Image> mSkybox;
-        std::vector<Core::Image> mMaterials;
+        std::unique_ptr<Core::ImageCube> mSkybox;
+        std::vector<Core::Image2D> mMaterials;
     };
 
 }
