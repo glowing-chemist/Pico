@@ -1,12 +1,82 @@
 #include "Image.hpp"
+#include "stb_image.h"
 
 namespace Core
 {
 
+    size_t get_pixel_size(const Format format)
+    {
+        switch(format)
+        {
+            case Format::kRBGA_8UNorm:
+                return 4;
+
+            case Format::kRGB_8UNorm:
+                return 3;
+        }
+
+        return 4;
+    }
+
+    size_t get_format_channels(const Format format)
+    {
+        switch(format)
+        {
+            case Format::kRBGA_8UNorm:
+                return 4;
+
+            case Format::kRGB_8UNorm:
+                return 3;
+        }
+
+        return 4;
+    }
+
+    Image::Image(const std::string& path) :
+        mPath(path),
+        mData(nullptr)
+    {
+        int x, y, components;
+        stbi_info(mPath.c_str(), &x, &y, &components);
+
+        mExtent = {static_cast<uint32_t>(x), static_cast<uint32_t>(y), 1};
+        if(components == 4)
+            mFormat = Format::kRBGA_8UNorm;
+        else
+            mFormat = Format::kRGB_8UNorm;
+
+        mPixelSize = get_pixel_size(mFormat);
+    }
+
+
     Image::~Image()
     {
-
+        free(mData);
     }
+
+    size_t Image::get_residence_size() const
+    {
+        return mExtent.height * mExtent.width * mPixelSize;
+    }
+
+    void Image::make_resident(void* mem)
+    {
+        int x, y, c;
+        auto* image = stbi_load(mPath.c_str(), &x, &y, &c, get_format_channels(mFormat));
+
+        const size_t size = get_residence_size();
+        mData = static_cast<unsigned char*>(mem);
+        memcpy(mData, image, size);
+
+        free(image);
+    }
+
+    void Image::make_nonresident()
+    {
+        if(!mPath.empty())
+            mData = nullptr;
+    }
+
 
     float Image2D::sample(const glm::vec2& uv) const
     {
@@ -247,7 +317,7 @@ namespace Core
         const uint32_t x = uint32_t(uv.x * mExtent.width) % mExtent.width;
         const uint32_t y = uint32_t(uv.y * mExtent.height) % mExtent.height;
 
-        const unsigned char* data = mData.data();
+        const unsigned char* data = mData;
         const uint64_t offset = (mPixelSize * y * mExtent.width) + (mPixelSize * x);
         data += offset;
 
@@ -260,7 +330,7 @@ namespace Core
         const uint32_t x = uint32_t(uv.x * mExtent.width) % mExtent.width;
         const uint32_t y = uint32_t(uv.y * mExtent.height) % mExtent.height;
 
-        const unsigned char* data = mData.data();
+        const unsigned char* data = mData;
         const uint64_t offset = (mPixelSize * y * mExtent.width) + (mPixelSize * x) + (face * mExtent.width * mExtent.height * mPixelSize);
         data += offset;
 

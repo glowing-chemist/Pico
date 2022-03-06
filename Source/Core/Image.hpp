@@ -1,36 +1,54 @@
 #ifndef PICO_IMAGE_HPP
 #define PICO_IMAGE_HPP
 
+#include <string>
 #include <vector>
 #include <cstdint>
 
 #include "glm/common.hpp"
 
+#include "Loadable.hpp"
+
 namespace Core
 {
     struct ImageExtent
     {
-        uint32_t width, height, z;
+        uint32_t width, height, depth;
     };
 
     enum class Format
     {
-        kRBGA_8UNorm
+        kRBGA_8UNorm,
+        kRGB_8UNorm
     };
 
     size_t get_pixel_size(const Format);
+    size_t get_format_channels(const Format);
 
-    class Image
+    class Image : public Loadable
     {
     public:
-        Image(std::vector<unsigned char>&& data, const ImageExtent& extent, const Format format) :
+        Image(unsigned char* data, const ImageExtent& extent, const Format format) :
         mData(data),
         mExtent(extent),
         mFormat(format),
         mPixelSize(get_pixel_size(mFormat))
         {}
 
+        Image(const std::string& path);
+
         ~Image();
+
+        virtual size_t get_residence_size() const final;
+
+        virtual bool is_resident() const final
+        {
+            return mData;
+        }
+
+        virtual void make_resident(void*) final;
+
+        virtual void make_nonresident() final;
 
         const ImageExtent& get_extent() const
         {
@@ -42,7 +60,9 @@ namespace Core
         const unsigned char* get_data_ptr(const glm::vec2& uv) const;
         const unsigned char* get_data_ptr(const glm::vec2& uv, const uint32_t face) const;
 
-        std::vector<unsigned char> mData;
+        std::string mPath;
+
+        unsigned char* mData;
         ImageExtent mExtent;
         Format mFormat;
         uint32_t mPixelSize;

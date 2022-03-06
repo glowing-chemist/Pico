@@ -55,10 +55,10 @@ namespace Core
         AABB() = default;
 
         Cube getCube() const;
-        std::array<glm::vec4, 8> getCubeAsVertexArray() const;
+        std::array<glm::vec4, 8> get_cube_as_vertex_array() const;
 
         // std::limits<float>::max() to indicate no intersection
-        float intersectionDistance(const Ray&) const;
+        std::pair<float, float> intersection_distances(const Ray&) const;
 
         bool contains(const glm::vec4&) const;
         Intersection contains(const AABB&) const;
@@ -75,16 +75,16 @@ namespace Core
         AABB operator+(const glm::vec4&) const;
         AABB operator-(const glm::vec4&) const;
 
-        const glm::vec4& getMax() const
+        const glm::vec4& get_max() const
         { return mMaximum; }
 
-        const glm::vec4& getMin() const
+        const glm::vec4& get_min() const
         { return mMinimum; }
 
-        glm::vec4 getCentralPoint() const
+        glm::vec4 get_central_point() const
         { return mMinimum + (mMaximum - mMinimum) * 0.5f; }
 
-        glm::vec3 getSideLengths() const
+        glm::vec3 get_side_lengths() const
         {
             return glm::abs(mMaximum - mMinimum);
         }

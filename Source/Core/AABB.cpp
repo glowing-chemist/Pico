@@ -40,7 +40,7 @@ namespace
 namespace Core
 {
 
-    std::array<glm::vec4, 8> AABB::getCubeAsVertexArray() const
+    std::array<glm::vec4, 8> AABB::get_cube_as_vertex_array() const
     {
         glm::vec4 upper1{mMinimum};
         glm::vec4 upper2{mMinimum.x, mMinimum.y, mMaximum.z, 1.0f};
@@ -60,14 +60,14 @@ namespace Core
     Cube AABB::getCube() const
     {
 
-        auto verticies = getCubeAsVertexArray();
+        auto verticies = get_cube_as_vertex_array();
 
         return Cube{verticies[0], verticies[1], verticies[2], verticies[3],
                     verticies[4], verticies[5], verticies[6], verticies[7]};
     }
 
 
-    float AABB::intersectionDistance(const Ray& ray) const
+    std::pair<float, float> AABB::intersection_distances(const Ray& ray) const
     {
         glm::vec3 rayDirection = ray.mDirection;
         glm::vec3 rayOrigin = ray.mOrigin;
@@ -88,10 +88,10 @@ namespace Core
         // or no intersection at all.
         if (tmax < 0 || tmin > tmax)
         {
-            return std::numeric_limits<float>::max();
+            return std::make_pair(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
         }
 
-        return tmin;
+        return std::make_pair(tmin, tmax);
     }
 
 
@@ -105,7 +105,7 @@ namespace Core
 
     Intersection AABB::contains(const AABB& aabb) const
     {
-        const auto verticies = aabb.getCubeAsVertexArray();
+        const auto verticies = aabb.get_cube_as_vertex_array();
 
         Intersection inside = Intersection::None;
         bool all = true;
@@ -124,7 +124,7 @@ namespace Core
     {
         // Keep track of the max/min values seen on each axis
         // so tha we still have an AABB not an OOBB.
-        const auto cubeVerticies= getCubeAsVertexArray();
+        const auto cubeVerticies= get_cube_as_vertex_array();
         glm::vec4 smallest = glm::vec4(10000000.0f);
         glm::vec4 largest = glm::vec4(-10000000.0f);
         for (const auto& vertex : cubeVerticies)
@@ -174,7 +174,7 @@ namespace Core
     {
         // Keep track of the max/min values seen on each axis
         // so tha we still have an AABB not an OOBB.
-        const auto cubeVerticies = getCubeAsVertexArray();
+        const auto cubeVerticies = get_cube_as_vertex_array();
         glm::vec4 smallest = glm::vec4(10000000.0f);
         glm::vec4 largest = glm::vec4(-10000000.0f);
         for (const auto& vertex : cubeVerticies)

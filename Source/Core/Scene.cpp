@@ -35,11 +35,7 @@ namespace Scene
 
     Scene::Scene(ThreadPool& pool, const std::string& sceneFile) :
         m_threadPool(pool),
-        mPrimitiveMaterialID{}
     {
-        //updateCPUAccelerationStructure(scene);
-
-        //nanort::BVHBuildStatistics stats = mAccelerationStructure.GetStatistics();
     }
 
     void Scene::renderSceneToMemory(const Camera& camera, const RenderParams& params) const
@@ -116,76 +112,6 @@ namespace Scene
 
         stbi_write_jpg(path, params.m_Width, params.m_Height, 4, params.m_Pixels, 100);
     }
-
-
-    bool Scene::traceRay(const nanort::Ray<float>& ray, InterpolatedVertex *result) const
-    {
-        nanort::TriangleIntersector triangle_intersecter(reinterpret_cast<const float*>(mPositions.data()), mIndexBuffer.data(), sizeof(glm::vec3));
-        nanort::TriangleIntersection intersection;
-        bool hit = mAccelerationStructure.Traverse(ray, triangle_intersecter, &intersection);
-
-        if(hit) // check for alpha tested geometry.
-        {
-            *result= interpolateFragment(intersection.prim_id, intersection.u, intersection.v);
-
-            const MaterialInfo& matInfo = mPrimitiveMaterialID[result->mPrimID];
-
-            if(matInfo.materialFlags & MaterialType::Albedo || matInfo.materialFlags & MaterialType::Diffuse)
-            {
-
-                const Core::Image& diffuseTexture = mMaterials[matInfo.materialIndex];
-                const glm::vec4 colour = diffuseTexture.sample4(result->mUV);
-
-                if(colour.a == 0.0f) // trace another ray.
-                {
-                    nanort::Ray<float> newRay{};
-                    newRay.org[0] = result->mPosition.x;
-                    newRay.org[1] = result->mPosition.y;
-                    newRay.org[2] = result->mPosition.z;
-                    newRay.dir[0] = ray.dir[0];
-                    newRay.dir[1] = ray.dir[1];
-                    newRay.dir[2] = ray.dir[2];
-                    newRay.min_t = 0.01f;
-                    newRay.max_t = 2000.0f;
-
-                    hit = traceRay(newRay, result);
-                }
-            }
-        }
-
-        return hit;
-    }
-
-
-    bool Scene::traceRayNonAlphaTested(const nanort::Ray<float> &ray, InterpolatedVertex *result) const
-    {
-        nanort::TriangleIntersector triangle_intersecter(reinterpret_cast<const float*>(mPositions.data()), mIndexBuffer.data(), sizeof(glm::vec3));
-        nanort::TriangleIntersection intersection;
-        const bool hit = mAccelerationStructure.Traverse(ray, triangle_intersecter, &intersection);
-
-        if(hit)
-        {
-            *result = interpolateFragment(intersection.prim_id, intersection.u, intersection.v);
-        }
-
-        return hit;
-    }
-
-
-    bool Scene::intersectsMesh(const nanort::Ray<float>& ray, uint64_t *instanceID)
-    {
-        InterpolatedVertex vertex;
-        if(traceRay(ray, &vertex))
-        {
-            const MaterialInfo& matInfo = mPrimitiveMaterialID[vertex.mPrimID];
-            *instanceID = matInfo.instanceID;
-
-            return true;
-        }
-
-        return false;
-    }
-
 
     glm::vec4 Scene::traceDiffuseRays(const InterpolatedVertex& frag, const glm::vec4& origin, const uint32_t sampleCount, const uint32_t depth) const
     {
@@ -287,131 +213,6 @@ namespace Scene
     }
 
 
-    Scene::Material Scene::calculateMaterial(const InterpolatedVertex& frag, const MaterialInfo& info) const
-    {
-        Material mat;
-        mat.diffuse = frag.mVertexColour;
-        mat.normal = glm::normalize(frag.mNormal);
-        mat.specularRoughness = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-        mat.emissiveOcclusion = glm::vec4(0.0f, 0.0f, 0.0f, 1.0);
-
-        auto fresnelSchlickRoughness = [](const float cosTheta, const glm::vec3 F0, const float roughness)
-        {
-            return F0 + (glm::max(glm::vec3(1.0f - roughness), F0) - F0) * std::pow(1.0f - cosTheta, 5.0f);
-        };
-
-        uint32_t nextMaterialSlot = 0;
-
-        if(info.materialFlags & MaterialType::Diffuse)
-        {
-            mat.diffuse = mMaterials[info.materialIndex].sample4(frag.mUV);
-            ++nextMaterialSlot;
-        }
-        else if(info.materialFlags & MaterialType::Albedo)
-            ++nextMaterialSlot;
-
-        if(info.materialFlags & MaterialType::Normals)
-        {
-            ++nextMaterialSlot; // TODO work out how to do this without derivitives!!.
-        }
-
-        if(info.materialFlags & MaterialType::Roughness)
-        {
-            mat.specularRoughness.w = mMaterials[info.materialIndex + nextMaterialSlot].sample(frag.mUV);
-            ++nextMaterialSlot;
-        }
-        else if(info.materialFlags & MaterialType::Gloss)
-        {
-            mat.specularRoughness.w = 1.0f - mMaterials[info.materialIndex + nextMaterialSlot].sample(frag.mUV);
-            ++nextMaterialSlot;
-        }
-
-        float metalness = 0.0f;
-        if(info.materialFlags & MaterialType::Specular)
-        {
-            const glm::vec3 spec = mMaterials[info.materialIndex + nextMaterialSlot].sample4(frag.mUV);
-            mat.specularRoughness.x = spec.x;
-            mat.specularRoughness.y = spec.y;
-            mat.specularRoughness.z = spec.z;
-            ++nextMaterialSlot;
-        }
-        else if(info.materialFlags & MaterialType::CombinedSpecularGloss)
-        {
-            mat.specularRoughness = mMaterials[info.materialIndex + nextMaterialSlot].sample4(frag.mUV);
-            mat.specularRoughness.w = 1.0f - mat.specularRoughness.w;
-            ++nextMaterialSlot;
-        }
-        else if(info.materialFlags & MaterialType::Metalness)
-        {
-            metalness = mMaterials[info.materialIndex + nextMaterialSlot].sample(frag.mUV);
-            ++nextMaterialSlot;
-        }
-        else if(info.materialFlags & MaterialType::CombinedMetalnessRoughness)
-        {
-            const glm::vec4 metalnessRoughness = mMaterials[info.materialIndex + nextMaterialSlot].sample4(frag.mUV);
-            metalness = metalnessRoughness.z;
-            mat.specularRoughness.w = metalnessRoughness.y;
-            ++nextMaterialSlot;
-        }
-
-        if(info.materialFlags & MaterialType::Albedo)
-        {
-            const glm::vec4 albedo = mMaterials[info.materialIndex].sample4(frag.mUV);
-            mat.diffuse = albedo * (1.0f - 0.04f) * (1.0f - metalness);
-            mat.diffuse.w = albedo.w;// Preserve the alpha chanle.
-
-            const glm::vec3 F0 = glm::lerp(glm::vec3(0.04f, 0.04f, 0.04f), glm::vec3(albedo), metalness);
-            mat.specularRoughness.x = F0.x;
-            mat.specularRoughness.y = F0.y;
-            mat.specularRoughness.z = F0.z;
-        }
-
-        if(info.materialFlags & MaterialType::Emisive)
-        {
-            const glm::vec3 emissive = mMaterials[info.materialIndex + nextMaterialSlot].sample4(frag.mUV);
-            mat.emissiveOcclusion.x = emissive.x;
-            mat.emissiveOcclusion.y = emissive.y;
-            mat.emissiveOcclusion.z = emissive.z;
-            ++nextMaterialSlot;
-        }
-
-        if(info.materialFlags & MaterialType::AmbientOcclusion)
-        {
-            mat.emissiveOcclusion.w = mMaterials[info.materialIndex + nextMaterialSlot].sample(frag.mUV);
-        }
-
-        return mat;
-    }
-
-
-    bool Scene::isVisibleFrom(const glm::vec3& dst, const glm::vec3& src) const
-    {
-        const glm::vec3 direction = dst - src;
-        const glm::vec3 normalizedDir = glm::normalize(direction);
-
-        nanort::Ray ray{};
-        ray.dir[0] = normalizedDir.x;
-        ray.dir[1] = normalizedDir.y;
-        ray.dir[2] = normalizedDir.z;
-        ray.org[0] = src.x;
-        ray.org[1] = src.y;
-        ray.org[2] = src.z;
-        ray.min_t = 0.001f;
-        ray.max_t = 200.0f;
-
-        InterpolatedVertex frag;
-        const bool hit = traceRay(ray, &frag);
-        if(hit)
-        {
-            const float dist = glm::length(direction);
-            const float distToHit = glm::length(glm::vec3(frag.mPosition) - src);
-
-            return distToHit >= dist;
-        }
-
-        return true;
-    }
-
 
     glm::vec4 Scene::shadePoint(const InterpolatedVertex& frag, const glm::vec4 &origin, const uint32_t sampleCount, const uint32_t depth) const
     {
@@ -422,12 +223,6 @@ namespace Scene
         const glm::vec4 specular = traceSpecularRays(frag, origin, sampleCount, depth);
 
         return diffuse + specular;// * (shadowed ? 0.15f : 1.0f);
-    }
-
-
-    void Scene::updateCPUAccelerationStructure(const Scene* scene)
-    {
-
     }
 
 }

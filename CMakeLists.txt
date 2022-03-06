@@ -13,9 +13,13 @@ set(SOURCE
 	Source/Core/LowerLevelMeshBVH.cpp
 	Source/Core/LowerLevelImplicitShapesBVH.cpp
 	Source/Core/AABB.cpp
+	Source/Core/OctTree.cpp
+	Source/Core/MaterialManager.cpp
 
 	Source/Render/Sampler.cpp
 	Source/Render/PBR.cpp
+	Source/Render/Integrators.cpp
+	Source/Render/BasicMaterials.cpp
 
 	Source/Util/Options.cpp
 	Source/Util/FrameBuffer.cpp

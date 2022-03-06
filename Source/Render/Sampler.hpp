@@ -12,14 +12,34 @@ namespace Render
         float P;
     };
 
-    class DiffuseSampler
+    class Diffuse_Sampler
     {
     public:
-        DiffuseSampler(const uint32_t maxSamples) :
+
+        Diffuse_Sampler() = default;
+
+        virtual Sample generate_sample(const glm::vec3 &normal) = 0;
+
+    };
+
+    class Specular_Sampler
+    {
+    public:
+
+        Specular_Sampler() = default;
+
+        virtual Sample generate_sample(const glm::vec3& N, const glm::vec3& V, const float R) = 0;
+
+    };
+
+    class Hammersley_GGX_Diffuse_Sampler : public Diffuse_Sampler
+    {
+    public:
+        Hammersley_GGX_Diffuse_Sampler(const uint32_t maxSamples) :
         mMaxSamples(maxSamples),
         mGeneratedSamples(0) {}
 
-        Sample generateSample(const glm::vec3 &normal);
+        virtual Sample generate_sample(const glm::vec3 &normal) final;
 
     private:
 
@@ -28,14 +48,14 @@ namespace Render
     };
 
 
-    class SpecularSampler
+    class Hammersley_GGX_Specular_Sampler : public Specular_Sampler
     {
     public:
-        SpecularSampler(const uint32_t maxSamples) :
+        Hammersley_GGX_Specular_Sampler(const uint32_t maxSamples) :
         mMaxSamples(maxSamples),
         mGeneratedSamples(0) {}
 
-        Sample generateSample(const glm::vec3& N, const glm::vec3& V, const float R);
+        Sample generate_sample(const glm::vec3& N, const glm::vec3& V, const float R);
 
     private:
         uint32_t mMaxSamples;
