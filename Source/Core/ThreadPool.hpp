@@ -84,9 +84,9 @@ public:
     }
 
     template<typename F, typename ...Args>
-    auto add_task(F&& f, Args&& ...a) -> std::future<typename std::result_of_t<F(Args...)>>
+    auto add_task(F&& f, Args&& ...a) -> std::future<decltype(f( std::forward<Args>(a)...))>
     {
-        using return_type = std::result_of_t<F(Args...)>;
+        using return_type = decltype(f( std::forward<Args>(a)...));
         std::packaged_task<return_type()>* task = new std::packaged_task<return_type()>{std::bind(std::forward<F>(f), std::forward<Args>(a)...)};
 
         std::future<return_type> future = task->get_future();
