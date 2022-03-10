@@ -9,57 +9,60 @@
 
 namespace Core
 {
+
     template<typename T>
-    std::vector<T> OctTree<T>::getIntersections(const AABB& aabb) const
+    T OctTree<T>::get_first_intersection(const Ray& ray) const
     {
-        mTests = 0;
+        std::vector<std::pair<float, T>> intersections{};
+        get_intersections(ray, get_node(mRoot), intersections);
 
-        std::vector<T> intersections{};
+        auto firstIt = intersections.begin();
+        std::nth_element(firstIt, firstIt, intersections.end(), [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
 
-        if(mRoot != kInvalidNodeIndex)
-        {
-            const Node& root = getNode(mRoot);
-            const Intersection initialFlags = root.mBoundingBox.contains(aabb);
-            getIntersections(aabb, root, intersections, initialFlags);
-        }
-
-        return intersections;
+        return firstIt->second;
     }
 
+    template<typename T>
+    std::vector<T>  OctTree<T>::get_all_intersections(const Ray& ray) const
+    {
+        std::vector<std::pair<float, T>> intersections{};
+        get_intersections(ray, get_node(mRoot), intersections);
+
+        // Sort nearest to furthest
+        std::sort(intersections.begin(), intersections.end(), [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
+
+        std::vector<T> result{};
+        std::transform(intersections.begin(), intersections.end(), std::back_inserter(result), [](const auto& input) { return input.second; });
+
+        return result;
+    }
 
     template<typename T>
-    void OctTree<T>::getIntersections(const AABB& aabb, const typename OctTree<T>::Node& node, std::vector<T>& intersections, const Intersection nodeFlags) const
+    void    OctTree<T>::get_intersections(const Ray& ray, const typename OctTree<T>::Node& node, std::vector<std::pair<float, T>>& intersections) const
     {
-        if(nodeFlags & Intersection::Partial)
+        ++mTests;
+        if(node.mBoundingBox.intersection_distances(ray).first != std::numeric_limits<float>::max())
         {
-            for (const auto& mesh : node.mValues)
+            for(auto& value : node.mValues)
             {
                 ++mTests;
-                if (mesh.mBounds.contains(aabb))
-                    intersections.push_back(mesh.mValue);
+                if(auto minDistance = value.mBounds.intersection_distances(ray).first; minDistance != std::numeric_limits<float>::max())
+                    intersections.push_back(std::make_pair(minDistance, value.mValue));
             }
-        }
-        else
-        {
-            return;
-        }
 
-        for (const auto& childIndex : node.mChildren)
-        {
-            if (childIndex != kInvalidNodeIndex)
+            for (const auto& childIndex : node.mChildren)
             {
-                const Node childNode = getNode(childIndex);
-                ++mTests;
-                const Intersection newFlags = childNode.mBoundingBox.contains(aabb);
-                if (newFlags)
-                    getIntersections(aabb, childNode, intersections, newFlags);
+                if (childIndex != kInvalidNodeIndex)
+                {
+                    const Node childNode = get_node(childIndex);
+                    get_intersections(ray, childNode, intersections);
+                }
             }
         }
     }
 
-
     template<typename T>
-    OctTree<T> OctTreeFactory<T>::generateOctTree()
+    OctTree<T> OctTreeFactory<T>::generate_octTree()
     {
         const NodeIndex root = createSpacialSubdivisions(mRootBoundingBox, mBoundingBoxes);
 
@@ -90,7 +93,7 @@ namespace Core
                 unfittedNodes.push_back(node);
         }
 
-        const auto subSpaces = splitAABB(parentBox);
+        const auto subSpaces = split_AABB(parentBox);
 
         uint32_t childCount = 0;
         std::map<uint32_t, uint32_t> unclaimedCount{};
@@ -127,14 +130,14 @@ namespace Core
         if(newNode.mValues.empty() && newNode.mChildCount == 0)
             return kInvalidNodeIndex;
         else
-            return addNode(newNode);
+            return add_node(newNode);
     }
 
 
 
 
     template<typename T>
-    std::array<AABB, 8> OctTreeFactory<T>::splitAABB(const AABB& aabb) const
+    std::array<AABB, 8> OctTreeFactory<T>::split_AABB(const AABB& aabb) const
     {
         Cube cube = aabb.getCube();
 
@@ -157,17 +160,16 @@ namespace Core
                                     fith, sixth, seventh, eighth };
     }
 
-
-    // Explicitly instantiate
-    #include "Core/UpperLevelBVH.hpp"
-
-    template
-    class OctTreeFactory<AABB*>;
-
-    template
-    class OctTree<AABB*>;
-
 }
+
+// Explicitly instantiate
+#include "Core/UpperLevelBVH.hpp"
+
+template
+class Core::OctTreeFactory<const Core::BVH::UpperLevelBVH::Entry*>;
+
+template
+class Core::OctTree<const Core::BVH::UpperLevelBVH::Entry*>;
 
 
 

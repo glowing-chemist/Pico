@@ -1,9 +1,10 @@
 #include "AABB.hpp"
 
-namespace
+namespace Core
 {
+
     // Return a vector constructed from the minimum of each component.
-    inline glm::vec3 componentWiseMin(const glm::vec3& lhs, const glm::vec3& rhs)
+    inline glm::vec3 component_wise_min(const glm::vec3& lhs, const glm::vec3& rhs)
     {
         return glm::vec3{std::min(lhs.x, rhs.x),
                       std::min(lhs.y, rhs.y),
@@ -11,7 +12,7 @@ namespace
     }
 
 
-    inline glm::vec4 componentWiseMin(const glm::vec4& lhs, const glm::vec4& rhs)
+    inline glm::vec4 component_wise_min(const glm::vec4& lhs, const glm::vec4& rhs)
     {
         return glm::vec4{std::min(lhs.x, rhs.x),
                       std::min(lhs.y, rhs.y),
@@ -19,7 +20,7 @@ namespace
                       std::min(lhs.w, rhs.w)};
     }
 
-    inline glm::vec3 componentWiseMax(const glm::vec3& lhs, const glm::vec3& rhs)
+    inline glm::vec3 component_wise_max(const glm::vec3& lhs, const glm::vec3& rhs)
     {
         return glm::vec3{std::max(lhs.x, rhs.x),
                       std::max(lhs.y, rhs.y),
@@ -27,7 +28,7 @@ namespace
     }
 
 
-    inline glm::vec4 componentWiseMax(const glm::vec4& lhs, const glm::vec4& rhs)
+    inline glm::vec4 component_wise_max(const glm::vec4& lhs, const glm::vec4& rhs)
     {
         return glm::vec4{std::max(lhs.x, rhs.x),
                       std::max(lhs.y, rhs.y),
@@ -35,10 +36,16 @@ namespace
                       std::max(lhs.w, rhs.w)};
     }
 
-}
+    Ray transform_ray(const Ray& ray, const glm::mat4x4& transform)
+    {
+        assert(ray.mOrigin.w == 1.0f);
+        Ray newRay{};
+        newRay.mOrigin = transform * ray.mOrigin;
+        newRay.mDirection = glm::mat3x3(transform) * ray.mDirection;
+        newRay.mLenght = ray.mLenght;
 
-namespace Core
-{
+        return newRay;
+    }
 
     std::array<glm::vec4, 8> AABB::get_cube_as_vertex_array() const
     {
@@ -132,8 +139,8 @@ namespace Core
             glm::vec4 transformedPoint = mat * vertex;
             transformedPoint /= transformedPoint.w;
 
-            smallest = componentWiseMin(smallest, transformedPoint);
-            largest = componentWiseMax(largest, transformedPoint);
+            smallest = component_wise_min(smallest, transformedPoint);
+            largest = component_wise_max(largest, transformedPoint);
         }
 
         mMinimum = smallest;
@@ -182,8 +189,8 @@ namespace Core
             glm::vec4 transformedPoint = mat * vertex;
             transformedPoint /= transformedPoint.w;
 
-            smallest = componentWiseMin(smallest, transformedPoint);
-            largest = componentWiseMax(largest, transformedPoint);
+            smallest = component_wise_min(smallest, transformedPoint);
+            largest = component_wise_max(largest, transformedPoint);
         }
 
         return AABB{ smallest, largest };

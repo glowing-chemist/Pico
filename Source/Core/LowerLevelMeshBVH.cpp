@@ -50,7 +50,7 @@ namespace Core
             newRay.dir[1] = ray.mDirection.y;
             newRay.dir[2] = ray.mDirection.z;
             newRay.min_t = 0.01f;
-            newRay.max_t = 2000.0f;
+            newRay.max_t = ray.mLenght;
 
             return trace_ray(newRay, result);
         }
@@ -96,7 +96,6 @@ namespace Core
             frag.mUV = ((1.0f - v - u) * firstuv) + (u * seconduv) + (v * thirduv);
             frag.mNormal = glm::normalize(glm::vec3(((1.0f - v - u) * firstNormal) + (u * secondNormal) + (v * thirdNormal)));
             frag.mVertexColour = ((1.0f - v - u) * firstColour) + (u * secondColour) + (v * thirdColour);
-            frag.mPrimID = primID;
 
             return frag;
         }

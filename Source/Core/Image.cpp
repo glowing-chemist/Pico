@@ -78,6 +78,12 @@ namespace Core
     }
 
 
+    Image2D::Image2D(unsigned char* data, const ImageExtent& extent, const Format format) :
+        Image(data, extent, format)
+    {
+    }
+
+
     float Image2D::sample(const glm::vec2& uv) const
     {
         const unsigned char* data = get_data_ptr(uv);
@@ -184,6 +190,12 @@ namespace Core
         }
 
         return glm::vec4{0.0f, 0.0f, 0.0f, 0.0f};
+    }
+
+
+    ImageCube::ImageCube(unsigned char* data, const ImageExtent& extent, const Format format) :
+        Image(data, extent, format)
+    {
     }
 
 

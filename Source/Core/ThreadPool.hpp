@@ -78,13 +78,13 @@ public:
             worker.join();
     }
 
-    size_t getWorkerCount() const
+    size_t get_worker_count() const
     {
         return mWorkers.size();
     }
 
     template<typename F, typename ...Args>
-    auto addTask(F&& f, Args&& ...a) -> std::future<typename std::result_of_t<F(Args...)>>
+    auto add_task(F&& f, Args&& ...a) -> std::future<typename std::result_of_t<F(Args...)>>
     {
         using return_type = std::result_of_t<F(Args...)>;
         std::packaged_task<return_type()>* task = new std::packaged_task<return_type()>{std::bind(std::forward<F>(f), std::forward<Args>(a)...)};

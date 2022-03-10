@@ -15,26 +15,29 @@ namespace Core
 
     bool LowerLevelSphereBVH::calculate_intersection(const Ray& ray, InterpolatedVertex* result) const
     {
-        // sphere center is at (0, 0) always.
+        // sphere center is always at (0, 0).
         const glm::vec3 m = ray.mOrigin;
 
         const float b = glm::dot(m, ray.mDirection);
         const float c = glm::dot(m, m) - mRadius * mRadius;
 
-        if(c > 0.0f && b > 0.0f) return false;
+        if(c > 0.0f && b > 0.0f)
+            return false;
         const float discr = b * b - c;
 
-        if(discr < 0.0f) return false;
+        if(discr < 0.0f)
+            return false;
 
         float t = -b - sqrt(discr);
 
         // ray is inside sphere
-        if(t < 0.0f) t = 0.0f;
+        if(t < 0.0f)
+            t = 0.0f;
 
         result->mPosition = ray.mOrigin + t * glm::vec4(ray.mDirection, 1.0f);
-        result->mPrimID = 0;
+        result->mPosition.w = 1.0f;
         result->mVertexColour = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-        result->mNormal = glm::normalize(result->mPosition);
+        result->mNormal = glm::normalize(glm::vec3(result->mPosition));
         result->mUV = glm::vec2(atan2(result->mNormal.x, result->mNormal.z) / (2.0f * M_PI) + 0.5f, result->mNormal.y * 0.5f + 0.5f);
 
         return true;

@@ -43,9 +43,14 @@ namespace Render
     {
     public:
 
-        SmoothMetalMaterial() = default;
+        SmoothMetalMaterial(const glm::vec3 colour) :
+            m_colour(colour) {}
 
         virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2& uv) final;
+
+    private:
+
+        glm::vec3 m_colour;
     };
 
 
@@ -53,18 +58,28 @@ namespace Render
     {
     public:
 
-        RoughMetalMaterial() = default;
+        RoughMetalMaterial(const glm::vec3 colour) :
+            m_colour(colour) {}
 
         virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2& uv) final;
+
+    private:
+
+        glm::vec3 m_colour;
     };
 
     class MattPlasticMaterial : public ConstantMaterial
     {
     public:
 
-        MattPlasticMaterial() = default;
+        MattPlasticMaterial(const glm::vec3 colour) :
+            m_colour(colour) {}
 
         virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2& uv) final;
+
+    private:
+
+        glm::vec3 m_colour;
     };
 
 

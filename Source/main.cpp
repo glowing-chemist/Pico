@@ -2,15 +2,17 @@
 #include "Util/Options.hpp"
 #include "Util/FrameBuffer.hpp"
 #include "Core/ThreadPool.hpp"
+#include "Core/Scene.hpp"
+#include "Core/Camera.hpp"
 
 #include "GLFW/glfw3.h"
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+void framebuffer_size_callback(GLFWwindow*, int width, int height)
 {
     glViewport(0, 0, width, height);
 }
 
-void error_callback(int error, const char* description)
+void error_callback(int, const char* description)
 {
     fprintf(stderr, "Error: %s\n", description);
 }
@@ -38,6 +40,20 @@ int main(int argc, const char **argv)
         gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
         Util::FrameBuffer frame_buffer(512, 512);
+
+        ThreadPool threadPool{};
+        Scene::Scene scene(threadPool, "");
+
+        Scene::RenderParams params{};
+        params.m_Height = 512;
+        params.m_Width = 512;
+        params.m_maxRayDepth = 3;
+        params.m_maxSamples = 3;
+        params.m_Pixels = frame_memory;
+
+        Scene::Camera camera{glm::vec3{0.0f, 0.0f, -30.0f}, glm::vec3{0.0f, 0.0f, 1.0f}, 1.0f, 0.01, 100.0f};
+
+        scene.render_scene_to_memory(camera, params);
 
         while(!glfwWindowShouldClose(window))
         {

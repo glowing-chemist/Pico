@@ -3,13 +3,19 @@
 #include "Core/vectorUtils.hpp"
 #include "Render/Sampler.hpp"
 #include "Render/PBR.hpp"
+#include "Render/Integrators.hpp"
+#include "Render/BasicMaterials.hpp"
+#include "Core/LowerLevelImplicitShapesBVH.hpp"
 
 #include <algorithm>
+#include <memory>
 #include <thread>
 
 #include "stbi_image_write.h"
+#include "stb_image.h"
 #include "glm/ext.hpp"
 #include "glm/gtx/compatibility.hpp"
+#include "glm/gtc/matrix_transform.hpp"
 
 namespace Scene
 {
@@ -34,11 +40,53 @@ namespace Scene
     };
 
     Scene::Scene(ThreadPool& pool, const std::string& sceneFile) :
-        m_threadPool(pool),
+        m_threadPool(pool)
     {
+        std::unique_ptr<Core::Material> plastic_material = std::make_unique<Render::MattPlasticMaterial>(glm::vec3{0.5f, 0.1f, 0.3f});
+        std::unique_ptr<Core::Material> metal_material = std::make_unique<Render::SmoothMetalMaterial>(glm::vec3{0.8f, 0.8f, 0.8f});
+
+        const auto plastic_mat_id = m_material_manager.add_material(plastic_material);
+        const auto metal_mat_id   = m_material_manager.add_material(metal_material);
+
+        std::shared_ptr<Core::BVH::LowerLevelBVH> sphere_bvh = std::make_shared<Core::BVH::LowerLevelSphereBVH>(5.0f);
+
+        m_bvh.add_lower_level_bvh(sphere_bvh, glm::mat4x4(1.0f), metal_mat_id);
+        //m_bvh.add_lower_level_bvh(sphere_bvh, glm::translate(glm::mat4x4(1.0f), glm::vec3(5.0f, 5.0f, 0.0f)), plastic_mat_id);
+
+        //m_bvh.add_lower_level_bvh(sphere_bvh, glm::translate(glm::mat4x4(1.0f), glm::vec3(5.0f, -5.0f, 0.0f)), plastic_mat_id);
+
+        //m_bvh.add_lower_level_bvh(sphere_bvh, glm::translate(glm::mat4x4(1.0f), glm::vec3(-5.0f, 5.0f, 0.0f)), metal_mat_id);
+
+        //m_bvh.add_lower_level_bvh(sphere_bvh, glm::translate(glm::mat4x4(1.0f), glm::vec3(-5.0f, -5.0f, 0.0f)), metal_mat_id);
+
+        m_bvh.build();
+
+        // Load test skybox
+        std::array<std::string, 6> skyboxPaths{ "./Skybox/px.png",
+                                                "./Skybox/nx.png",
+                                                "./Skybox/py.png",
+                                                "./Skybox/ny.png",
+                                                "./Skybox/pz.png",
+                                                "./Skybox/nz.png"};
+
+        std::vector<unsigned char> skyboxData{};
+
+        for(const std::string& file : skyboxPaths)
+        {
+            int x, y, comp;
+            auto* data = stbi_load(file.c_str(), &x, &y, &comp, 4);
+
+            skyboxData.insert(skyboxData.end(), data, data + (x * y * comp));
+        }
+
+        // create CPU skybox.
+        Core::ImageExtent extent = {1024, 1024, 6};
+        unsigned char* data = new unsigned char[skyboxData.size()];
+        std::memcpy(data, skyboxData.data(), skyboxData.size());
+        mSkybox = std::make_shared<Core::ImageCube>(data, extent, Core::Format::kRBGA_8UNorm);
     }
 
-    void Scene::renderSceneToMemory(const Camera& camera, const RenderParams& params) const
+    void Scene::render_scene_to_memory(const Camera& camera, const RenderParams& params)
     {
         const glm::vec3 forward = camera.getDirection();
         const glm::vec3 up = camera.getUp();
@@ -53,29 +101,19 @@ namespace Scene
             glm::vec3 dir = {((float(pix) / float(params.m_Width)) - 0.5f) * aspect, (float(piy) / float(params.m_Height)) - 0.5f, 1.0f};
             dir = glm::normalize((dir.z * forward) + (dir.y * up) + (dir.x * right));
 
-            nanort::Ray<float> ray;
-            ray.dir[0] = dir.x;
-            ray.dir[1] = dir.y;
-            ray.dir[2] = dir.z;
+            Core::Ray ray;
+            ray.mDirection = dir;
 
-            ray.org[0] = origin.x;
-            ray.org[1] = origin.y;
-            ray.org[2] = origin.z;
+            ray.mOrigin = glm::vec4(origin, 1.0f);
 
-            ray.min_t = 0.0f;
-            ray.max_t = farPlane;
-            //ray.type = nanort::RAY_TYPE_PRIMARY;
+            ray.mLenght = farPlane;
 
-            InterpolatedVertex frag;
-            const bool hit = traceRay(ray, &frag);
-            if(hit)
-            {
-                return shadePoint(frag, glm::vec4(origin, 1.0f), params.m_maxSamples, params.m_maxRayDepth);
-            }
-            else
-            {
-                return mSkybox->sample4(dir);
-            }
+            std::unique_ptr<Render::Diffuse_Sampler> diffuse_sampler = std::make_unique<Render::Hammersley_GGX_Diffuse_Sampler>(100);
+            std::unique_ptr<Render::Specular_Sampler> specular_sampler = std::make_unique<Render::Hammersley_GGX_Specular_Sampler>(100);
+
+            Render::Monte_Carlo_Integrator integrator(m_bvh, m_material_manager, mSkybox, diffuse_sampler, specular_sampler);
+
+            return integrator.integrate_ray(ray, params.m_maxRayDepth, params.m_maxSamples);
         };
 
         auto trace_rays = [&](const uint32_t start, const uint32_t stepSize)
@@ -85,18 +123,20 @@ namespace Scene
             {
                 const uint32_t pix = location % params.m_Height;
                 const uint32_t piy = location / params.m_Height;
-                const uint32_t colour = Core::pack_colour(trace_ray(pix, piy));
-                memcpy(&params.m_Pixels[(pix + (piy * params.m_Height)) * 4], &colour, sizeof(uint32_t));
+                glm::vec4 result =  trace_ray(pix, piy);
+                //result = glm::clamp(glm::vec4(0.0f), glm::vec4(1.0f), result);
+                const uint32_t colour = Core::pack_colour(result);
+                params.m_Pixels[(pix + (piy * params.m_Height))] = colour;
 
                 location += stepSize;
             }
         };
 
-        const uint32_t processor_count = m_threadPool.getWorkerCount(); // use this many threads for tracing rays.
+        const uint32_t processor_count = m_threadPool.get_worker_count(); // use this many threads for tracing rays.
         std::vector<std::future<void>> handles{};
         for(uint32_t i = 1; i < processor_count; ++i)
         {
-            handles.push_back(m_threadPool.addTask(trace_rays, i, processor_count));
+            handles.push_back(m_threadPool.add_task(trace_rays, i, processor_count));
         }
 
         trace_rays(0, processor_count);
@@ -106,123 +146,11 @@ namespace Scene
     }
 
 
-    void Scene::renderSceneToFile(const Camera& camera, RenderParams& params, const char* path) const
+    void Scene::render_scene_to_file(const Camera& camera, RenderParams& params, const char* path)
     {
-        renderSceneToMemory(camera, params);
+        render_scene_to_memory(camera, params);
 
         stbi_write_jpg(path, params.m_Width, params.m_Height, 4, params.m_Pixels, 100);
-    }
-
-    glm::vec4 Scene::traceDiffuseRays(const InterpolatedVertex& frag, const glm::vec4& origin, const uint32_t sampleCount, const uint32_t depth) const
-    {
-        // interpolate uvs.
-        const MaterialInfo& matInfo = mPrimitiveMaterialID[frag.mPrimID];
-        Material mat = calculateMaterial(frag, matInfo);
-        glm::vec4 diffuse = mat.diffuse;
-        const glm::vec3 V = glm::normalize(glm::vec3(origin - frag.mPosition));
-
-        Render::DiffuseSampler sampler(sampleCount * depth);
-
-        glm::vec4 result = glm::vec4{0.0f, 0.0f, 0.0f, 0.0f};
-        float weight = 0.0f;
-        for(uint32_t i = 0; i < sampleCount; ++i)
-        {
-            Render::Sample sample = sampler.generateSample(frag.mNormal);
-            weight += sample.P;
-
-            const float NdotV = glm::clamp(glm::dot(glm::vec3(mat.normal), V), 0.0f, 1.0f);
-            const float NdotL = glm::clamp(glm::dot(glm::vec3(mat.normal), sample.L), 0.0f, 1.0f);
-            const glm::vec3 H = glm::normalize(V + sample.L);
-            const float LdotH  = glm::clamp(glm::dot(sample.L, H), 0.0f, 1.0f);
-
-            const float diffuseFactor = Render::disney_diffuse(NdotV, NdotL, LdotH, mat.specularRoughness.w);
-
-            nanort::Ray<float> newRay{};
-            newRay.org[0] = frag.mPosition.x;
-            newRay.org[1] = frag.mPosition.y;
-            newRay.org[2] = frag.mPosition.z;
-            newRay.dir[0] = sample.L.x;
-            newRay.dir[1] = sample.L.y;
-            newRay.dir[2] = sample.L.z;
-            newRay.min_t = 0.01f;
-            newRay.max_t = 2000.0f;
-
-            InterpolatedVertex intersection;
-            const bool hit = traceRay(newRay, &intersection);
-            if(hit)
-            {
-                result += sample.P * diffuseFactor * shadePoint(intersection, frag.mPosition, sampleCount, depth - 1);
-            }
-            else
-            {
-                result += sample.P * diffuseFactor * mSkybox->sample4(sample.L); // miss so sample skybox.
-            }
-        }
-
-        diffuse *= result / weight;
-
-        return diffuse;// + glm::vec4(mat.emissiveOcclusion.x, mat.emissiveOcclusion.y, mat.emissiveOcclusion.z, 1.0f);
-    }
-
-
-    glm::vec4 Scene::traceSpecularRays(const InterpolatedVertex& frag, const glm::vec4 &origin, const uint32_t sampleCount, const uint32_t depth) const
-    {
-        // interpolate uvs.
-        const MaterialInfo& matInfo = mPrimitiveMaterialID[frag.mPrimID];
-        Material mat = calculateMaterial(frag, matInfo);
-        glm::vec4 specular = glm::vec4(mat.specularRoughness.x, mat.specularRoughness.y, mat.specularRoughness.z, 1.0f);
-
-        Render::SpecularSampler sampler(sampleCount * depth);
-
-        const glm::vec3 V = glm::normalize(glm::vec3(origin - frag.mPosition));
-
-        glm::vec4 result = glm::vec4{0.0f, 0.0f, 0.0f, 0.0f};
-        float weight = 0.0f;
-        for(uint32_t i = 0; i < sampleCount; ++i)
-        {
-            Render::Sample sample = sampler.generateSample(frag.mNormal, V, mat.specularRoughness.w);
-            weight += sample.P;
-
-            nanort::Ray<float> newRay{};
-            newRay.org[0] = frag.mPosition.x;
-            newRay.org[1] = frag.mPosition.y;
-            newRay.org[2] = frag.mPosition.z;
-            newRay.dir[0] = sample.L.x;
-            newRay.dir[1] = sample.L.y;
-            newRay.dir[2] = sample.L.z;
-            newRay.min_t = 0.01f;
-            newRay.max_t = 2000.0f;
-
-            const float specularFactor = Render::specular_GGX(mat.normal, V, sample.L, mat.specularRoughness.w, glm::vec3(mat.specularRoughness.x, mat.specularRoughness.y, mat.specularRoughness.z));
-
-            InterpolatedVertex intersection;
-            const bool hit = traceRay(newRay, &intersection);
-            if(hit)
-            {
-                result += specularFactor * sample.P * shadePoint(intersection, frag.mPosition, sampleCount, depth - 1);
-            }
-            else
-            {
-                result += specularFactor * sample.P * mSkybox->sample4(sample.L); // miss so sample skybox.
-            }
-        }
-
-        specular *= result / weight;
-
-        return glm::all(glm::isnan(specular)) ? glm::vec4(0.0f, 0.0f, 0.0f, 1.0f) : specular;// + glm::vec4(mat.emissiveOcclusion.x, mat.emissiveOcclusion.y, mat.emissiveOcclusion.z, 1.0f);
-    }
-
-
-
-    glm::vec4 Scene::shadePoint(const InterpolatedVertex& frag, const glm::vec4 &origin, const uint32_t sampleCount, const uint32_t depth) const
-    {
-        if(depth == 0)
-            return glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-
-        const glm::vec4 diffuse = traceDiffuseRays(frag, origin, sampleCount, depth);
-        const glm::vec4 specular = traceSpecularRays(frag, origin, sampleCount, depth);
-
-        return diffuse + specular;// * (shadowed ? 0.15f : 1.0f);
     }
 
 }

@@ -21,7 +21,22 @@ namespace Core
         glm::vec4 mOrigin;
         glm::vec3 mDirection;
         float     mLenght;
+
+        glm::vec4 m_payload;
+        float     m_weight;
     };
+
+    Ray transform_ray(const Ray&, const glm::mat4x4& transform);
+
+    // Return a vector constructed from the minimum/maximum of each component.
+    glm::vec3 component_wise_min(const glm::vec3& lhs, const glm::vec3& rhs);
+
+    glm::vec4 component_wise_min(const glm::vec4& lhs, const glm::vec4& rhs);
+
+    glm::vec3 component_wise_max(const glm::vec3& lhs, const glm::vec3& rhs);
+
+    glm::vec4 component_wise_max(const glm::vec4& lhs, const glm::vec4& rhs);
+
 
     // 8 float4 representing the 8 verticies of a cude
     struct Cube

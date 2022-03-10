@@ -30,7 +30,9 @@ namespace Core
         OctTree(OctTree&&) = default;
         OctTree& operator=(OctTree&&) = default;
 
-        std::vector<T>	getIntersections(const AABB& aabb) const;
+        T               get_first_intersection(const Ray& ray) const;
+
+        std::vector<T>  get_all_intersections(const Ray& ray) const;
 
         struct BoundedValue
         {
@@ -50,19 +52,19 @@ namespace Core
            NodeIndex mChildren[8];
         };
 
-        uint32_t getTestsPerformed() const
+        uint32_t get_tests_performed() const
         {
-        return mTests;
+            return mTests;
         }
 
     private:
 
-        const Node& getNode(const NodeIndex n) const
+        const Node& get_node(const NodeIndex n) const
         {
             return mNodes[n];
         }
 
-        void	getIntersections(const AABB& aabb, const typename OctTree<T>::Node& node, std::vector<T>& intersections, const Intersection nodeFlags) const;
+        void    get_intersections(const Ray& ray, const typename OctTree<T>::Node& node, std::vector<std::pair<float, T>>& intersections) const;
 
         mutable uint32_t mTests;
         NodeIndex mRoot;
@@ -82,11 +84,11 @@ namespace Core
                                                                                 mBoundingBoxes{data} {}
 
 
-        OctTree<T> generateOctTree();
+        OctTree<T> generate_octTree();
 
     private:
 
-        NodeIndex addNode(const typename OctTree<T>::Node& n)
+        NodeIndex add_node(const typename OctTree<T>::Node& n)
         {
             const NodeIndex i = mNodeStorage.size();
             mNodeStorage.push_back(n);
@@ -94,7 +96,7 @@ namespace Core
             return i;
         }
 
-        std::array<AABB, 8> splitAABB(const AABB&) const;
+        std::array<AABB, 8> split_AABB(const AABB&) const;
         NodeIndex createSpacialSubdivisions(const AABB& parentBox,
                                             const std::vector<typename OctTree<T>::BoundedValue>& nodes);
 

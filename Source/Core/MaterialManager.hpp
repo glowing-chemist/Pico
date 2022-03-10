@@ -27,7 +27,7 @@ namespace Core
     {
     public:
 
-        Material();
+        Material() = default;
         virtual ~Material() = default;
 
         virtual EvaluatedMaterial evaluate_material(const glm::vec2& uv) = 0;
@@ -45,13 +45,13 @@ namespace Core
         using MaterialID = uint64_t;
 
 
-        MaterialID add_material(std::shared_ptr<Material>&);
+        MaterialID add_material(std::unique_ptr<Material>&);
 
         EvaluatedMaterial evaluate_material(const MaterialID id, const glm::vec2& uv);
 
     private:
 
-        std::vector<std::shared_ptr<Material>> mMaterials;
+        std::vector<std::unique_ptr<Material>> mMaterials;
     };
 
 }

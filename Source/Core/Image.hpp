@@ -73,7 +73,7 @@ namespace Core
     {
     public:
 
-        Image2D(std::vector<unsigned char>&& data, const ImageExtent& extent, const Format format);
+        Image2D(unsigned char* data, const ImageExtent& extent, const Format format);
 
         float sample(const glm::vec2& uv) const;
         glm::vec2 sample2(const glm::vec2& uv) const;
@@ -87,7 +87,7 @@ namespace Core
     {
     public:
 
-        ImageCube(std::vector<unsigned char>&& data, const ImageExtent& extent, const Format format);
+        ImageCube(unsigned char* data, const ImageExtent& extent, const Format format);
 
 
         float sample(const glm::vec3& uv) const;

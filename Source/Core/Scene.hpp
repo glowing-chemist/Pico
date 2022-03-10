@@ -7,6 +7,8 @@
 #include "Image.hpp"
 #include "Core/ThreadPool.hpp"
 #include "Core/LowerLevelBVH.hpp"
+#include "Core/UpperLevelBVH.hpp"
+#include "Core/MaterialManager.hpp"
 #include "Render/Sampler.hpp"
 
 #include <memory>
@@ -38,20 +40,17 @@ namespace Scene
         Scene(ThreadPool&, const std::string& sceneFile);
         ~Scene() = default;
 
-        void renderSceneToMemory(const Camera&, const RenderParams&) const;
-        void renderSceneToFile(const Camera&, RenderParams&, const char*) const;
+        void render_scene_to_memory(const Camera&, const RenderParams&);
+        void render_scene_to_file(const Camera&, RenderParams&, const char*);
 
     private:
 
-        glm::vec4 traceDiffuseRays(const Core::BVH::InterpolatedVertex& frag, const glm::vec4 &origin, const uint32_t sampleCount, const uint32_t depth) const;
-
-        glm::vec4 traceSpecularRays(const Core::BVH::InterpolatedVertex& frag, const glm::vec4 &origin, const uint32_t sampleCount, const uint32_t depth) const;
-
-        glm::vec4 shadePoint(const Core::BVH::InterpolatedVertex& frag, const glm::vec4 &origin, const uint32_t sampleCount, const uint32_t depth) const;
+        Core::BVH::UpperLevelBVH m_bvh;
+        Core::MaterialManager m_material_manager;
 
         ThreadPool& m_threadPool;
 
-        std::unique_ptr<Core::ImageCube> mSkybox;
+        std::shared_ptr<Core::ImageCube> mSkybox;
     };
 
 }

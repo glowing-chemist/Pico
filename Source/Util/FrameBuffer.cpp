@@ -35,7 +35,6 @@ namespace Util
         m_fragmentShader{0},
         m_pipeline{0}
     {
-        char infoLog[512];
         {
             glGenTextures(1, &m_texture);
             glBindTexture(GL_TEXTURE_2D, m_texture);
@@ -90,7 +89,7 @@ namespace Util
 
     void FrameBuffer::set_image(uint32_t* data)
     {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_width, m_height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_width, m_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 
         glUseProgram(m_pipeline);
 

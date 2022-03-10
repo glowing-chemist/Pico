@@ -2,9 +2,17 @@
 #define INTEGRATORS_HPP
 
 #include "Core/UpperLevelBVH.hpp"
+#include "Core/MaterialManager.hpp"
 #include "Sampler.hpp"
 
 #include <memory>
+
+namespace Core
+{
+    class ImageCube;
+}
+
+//#define BELL_TRACE
 
 namespace Render
 {
@@ -13,15 +21,15 @@ namespace Render
     {
     public:
 
-        Integrator(const Core::BVH::UpperLevelBVH&);
+        Integrator(const Core::BVH::UpperLevelBVH&, Core::MaterialManager&);
 
 
-        virtual glm::vec4 integrate_ray(const Core::Ray ray, const uint32_t maxDepth, const uint32_t rayCount) = 0;
+        virtual glm::vec4 integrate_ray(const Core::Ray& ray, const uint32_t maxDepth, const uint32_t rayCount) = 0;
 
     protected:
 
-        Core::BVH::UpperLevelBVH m_bvh;
-
+        const Core::BVH::UpperLevelBVH& m_bvh;
+        Core::MaterialManager& m_material_manager;
     };
 
 
@@ -29,14 +37,30 @@ namespace Render
     {
     public:
 
-        Monte_Carlo_Integrator(const Core::BVH::UpperLevelBVH&, std::unique_ptr<Diffuse_Sampler>& diffuseSampler, std::unique_ptr<Specular_Sampler>& specSampler);
+        Monte_Carlo_Integrator(const Core::BVH::UpperLevelBVH&,  Core::MaterialManager&, std::shared_ptr<Core::ImageCube>& skybox,
+                               std::unique_ptr<Diffuse_Sampler>& diffuseSampler, std::unique_ptr<Specular_Sampler>& specSampler);
 
-        virtual glm::vec4 integrate_ray(const Core::Ray ray, const uint32_t maxDepth, const uint32_t rayCount) final;
+        virtual glm::vec4 integrate_ray(const Core::Ray& ray, const uint32_t maxDepth, const uint32_t rayCount) final;
 
     private:
 
+#ifdef BELL_TRACE
+
+        glm::vec4 trace_diffuse_rays(const Core::BVH::InterpolatedVertex& frag, const glm::vec4 &origin, const uint32_t sampleCount, const uint32_t depth) const;
+
+        glm::vec4 trace_specular_rays(const Core::BVH::InterpolatedVertex& frag, const glm::vec4 &origin, const uint32_t sampleCount, const uint32_t depth) const;
+
+        glm::vec4 shade_point(const Core::BVH::InterpolatedVertex& frag, const glm::vec4 &origin, const uint32_t sampleCount, const uint32_t depth) const;
+
+#else
+
+        void trace_diffuse_ray(const Core::BVH::InterpolatedVertex& frag, Core::Ray& ray, const uint32_t depth);
+        void trace_specular_ray(const Core::BVH::InterpolatedVertex& frag, Core::Ray& ray, const uint32_t depth);
+#endif
         std::unique_ptr<Diffuse_Sampler> m_diffuse_sampler;
         std::unique_ptr<Specular_Sampler> m_specular_sampler;
+
+        std::shared_ptr<Core::ImageCube> m_skybox;
     };
 }
 

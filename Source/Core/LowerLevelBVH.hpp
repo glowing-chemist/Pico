@@ -16,7 +16,7 @@ namespace Core
             glm::vec2 mUV;
             glm::vec3 mNormal;
             glm::vec4 mVertexColour;
-            uint32_t  mPrimID;
+            uint32_t  mMaterialID;
         };
 
         class LowerLevelBVH

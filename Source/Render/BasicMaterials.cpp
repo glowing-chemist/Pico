@@ -7,17 +7,17 @@ namespace Render
 
     Core::EvaluatedMaterial SmoothMetalMaterial::evaluate_material(const glm::vec2&)
     {
-        return {{0.0f, 0.0f, 0.0f, 0.0f}, {0.8f, 0.8f, 0.8f, 0.0f}, {0.f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
+        return {{0.0f, 0.0f, 0.0f, 0.0f}, {m_colour, 0.05f}, {0.f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
     }
 
     Core::EvaluatedMaterial RoughMetalMaterial::evaluate_material(const glm::vec2&)
     {
-        return {{0.0f, 0.0f, 0.0f, 0.0f}, {0.8f, 0.8f, 0.8f, 0.8f}, {0.f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
+        return {{0.0f, 0.0f, 0.0f, 0.0f}, {m_colour, 0.8f}, {0.f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
     }
 
     Core::EvaluatedMaterial MattPlasticMaterial::evaluate_material(const glm::vec2&)
     {
-        return {{0.8f, 0.8f, 0.8f, 0.8f}, {0.0f, 0.0f, 0.0f, 0.8f}, {0.f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
+        return {{m_colour, 1.0f}, {0.0f, 0.0f, 0.0f, 0.8f}, {0.f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
     }
 
     Core::EvaluatedMaterial EmmissiveMaterial::evaluate_material(const glm::vec2&)
