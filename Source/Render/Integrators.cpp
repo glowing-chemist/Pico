@@ -13,8 +13,10 @@ namespace Render
 
 
     Monte_Carlo_Integrator::Monte_Carlo_Integrator(const Core::BVH::UpperLevelBVH& bvh,  Core::MaterialManager& material_manager, std::shared_ptr<Core::ImageCube>& skybox,
-                           std::unique_ptr<Diffuse_Sampler>& diffuseSampler, std::unique_ptr<Specular_Sampler>& specSampler) :
+                           std::unique_ptr<Diffuse_Sampler>& diffuseSampler, std::unique_ptr<Specular_Sampler>& specSampler, const uint64_t seed) :
         Integrator(bvh, material_manager),
+        mGenerator{seed},
+        mDistribution(0, 1),
         m_diffuse_sampler(std::move(diffuseSampler)),
         m_specular_sampler(std::move(specSampler)),
         m_skybox{skybox}
@@ -51,6 +53,10 @@ namespace Render
             if(glm::any(glm::isinf(specular)) || glm::any(glm::isnan(specular)))
                 specular = glm::vec4(0.0f);
 
+            if(glm::any(glm::isinf(diffuse)) || glm::any(glm::isnan(diffuse)))
+                diffuse = glm::vec4(0.0f);
+
+
             return diffuse + specular;
         }
         else
@@ -65,7 +71,7 @@ namespace Render
         if(depth == 0)
         {
             ray.m_payload = glm::vec4(0.0f, 0.f, 0.0f, 1.0f);
-            ray.m_weight = 0.0f;
+            ray.m_weight = 1.0f;
             return;
         }
 
@@ -89,8 +95,12 @@ namespace Render
         Core::BVH::InterpolatedVertex intersection;
         if(m_bvh.get_closest_intersection(ray, &intersection))
         {
-            ray.m_payload *= diffuse * sample.P * diffuse_factor;
-            trace_diffuse_ray(intersection, ray, depth - 1);
+            ray.m_payload += (diffuse * sample.P * diffuse_factor) + glm::vec4(material.emissive, 0.0f);
+
+            if(mDistribution(mGenerator))
+                trace_diffuse_ray(intersection, ray, depth - 1);
+            else
+                trace_specular_ray(intersection, ray, depth - 1);
         }
         else
         {
@@ -103,7 +113,7 @@ namespace Render
         if(depth == 0)
         {
             ray.m_payload = glm::vec4(0.0f, 0.f, 0.0f, 1.0f);
-            ray.m_weight = 0.0f;
+            ray.m_weight = 1.0f;
             return;
         }
 
@@ -124,12 +134,16 @@ namespace Render
         Core::BVH::InterpolatedVertex intersection;
         if(m_bvh.get_closest_intersection(ray, &intersection))
         {
-            ray.m_payload *= specular * specularFactor * sample.P;
-            trace_specular_ray(intersection, ray, depth - 1);
+            ray.m_payload += specular * specularFactor * sample.P + glm::vec4(material.emissive, 0.0f);
+
+            if(mDistribution(mGenerator))
+                trace_specular_ray(intersection, ray, depth - 1);
+            else
+                trace_diffuse_ray(intersection, ray, depth - 1);
         }
         else
         {
-             ray.m_payload *= specularFactor * sample.P * m_skybox->sample4(sample.L);
+             ray.m_payload *= specular * specularFactor * sample.P * m_skybox->sample4(sample.L);
         }
     }
 }

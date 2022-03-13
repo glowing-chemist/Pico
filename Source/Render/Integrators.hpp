@@ -36,7 +36,7 @@ namespace Render
     public:
 
         Monte_Carlo_Integrator(const Core::BVH::UpperLevelBVH&,  Core::MaterialManager&, std::shared_ptr<Core::ImageCube>& skybox,
-                               std::unique_ptr<Diffuse_Sampler>& diffuseSampler, std::unique_ptr<Specular_Sampler>& specSampler);
+                               std::unique_ptr<Diffuse_Sampler>& diffuseSampler, std::unique_ptr<Specular_Sampler>& specSampler, const uint64_t seed);
 
         virtual glm::vec4 integrate_ray(const Core::Ray& ray, const uint32_t maxDepth, const uint32_t rayCount) final;
 
@@ -44,6 +44,9 @@ namespace Render
 
         void trace_diffuse_ray(const Core::BVH::InterpolatedVertex& frag, Core::Ray& ray, const uint32_t depth);
         void trace_specular_ray(const Core::BVH::InterpolatedVertex& frag, Core::Ray& ray, const uint32_t depth);
+
+        std::mt19937 mGenerator;
+        std::uniform_int_distribution<> mDistribution;
 
         std::unique_ptr<Diffuse_Sampler> m_diffuse_sampler;
         std::unique_ptr<Specular_Sampler> m_specular_sampler;

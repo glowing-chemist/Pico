@@ -4,7 +4,7 @@ namespace Core
 {
 
     // Return a vector constructed from the minimum of each component.
-    inline glm::vec3 component_wise_min(const glm::vec3& lhs, const glm::vec3& rhs)
+    glm::vec3 component_wise_min(const glm::vec3& lhs, const glm::vec3& rhs)
     {
         return glm::vec3{std::min(lhs.x, rhs.x),
                       std::min(lhs.y, rhs.y),
@@ -12,7 +12,7 @@ namespace Core
     }
 
 
-    inline glm::vec4 component_wise_min(const glm::vec4& lhs, const glm::vec4& rhs)
+    glm::vec4 component_wise_min(const glm::vec4& lhs, const glm::vec4& rhs)
     {
         return glm::vec4{std::min(lhs.x, rhs.x),
                       std::min(lhs.y, rhs.y),
@@ -20,7 +20,7 @@ namespace Core
                       std::min(lhs.w, rhs.w)};
     }
 
-    inline glm::vec3 component_wise_max(const glm::vec3& lhs, const glm::vec3& rhs)
+    glm::vec3 component_wise_max(const glm::vec3& lhs, const glm::vec3& rhs)
     {
         return glm::vec3{std::max(lhs.x, rhs.x),
                       std::max(lhs.y, rhs.y),
@@ -28,7 +28,7 @@ namespace Core
     }
 
 
-    inline glm::vec4 component_wise_max(const glm::vec4& lhs, const glm::vec4& rhs)
+    glm::vec4 component_wise_max(const glm::vec4& lhs, const glm::vec4& rhs)
     {
         return glm::vec4{std::max(lhs.x, rhs.x),
                       std::max(lhs.y, rhs.y),

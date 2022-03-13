@@ -45,10 +45,10 @@ namespace Render
 
     bool MetalnessRoughnessMaterial::is_resident() const
     {
-        return mAlbedoTexture && mAlbedoTexture->is_resident() ||
-               mMetalnessTexture && mMetalnessTexture->is_resident() ||
-               mRoughnessTexture && mRoughnessTexture->is_resident() ||
-               mEmmissiveTexture && mEmmissiveTexture->is_resident();
+        return (mAlbedoTexture && mAlbedoTexture->is_resident()) ||
+               (mMetalnessTexture && mMetalnessTexture->is_resident()) ||
+               (mRoughnessTexture && mRoughnessTexture->is_resident()) ||
+               (mEmmissiveTexture && mEmmissiveTexture->is_resident());
     }
 
     void MetalnessRoughnessMaterial::make_resident(void* memory)

@@ -8,7 +8,7 @@ namespace Render
 
     Sample Hammersley_GGX_Diffuse_Sampler::generate_sample(const glm::vec3& normal)
     {
-        const glm::vec2 xi = hammersley(mGeneratedSamples++, mMaxSamples);
+        const glm::vec2 xi = hammersley(mDistribution(mGenerator), mMaxSamples);
         glm::vec3 L;
         float NdotL;
         importance_sample_CosDir(xi, normal, L, NdotL);
@@ -19,7 +19,7 @@ namespace Render
 
     Sample Hammersley_GGX_Specular_Sampler::generate_sample(const glm::vec3& N, const glm::vec3& V, const float R)
     {
-        glm::vec2 Xi = hammersley(mGeneratedSamples++, mMaxSamples);
+        glm::vec2 Xi = hammersley(mDistribution(mGenerator), mMaxSamples);
         // Sample microfacet direction
         glm::vec3 GGX_H = importance_sample_GGX(Xi, R, N);
 

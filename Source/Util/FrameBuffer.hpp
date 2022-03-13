@@ -4,7 +4,10 @@
 #include <glad/glad.h>
 #include "GLFW/glfw3.h"
 
+#include "glm/vec4.hpp"
+
 #include <cstdint>
+#include <vector>
 
 namespace Util
 {
@@ -16,11 +19,12 @@ namespace Util
         FrameBuffer(uint32_t width, const uint32_t height);
         ~FrameBuffer();
 
-        void set_image(uint32_t* data);
+        void set_image(glm::vec4* data);
 
     private:
 
         uint32_t m_width, m_height;
+        std::vector<uint32_t> m_buffer;
 
         GLuint m_texture;
         GLuint m_vertexShader;

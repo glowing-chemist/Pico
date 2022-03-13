@@ -86,7 +86,7 @@ namespace Scene
     }
 
     void Scene::render_scene_to_memory(const Camera& camera, const RenderParams& params)
-    {
+    {        
         const glm::vec3 forward = camera.getDirection();
         const glm::vec3 up = camera.getUp();
         const glm::vec3 right = camera.getRight();
@@ -95,7 +95,7 @@ namespace Scene
         const float farPlane = camera.getFarPlane();
         const float aspect = camera.getAspect();
 
-        auto trace_ray = [&](const uint32_t pix, const uint32_t piy) -> glm::vec4
+        auto trace_ray = [&](const uint32_t pix, const uint32_t piy, const uint64_t seed) -> glm::vec4
         {
             glm::vec3 dir = {((float(pix) / float(params.m_Width)) - 0.5f) * aspect, (float(piy) / float(params.m_Height)) - 0.5f, 1.0f};
             dir = glm::normalize((dir.z * forward) + (dir.y * up) + (dir.x * right));
@@ -107,25 +107,48 @@ namespace Scene
 
             ray.mLenght = farPlane;
 
-            std::unique_ptr<Render::Diffuse_Sampler> diffuse_sampler = std::make_unique<Render::Hammersley_GGX_Diffuse_Sampler>(100);
-            std::unique_ptr<Render::Specular_Sampler> specular_sampler = std::make_unique<Render::Hammersley_GGX_Specular_Sampler>(100);
+            std::unique_ptr<Render::Diffuse_Sampler> diffuse_sampler = std::make_unique<Render::Hammersley_GGX_Diffuse_Sampler>(100, seed);
+            std::unique_ptr<Render::Specular_Sampler> specular_sampler = std::make_unique<Render::Hammersley_GGX_Specular_Sampler>(100, seed);
 
-            Render::Monte_Carlo_Integrator integrator(m_bvh, m_material_manager, mSkybox, diffuse_sampler, specular_sampler);
+            Render::Monte_Carlo_Integrator integrator(m_bvh, m_material_manager, mSkybox, diffuse_sampler, specular_sampler, seed);
 
-            return integrator.integrate_ray(ray, params.m_maxRayDepth, params.m_maxSamples);
+            return integrator.integrate_ray(ray, params.m_maxRayDepth, params.m_sample);
         };
 
         auto trace_rays = [&](const uint32_t start, const uint32_t stepSize)
         {
+            std::random_device random_device{};
+            std::mt19937 random_generator(random_device());
+
             uint32_t location = start;
             while(location < (params.m_Height * params.m_Width))
-            {
+            {                
                 const uint32_t pix = location % params.m_Height;
                 const uint32_t piy = location / params.m_Height;
-                glm::vec4 result =  trace_ray(pix, piy);
-                //result = glm::clamp(glm::vec4(0.0f), glm::vec4(1.0f), result);
-                const uint32_t colour = Core::pack_colour(result);
-                params.m_Pixels[(pix + (piy * params.m_Height))] = colour;
+
+                const uint32_t pixel_index = pix + (piy * params.m_Height);
+
+                if(params.m_SampleCount[pixel_index] >= params.m_maxSamples)
+                {
+                    location += stepSize;
+                    continue;
+                }
+
+                uint32_t prev_sample_count = params.m_SampleCount[pixel_index];
+                glm::vec4 pixel_result =  trace_ray(pix, piy, random_generator());
+
+                if(prev_sample_count < 1)
+                {
+                    params.m_SampleCount[pixel_index] = 1;
+                }
+                else
+                {
+                    const glm::vec4& previous_pixle = params.m_Pixels[pixel_index];
+                    pixel_result = previous_pixle + ((pixel_result - previous_pixle) * (1.0f / prev_sample_count));
+                    params.m_SampleCount[pixel_index] += 1;
+                }
+
+                params.m_Pixels[pixel_index] = pixel_result;
 
                 location += stepSize;
             }

@@ -2,6 +2,7 @@
 #define RT_SAMPLERS_HPP
 
 #include "glm/common.hpp"
+#include <random>
 
 namespace Render
 {
@@ -35,31 +36,37 @@ namespace Render
     class Hammersley_GGX_Diffuse_Sampler : public Diffuse_Sampler
     {
     public:
-        Hammersley_GGX_Diffuse_Sampler(const uint32_t maxSamples) :
-        mMaxSamples(maxSamples),
-        mGeneratedSamples(0) {}
+        Hammersley_GGX_Diffuse_Sampler(const uint32_t maxSamples, const uint64_t seed) :
+            mMaxSamples(maxSamples),
+            mGenerator{seed},
+            mDistribution(0, maxSamples) {}
 
         virtual Sample generate_sample(const glm::vec3 &normal) final;
 
     private:
 
         uint32_t mMaxSamples;
-        uint32_t mGeneratedSamples;
+
+        std::mt19937 mGenerator;
+        std::uniform_int_distribution<> mDistribution;
     };
 
 
     class Hammersley_GGX_Specular_Sampler : public Specular_Sampler
     {
     public:
-        Hammersley_GGX_Specular_Sampler(const uint32_t maxSamples) :
-        mMaxSamples(maxSamples),
-        mGeneratedSamples(0) {}
+        Hammersley_GGX_Specular_Sampler(const uint32_t maxSamples, const uint64_t seed) :
+            mMaxSamples(maxSamples),
+            mGenerator{seed},
+            mDistribution(0, maxSamples) {}
 
         Sample generate_sample(const glm::vec3& N, const glm::vec3& V, const float R);
 
     private:
         uint32_t mMaxSamples;
-        uint32_t mGeneratedSamples;
+
+        std::mt19937 mGenerator;
+        std::uniform_int_distribution<> mDistribution;
     };
 
 }
