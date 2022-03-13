@@ -47,7 +47,7 @@ int main(int argc, const char **argv)
         Scene::RenderParams params{};
         params.m_Height = 512;
         params.m_Width = 512;
-        params.m_maxRayDepth = 3;
+        params.m_maxRayDepth = 10;
         params.m_maxSamples = 3;
         params.m_Pixels = frame_memory;
 

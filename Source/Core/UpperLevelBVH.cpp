@@ -2,6 +2,8 @@
 #include "LowerLevelImplicitShapesBVH.hpp"
 #include "LowerLevelMeshBVH.hpp"
 
+#include <iterator>
+
 namespace Core
 {
     namespace BVH

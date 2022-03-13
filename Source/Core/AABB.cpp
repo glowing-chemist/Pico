@@ -38,7 +38,6 @@ namespace Core
 
     Ray transform_ray(const Ray& ray, const glm::mat4x4& transform)
     {
-        assert(ray.mOrigin.w == 1.0f);
         Ray newRay{};
         newRay.mOrigin = transform * ray.mOrigin;
         newRay.mDirection = glm::mat3x3(transform) * ray.mDirection;

@@ -43,21 +43,20 @@ namespace Scene
         m_threadPool(pool)
     {
         std::unique_ptr<Core::Material> plastic_material = std::make_unique<Render::MattPlasticMaterial>(glm::vec3{0.5f, 0.1f, 0.3f});
-        std::unique_ptr<Core::Material> metal_material = std::make_unique<Render::SmoothMetalMaterial>(glm::vec3{0.8f, 0.8f, 0.8f});
+        std::unique_ptr<Core::Material> metal_material   = std::make_unique<Render::SmoothMetalMaterial>(glm::vec3{0.9f, 0.9f, 0.9f});
 
         const auto plastic_mat_id = m_material_manager.add_material(plastic_material);
         const auto metal_mat_id   = m_material_manager.add_material(metal_material);
 
         std::shared_ptr<Core::BVH::LowerLevelBVH> sphere_bvh = std::make_shared<Core::BVH::LowerLevelSphereBVH>(5.0f);
 
-        m_bvh.add_lower_level_bvh(sphere_bvh, glm::mat4x4(1.0f), metal_mat_id);
-        //m_bvh.add_lower_level_bvh(sphere_bvh, glm::translate(glm::mat4x4(1.0f), glm::vec3(5.0f, 5.0f, 0.0f)), plastic_mat_id);
+        m_bvh.add_lower_level_bvh(sphere_bvh, glm::translate(glm::mat4x4(1.0f), glm::vec3(5.0f, 5.0f, 0.0f)), plastic_mat_id);
 
-        //m_bvh.add_lower_level_bvh(sphere_bvh, glm::translate(glm::mat4x4(1.0f), glm::vec3(5.0f, -5.0f, 0.0f)), plastic_mat_id);
+        m_bvh.add_lower_level_bvh(sphere_bvh, glm::translate(glm::mat4x4(1.0f), glm::vec3(5.0f, -5.0f, 0.0f)), metal_mat_id);
 
-        //m_bvh.add_lower_level_bvh(sphere_bvh, glm::translate(glm::mat4x4(1.0f), glm::vec3(-5.0f, 5.0f, 0.0f)), metal_mat_id);
+        m_bvh.add_lower_level_bvh(sphere_bvh, glm::translate(glm::mat4x4(1.0f), glm::vec3(-5.0f, 5.0f, 0.0f)), metal_mat_id);
 
-        //m_bvh.add_lower_level_bvh(sphere_bvh, glm::translate(glm::mat4x4(1.0f), glm::vec3(-5.0f, -5.0f, 0.0f)), metal_mat_id);
+        m_bvh.add_lower_level_bvh(sphere_bvh, glm::translate(glm::mat4x4(1.0f), glm::vec3(-5.0f, -5.0f, 0.0f)), plastic_mat_id);
 
         m_bvh.build();
 

@@ -7,17 +7,17 @@ namespace Render
 
     Core::EvaluatedMaterial SmoothMetalMaterial::evaluate_material(const glm::vec2&)
     {
-        return {{0.0f, 0.0f, 0.0f, 0.0f}, {m_colour, 0.05f}, {0.f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
+        return {{0.04f, 0.04f, 0.04f, 1.0f}, {m_colour, 0.05f}, {0.f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
     }
 
     Core::EvaluatedMaterial RoughMetalMaterial::evaluate_material(const glm::vec2&)
     {
-        return {{0.0f, 0.0f, 0.0f, 0.0f}, {m_colour, 0.8f}, {0.f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
+        return {{0.04f, 0.04f, 0.04f, 1.0f}, {m_colour, 0.8f}, {0.f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
     }
 
     Core::EvaluatedMaterial MattPlasticMaterial::evaluate_material(const glm::vec2&)
     {
-        return {{m_colour, 1.0f}, {0.0f, 0.0f, 0.0f, 0.8f}, {0.f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
+        return {{m_colour, 1.0f}, {0.04f, 0.04f, 0.04f, 0.8f}, {0.f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
     }
 
     Core::EvaluatedMaterial EmmissiveMaterial::evaluate_material(const glm::vec2&)
@@ -45,10 +45,10 @@ namespace Render
 
     bool MetalnessRoughnessMaterial::is_resident() const
     {
-        return (mAlbedoTexture ? mAlbedoTexture->is_resident() : false) ||
-                (mMetalnessTexture ? mMetalnessTexture->is_resident() : false) ||
-                (mRoughnessTexture ? mRoughnessTexture->is_resident() : false) ||
-                (mEmmissiveTexture ? mEmmissiveTexture->is_resident() : false);
+        return mAlbedoTexture && mAlbedoTexture->is_resident() ||
+               mMetalnessTexture && mMetalnessTexture->is_resident() ||
+               mRoughnessTexture && mRoughnessTexture->is_resident() ||
+               mEmmissiveTexture && mEmmissiveTexture->is_resident();
     }
 
     void MetalnessRoughnessMaterial::make_resident(void* memory)
@@ -136,10 +136,10 @@ namespace Render
 
     bool SpecularGlossMaterial::is_resident() const
     {
-        return (mDiffuseTexture ? mDiffuseTexture->is_resident() : false) ||
-                (mSpecularTexture ? mSpecularTexture->is_resident() : false) ||
-                (mGlossTexture ? mGlossTexture->is_resident() : false) ||
-                (mEmmissiveTexture ? mEmmissiveTexture->is_resident() : false);
+        return mDiffuseTexture && mDiffuseTexture->is_resident() ||
+               mSpecularTexture && mSpecularTexture->is_resident() ||
+               mGlossTexture && mGlossTexture->is_resident() ||
+               mEmmissiveTexture && mEmmissiveTexture->is_resident();
     }
 
     void SpecularGlossMaterial::make_resident(void* memory)

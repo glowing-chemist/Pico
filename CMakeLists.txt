@@ -58,5 +58,7 @@ include_directories(
 			"${CMAKE_CURRENT_LIST_DIR}/ThirdParty/glad/include"
 			)
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
 add_executable(Pico ${SOURCE})
 target_link_libraries(Pico glfw)

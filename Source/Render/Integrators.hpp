@@ -12,8 +12,6 @@ namespace Core
     class ImageCube;
 }
 
-//#define BELL_TRACE
-
 namespace Render
 {
 
@@ -44,19 +42,9 @@ namespace Render
 
     private:
 
-#ifdef BELL_TRACE
-
-        glm::vec4 trace_diffuse_rays(const Core::BVH::InterpolatedVertex& frag, const glm::vec4 &origin, const uint32_t sampleCount, const uint32_t depth) const;
-
-        glm::vec4 trace_specular_rays(const Core::BVH::InterpolatedVertex& frag, const glm::vec4 &origin, const uint32_t sampleCount, const uint32_t depth) const;
-
-        glm::vec4 shade_point(const Core::BVH::InterpolatedVertex& frag, const glm::vec4 &origin, const uint32_t sampleCount, const uint32_t depth) const;
-
-#else
-
         void trace_diffuse_ray(const Core::BVH::InterpolatedVertex& frag, Core::Ray& ray, const uint32_t depth);
         void trace_specular_ray(const Core::BVH::InterpolatedVertex& frag, Core::Ray& ray, const uint32_t depth);
-#endif
+
         std::unique_ptr<Diffuse_Sampler> m_diffuse_sampler;
         std::unique_ptr<Specular_Sampler> m_specular_sampler;
 
