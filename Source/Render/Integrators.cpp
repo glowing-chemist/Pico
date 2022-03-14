@@ -77,9 +77,17 @@ namespace Render
 
         const auto material = m_material_manager.evaluate_material(frag.mMaterialID, frag.mUV);
         glm::vec4 diffuse = material.diffuse;
+        const glm::vec3 V = glm::normalize(glm::vec3(ray.mOrigin - frag.mPosition));
 
         Render::Sample sample = m_diffuse_sampler->generate_sample(frag.mNormal);
         ray.m_weight += sample.P;
+
+        const float NdotV = glm::clamp(glm::dot(glm::vec3(frag.mNormal), V), 0.0f, 1.0f);
+        const float NdotL = glm::clamp(glm::dot(glm::vec3(frag.mNormal), sample.L), 0.0f, 1.0f);
+        const glm::vec3 H = glm::normalize(V + sample.L);
+        const float LdotH  = glm::clamp(glm::dot(sample.L, H), 0.0f, 1.0f);
+
+        const float diffuse_factor = Render::disney_diffuse(NdotV, NdotL, LdotH, material.specularRoughness.w);
 
         ray.mOrigin = frag.mPosition + glm::vec4(0.01f * sample.L, 0.0f);
         ray.mDirection = sample.L;
@@ -87,7 +95,7 @@ namespace Render
         Core::BVH::InterpolatedVertex intersection;
         if(m_bvh.get_closest_intersection(ray, &intersection))
         {
-            ray.m_payload += (diffuse * sample.P ) + glm::vec4(material.emissive, 0.0f);
+            ray.m_payload += diffuse * diffuse_factor * sample.P;
 
             if(mDistribution(mGenerator))
                 trace_diffuse_ray(intersection, ray, depth - 1);
@@ -117,13 +125,16 @@ namespace Render
         Render::Sample sample = m_specular_sampler->generate_sample(frag.mNormal, V, material.specularRoughness.w);
         ray.m_weight += sample.P;
 
+        const float specular_factor = Render::specular_GGX(frag.mNormal, V, sample.L, material.specularRoughness.w,
+                                                           glm::vec3(material.specularRoughness.x, material.specularRoughness.y, material.specularRoughness.z));
+
         ray.mOrigin = frag.mPosition + glm::vec4(0.01f * sample.L, 0.0f);
         ray.mDirection = sample.L;
 
         Core::BVH::InterpolatedVertex intersection;
         if(m_bvh.get_closest_intersection(ray, &intersection))
         {
-            ray.m_payload += specular * sample.P + glm::vec4(material.emissive, 0.0f);
+            ray.m_payload += specular * specular_factor * sample.P;
 
             if(mDistribution(mGenerator))
                 trace_specular_ray(intersection, ray, depth - 1);
@@ -132,7 +143,7 @@ namespace Render
         }
         else
         {
-             ray.m_payload *= specular * sample.P * m_skybox->sample4(sample.L);
+             ray.m_payload *= specular * specular_factor * sample.P * m_skybox->sample4(sample.L);
         }
     }
 }

@@ -43,6 +43,7 @@ set(GLFW_BUILD_TESTS 0)
 set(GLFW_BUILD_EXAMPLES 0)
 add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/ThirdParty/GLFW3/glfw-3.2.1")
 add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/ThirdParty/assimp-4.1.0")
+add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/ThirdParty//jsoncpp")
 
 add_definitions(-DGLM_ENABLE_EXPERIMENTAL)
 
@@ -56,9 +57,10 @@ include_directories(
 			"${CMAKE_CURRENT_LIST_DIR}/ThirdParty/imgui-master"
 			"${CMAKE_CURRENT_LIST_DIR}/ThirdParty/stb_image"
 			"${CMAKE_CURRENT_LIST_DIR}/ThirdParty/glad/include"
+			"${CMAKE_CURRENT_LIST_DIR}/ThirdParty/jsoncpp/include"
 			)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(Pico ${SOURCE})
-target_link_libraries(Pico glfw)
+target_link_libraries(Pico glfw jsoncpp_static assimp)

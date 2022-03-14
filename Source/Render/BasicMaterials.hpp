@@ -94,7 +94,7 @@ namespace Render
 
 
     // Non constant basic materials.
-    class MetalnessRoughnessMaterial : Core::Material
+    class MetalnessRoughnessMaterial : public Core::Material
     {
     public:
 
@@ -122,7 +122,7 @@ namespace Render
 
     };
 
-    class SpecularGlossMaterial : Core::Material
+    class SpecularGlossMaterial : public Core::Material
     {
     public:
 

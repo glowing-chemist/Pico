@@ -3,15 +3,21 @@
 
 #define NANORT_USE_CPP11_FEATURE 1
 #include "ThirdParty/nanort/nanort.h"
+#include "json/json.h"
+#include "assimp/Importer.hpp"
 
 #include "Image.hpp"
 #include "Core/ThreadPool.hpp"
 #include "Core/LowerLevelBVH.hpp"
 #include "Core/UpperLevelBVH.hpp"
 #include "Core/MaterialManager.hpp"
+#include "Camera.hpp"
 #include "Render/Sampler.hpp"
 
+#include <filesystem>
 #include <memory>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 
@@ -32,19 +38,31 @@ namespace Scene
         float*     m_variance;
     };
 
-    class Camera;
-
     class Scene
     {
     public:
 
-        Scene(ThreadPool&, const std::string& sceneFile);
+        Scene(ThreadPool&, const std::filesystem::path& sceneFile);
+        Scene(ThreadPool&, const Assimp::Importer* scene);
         ~Scene() = default;
 
         void render_scene_to_memory(const Camera&, const RenderParams&);
         void render_scene_to_file(const Camera&, RenderParams&, const char*);
 
     private:
+
+        // Scene loading functions
+        void add_mesh(const std::string& name, const Json::Value& entry);
+        void add_mesh_instance(const std::string& name, const Json::Value& entry);
+        void add_material(const std::string& name, const Json::Value& entry);
+        void add_camera(const std::string& name, const Json::Value& entry);
+        void process_globals(const std::string& name, const Json::Value& entry);
+
+        std::filesystem::path mWorkingDir;
+        std::unordered_map<std::string, Camera>  mCamera;
+        std::unordered_map<std::string, uint32_t> mInstanceIDs;
+        std::unordered_map<std::string, uint32_t> mMaterials;
+        std::vector<std::shared_ptr<Core::BVH::LowerLevelBVH>> m_lowerLevelBVhs;
 
         Core::BVH::UpperLevelBVH m_bvh;
         Core::MaterialManager m_material_manager;

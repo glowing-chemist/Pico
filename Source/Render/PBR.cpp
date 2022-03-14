@@ -104,6 +104,17 @@ namespace Render
         return  f0 + (f90 - f0) * std::pow (1.0f - u, 5.0f);
     }
 
+    float smith_GGX_masking_shadowing(glm::vec3 N, glm::vec3 wi, glm::vec3 wo, float a2)
+    {
+        float dotNL = glm::dot(N, wi);
+        float dotNV = glm::dot(N, wo);
+
+        float denomA = dotNV * std::sqrt(a2 + (1.0f - a2) * dotNL * dotNL);
+        float denomB = dotNL * std::sqrt(a2 + (1.0f - a2) * dotNV * dotNV);
+
+        return 2.0f * dotNL * dotNV / (denomA + denomB);
+    }
+
     float disney_diffuse(float  NdotV , float  NdotL , float  LdotH ,float linearRoughness)
     {
         float  energyBias = std::lerp(0.0f, 0.5f,  linearRoughness);
@@ -116,28 +127,25 @@ namespace Render
         return  lightScatter * viewScatter * energyFactor;
     }
 
-    float specular_GGX(const glm::vec3& N, const glm::vec3& V, const glm::vec3& L, const float roughness, const glm::vec3& F0)
+    float specular_GGX(const glm::vec3& N, const glm::vec3& wi, const glm::vec3& wo, const float roughness, const glm::vec3& F0)
     {
-        const glm::vec3 H = glm::normalize(V + L);
-
-        const float NdotL = glm::clamp(glm::dot(N, L), 0.0f, 1.0f);
-        const float NdotV = glm::clamp(glm::dot(N, V), 0.0f, 1.0f);
-        const float NdotH = glm::clamp(glm::dot(N, H), 0.0f, 1.0f);
-        const float LdotH = glm::clamp(glm::dot(L, H), 0.0f, 1.0f);
-
-        float a = NdotH * roughness;
-        float k = roughness / (1.0f - NdotH * NdotH + a * a);
-        const float D =  k * k * (1.0f / M_PI);
-
-        const glm::vec3 F = F_Schlick(F0, 1.0f, LdotH);
+        const glm::vec3 H = glm::normalize(wi + wo);
 
         float a2 = roughness * roughness;
-        float GGXV = NdotL * sqrt(NdotV * NdotV * (1.0f - a2) + a2);
-        float GGXL = NdotV * sqrt(NdotL * NdotL * (1.0f - a2) + a2);
-        const float G =  0.5f / (GGXV + GGXL);
+        if(glm::dot(N, wi) > 0.0f && glm::dot(wi, H) > 0.0f)
+        {
 
-        const float result = (NdotL * D * F.x * G) / (4.0f * glm::clamp(glm::dot(N, V), 0.0f, 1.0f) * glm::clamp(glm::dot(N, L), 0.0f, 1.0f));
-        return glm::isnan(result) ? 1.0f : glm::clamp(result, 0.0f, 1.0f);
+            float dotWiWm = glm::dot(wi, H);
+
+            const glm::vec3 F = F_Schlick(F0, 1.0f, dotWiWm);
+            float G = smith_GGX_masking_shadowing(N, wi, wo, a2);
+            float weight = std::abs(glm::dot(wo, H))
+                         / (glm::dot(N, wo) * glm::dot(N, H));
+
+            return F.x * G * weight;
+        }
+        else
+            return 0.0f;
     }
 
 }

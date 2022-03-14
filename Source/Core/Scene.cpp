@@ -6,10 +6,13 @@
 #include "Render/Integrators.hpp"
 #include "Render/BasicMaterials.hpp"
 #include "Core/LowerLevelImplicitShapesBVH.hpp"
+#include "Core/LowerLevelMeshBVH.hpp"
+#include "Render/BasicMaterials.hpp"
 
 #include <algorithm>
 #include <memory>
 #include <thread>
+#include <fstream>
 
 #include "stbi_image_write.h"
 #include "stb_image.h"
@@ -17,72 +20,49 @@
 #include "glm/gtx/compatibility.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 
+#include "assimp/Importer.hpp"
+#include "assimp/postprocess.h"
+#include "assimp/pbrmaterial.h"
+#include "assimp/scene.h"
+
+
 namespace Scene
 {
-
-    enum MaterialType : uint32_t
-    {
-        Albedo = 1,
-        Diffuse = 1 << 1,
-        Normals = 1 << 2,
-        Roughness = 1 << 3,
-        Gloss = 1 << 4,
-        Metalness = 1 << 5,
-        Specular = 1 << 6,
-        CombinedMetalnessRoughness = 1 << 7,
-        AmbientOcclusion = 1 << 8,
-        Emisive = 1 << 9,
-        CombinedSpecularGloss = 1 << 10,
-        HeightMap = 1 << 11,
-
-        AlphaTested = 1 << 20,
-        Transparent = 1 << 21
-    };
-
-    Scene::Scene(ThreadPool& pool, const std::string& sceneFile) :
+    Scene::Scene(ThreadPool& pool, const std::filesystem::path& path) :
+        mWorkingDir{path.parent_path()},
         m_threadPool(pool)
     {
-        std::unique_ptr<Core::Material> plastic_material = std::make_unique<Render::MattPlasticMaterial>(glm::vec3{0.5f, 0.1f, 0.3f});
-        std::unique_ptr<Core::Material> metal_material   = std::make_unique<Render::SmoothMetalMaterial>(glm::vec3{0.9f, 0.9f, 0.9f});
+        std::ifstream sceneFile;
+        sceneFile.open(path);
 
-        const auto plastic_mat_id = m_material_manager.add_material(plastic_material);
-        const auto metal_mat_id   = m_material_manager.add_material(metal_material);
+        Json::Value sceneRoot;
+        sceneFile >> sceneRoot;
 
-        std::shared_ptr<Core::BVH::LowerLevelBVH> sphere_bvh = std::make_shared<Core::BVH::LowerLevelSphereBVH>(5.0f);
+        std::array<std::string, 5> sections{"GLOBALS", "MESH", "MATERIALS", "INSTANCE",
+                                            "CAMERA"};
+        std::array<void(Scene::*)(const std::string&, const Json::Value&), 5> sectionFunctions
+            {
+                &Scene::process_globals, &Scene::add_mesh, &Scene::add_material, &Scene::add_mesh_instance,
+                &Scene::add_camera
+            };
 
-        m_bvh.add_lower_level_bvh(sphere_bvh, glm::translate(glm::mat4x4(1.0f), glm::vec3(5.0f, 5.0f, 0.0f)), plastic_mat_id);
-
-        m_bvh.add_lower_level_bvh(sphere_bvh, glm::translate(glm::mat4x4(1.0f), glm::vec3(5.0f, -5.0f, 0.0f)), metal_mat_id);
-
-        m_bvh.add_lower_level_bvh(sphere_bvh, glm::translate(glm::mat4x4(1.0f), glm::vec3(-5.0f, 5.0f, 0.0f)), metal_mat_id);
-
-        m_bvh.add_lower_level_bvh(sphere_bvh, glm::translate(glm::mat4x4(1.0f), glm::vec3(-5.0f, -5.0f, 0.0f)), plastic_mat_id);
-
-        m_bvh.build();
-
-        // Load test skybox
-        std::array<std::string, 6> skyboxPaths{ "./Skybox/px.png",
-                                                "./Skybox/nx.png",
-                                                "./Skybox/py.png",
-                                                "./Skybox/ny.png",
-                                                "./Skybox/pz.png",
-                                                "./Skybox/nz.png"};
-
-        std::vector<unsigned char> skyboxData{};
-
-        for(const std::string& file : skyboxPaths)
+        for(uint32_t i = 0; i < sections.size(); ++i)
         {
-            int x, y, comp;
-            auto* data = stbi_load(file.c_str(), &x, &y, &comp, 4);
+            if(sceneRoot.isMember(sections[i]))
+            {
+                for(std::string& entityName : sceneRoot[sections[i]].getMemberNames())
+                    std::invoke(sectionFunctions[i], this, entityName, sceneRoot[sections[i]][entityName]);
+            }
 
-            skyboxData.insert(skyboxData.end(), data, data + (x * y * comp));
         }
 
-        // create CPU skybox.
-        Core::ImageExtent extent = {1024, 1024, 6};
-        unsigned char* data = new unsigned char[skyboxData.size()];
-        std::memcpy(data, skyboxData.data(), skyboxData.size());
-        mSkybox = std::make_shared<Core::ImageCube>(data, extent, Core::Format::kRBGA_8UNorm);
+        m_bvh.build();
+    }
+
+    Scene::Scene(ThreadPool& pool, const Assimp::Importer* scene) :
+        m_threadPool(pool)
+    {
+
     }
 
     void Scene::render_scene_to_memory(const Camera& camera, const RenderParams& params)
@@ -175,4 +155,232 @@ namespace Scene
         stbi_write_jpg(path, params.m_Width, params.m_Height, 4, params.m_Pixels, 100);
     }
 
+
+    // Scene loading functions.
+    void Scene::add_mesh(const std::string& name, const Json::Value& entry)
+    {
+        const std::string path = mWorkingDir / entry["Path"].asString();
+
+        Assimp::Importer importer;
+
+        const aiScene* scene = importer.ReadFile(path.c_str(),
+                                                 aiProcess_Triangulate |
+                                                 aiProcess_JoinIdenticalVertices |
+                                                 aiProcess_GenNormals |
+                                                 aiProcess_CalcTangentSpace |
+                                                 aiProcess_GlobalScale |
+                                                 aiProcess_FlipUVs);
+
+
+        auto mesh_bvh = std::make_shared<Core::BVH::LowerLevelMeshBVH>(scene->mMeshes[0]);
+
+        mInstanceIDs[name] = m_lowerLevelBVhs.size();
+        m_lowerLevelBVhs.push_back(mesh_bvh);
+    }
+
+
+    void Scene::add_mesh_instance(const std::string&, const Json::Value& entry)
+    {
+        const std::string assetName = entry["Asset"].asString();
+        const uint32_t assetID = mInstanceIDs[assetName];
+
+        glm::vec3 position{0.0f, 0.0f, 0.0f};
+        glm::vec3 scale{1.0f, 1.0f, 1.0f};
+        glm::quat   rotation{1.0f, 0.0f, 0.0f, 0.f};
+
+        if(entry.isMember("Position"))
+        {
+            const Json::Value& positionEntry = entry["Position"];
+            position.x = positionEntry[0].asFloat();
+            position.y = positionEntry[1].asFloat();
+            position.z = positionEntry[2].asFloat();
+        }
+
+        if(entry.isMember("Scale"))
+        {
+            const Json::Value& scaleEntry = entry["Scale"];
+            scale.x = scaleEntry[0].asFloat();
+            scale.y = scaleEntry[1].asFloat();
+            scale.z = scaleEntry[2].asFloat();
+        }
+
+        if(entry.isMember("Rotation"))
+        {
+            const Json::Value& rotationEntry = entry["Rotation"];
+            rotation.x = rotationEntry[0].asFloat();
+            rotation.y = rotationEntry[1].asFloat();
+            rotation.z = rotationEntry[2].asFloat();
+            rotation.w = rotationEntry[3].asFloat();
+            rotation = glm::normalize(rotation);
+        }
+
+        uint32_t material = 0;
+        if(entry.isMember("Material"))
+        {
+            const std::string materialName = entry["Material"][0].asString();
+            material = mMaterials[materialName];
+        }
+
+        const glm::mat4x4 transform =  glm::translate(glm::mat4x4(1.0f), position) *
+                                    glm::mat4_cast(rotation) *
+                                    glm::scale(glm::mat4x4(1.0f), scale);
+
+        m_bvh.add_lower_level_bvh(m_lowerLevelBVhs[assetID], transform, material);
+    }
+
+    void Scene::add_material(const std::string &name, const Json::Value &entry)
+    {
+        std::unique_ptr<Core::Material> material;
+
+        if(entry["Type"].asString() == "Metalic")
+        {
+            std::unique_ptr<Core::Image2D> albedo{};
+            if(entry.isMember("Albedo"))
+            {
+                const std::string path = entry["Albedo"].asString();
+                albedo = std::make_unique<Core::Image2D>((mWorkingDir / path).string());
+            }
+
+            std::unique_ptr<Core::Image2D> roughness{};
+            if(entry.isMember("Roughness"))
+            {
+                const std::string path = entry["Roughness"].asString();
+                roughness = std::make_unique<Core::Image2D>((mWorkingDir / path).string());
+            }
+
+            std::unique_ptr<Core::Image2D> metalness{};
+            if(entry.isMember("Metalness"))
+            {
+                const std::string path = entry["Metalness"].asString();
+                metalness = std::make_unique<Core::Image2D>((mWorkingDir / path).string());
+            }
+
+            std::unique_ptr<Core::Image2D> emmissive{};
+            if(entry.isMember("Emissive"))
+            {
+                const std::string path = entry["Emissive"].asString();
+                emmissive = std::make_unique<Core::Image2D>((mWorkingDir / path).string());
+            }
+
+            material = std::make_unique<Render::MetalnessRoughnessMaterial>(albedo, metalness, roughness, emmissive);
+        }
+        else
+        {
+            std::unique_ptr<Core::Image2D> diffuse{};
+            if(entry.isMember("Diffuse"))
+            {
+                const std::string path = entry["Diffuse"].asString();
+                diffuse = std::make_unique<Core::Image2D>((mWorkingDir / path).string());
+            }
+
+            std::unique_ptr<Core::Image2D> specular{};
+            if(entry.isMember("Specular"))
+            {
+                const std::string path = entry["Specular"].asString();
+                specular = std::make_unique<Core::Image2D>((mWorkingDir / path).string());
+            }
+
+            std::unique_ptr<Core::Image2D> gloss{};
+            if(entry.isMember("Gloss"))
+            {
+                const std::string path = entry["Gloss"].asString();
+                gloss = std::make_unique<Core::Image2D>((mWorkingDir / path).string());
+            }
+
+            std::unique_ptr<Core::Image2D> emmissive{};
+            if(entry.isMember("Emissive"))
+            {
+                const std::string path = entry["Emissive"].asString();
+                emmissive = std::make_unique<Core::Image2D>((mWorkingDir / path).string());
+            }
+
+            material = std::make_unique<Render::SpecularGlossMaterial>(diffuse, specular, gloss, emmissive);
+        }
+
+        mMaterials[name] = m_material_manager.add_material(material);
+
+    }
+
+    void Scene::add_camera(const std::string& name, const Json::Value& entry)
+    {
+        Camera newCamera({0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, 1.0f);
+        if(entry.isMember("Position"))
+        {
+            const Json::Value& positionEntry = entry["Position"];
+            glm::vec3 position;
+            position.x = positionEntry[0].asFloat();
+            position.y = positionEntry[1].asFloat();
+            position.z = positionEntry[2].asFloat();
+
+            newCamera.setPosition(position);
+        }
+
+        if(entry.isMember("Direction"))
+        {
+            const Json::Value& directionEntry = entry["Direction"];
+            glm::vec3 direction;
+            direction.x = directionEntry[0].asFloat();
+            direction.y = directionEntry[1].asFloat();
+            direction.z = directionEntry[2].asFloat();
+            direction = glm::normalize(direction);
+
+            newCamera.setDirection(direction);
+        }
+
+        if(entry.isMember("Aspect"))
+        {
+            const float aspect = entry["Aspect"].asFloat();
+            newCamera.setAspect(aspect);
+        }
+
+        if(entry.isMember("NearPlane"))
+        {
+            const float NearPlane = entry["NearPlane"].asFloat();
+            newCamera.setNearPlane(NearPlane);
+        }
+
+        if(entry.isMember("FarPlane"))
+        {
+            const float FarPlane = entry["FarPlane"].asFloat();
+            newCamera.setFarPlane(FarPlane);
+        }
+
+        if(entry.isMember("FOV"))
+        {
+            const float fov = entry["FOV"].asFloat();
+            newCamera.setFOVDegrees(fov);
+        }
+
+        mCamera.insert({name, newCamera});
+    }
+
+
+    void Scene::process_globals(const std::string&, const Json::Value& entry)
+    {
+        if(entry.isMember("Skybox"))
+        {
+            const Json::Value skyboxes = entry["Skybox"];
+            std::array<std::string, 6> skyboxPaths{};
+            for(uint32_t i = 0; i < 6; ++i)
+            {
+                skyboxPaths[i] = (mWorkingDir / skyboxes[i].asString()).string();
+            }
+
+            std::vector<unsigned char> skyboxData{};
+
+            for(const std::string& file : skyboxPaths)
+            {
+                int x, y, comp;
+                auto* data = stbi_load(file.c_str(), &x, &y, &comp, 4);
+
+                skyboxData.insert(skyboxData.end(), data, data + (x * y * comp));
+            }
+
+            // create CPU skybox.
+            Core::ImageExtent extent = {1024, 1024, 6};
+            unsigned char* data = new unsigned char[skyboxData.size()];
+            std::memcpy(data, skyboxData.data(), skyboxData.size());
+            mSkybox = std::make_shared<Core::ImageCube>(data, extent, Core::Format::kRBGA_8UNorm);
+        }
+    }
 }

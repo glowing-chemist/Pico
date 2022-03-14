@@ -75,6 +75,9 @@ namespace Core
 
         Image2D(unsigned char* data, const ImageExtent& extent, const Format format);
 
+        Image2D(const std::string& path) :
+            Image(path) {}
+
         float sample(const glm::vec2& uv) const;
         glm::vec2 sample2(const glm::vec2& uv) const;
         glm::vec3 sample3(const glm::vec2& uv) const;
