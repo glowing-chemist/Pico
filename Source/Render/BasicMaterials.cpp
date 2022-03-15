@@ -55,18 +55,21 @@ namespace Render
     {
         unsigned char* texture_mem = static_cast<unsigned char*>(memory);
         if(mAlbedoTexture)
+        {
             mAlbedoTexture->make_resident(texture_mem);
+            texture_mem += mAlbedoTexture->get_residence_size();
+        }
 
         if(mMetalnessTexture)
         {
-            texture_mem += mMetalnessTexture->get_residence_size();
             mMetalnessTexture->make_resident(texture_mem);
+            texture_mem += mMetalnessTexture->get_residence_size();
         }
 
         if(mRoughnessTexture)
         {
-            texture_mem += mRoughnessTexture->get_residence_size();
             mRoughnessTexture->make_resident(texture_mem);
+            texture_mem += mRoughnessTexture->get_residence_size();
         }
 
         if(mEmmissiveTexture)
@@ -136,35 +139,35 @@ namespace Render
 
     bool SpecularGlossMaterial::is_resident() const
     {
-        return mDiffuseTexture && mDiffuseTexture->is_resident() ||
-               mSpecularTexture && mSpecularTexture->is_resident() ||
-               mGlossTexture && mGlossTexture->is_resident() ||
-               mEmmissiveTexture && mEmmissiveTexture->is_resident();
+        return (mDiffuseTexture && mDiffuseTexture->is_resident()) ||
+               (mSpecularTexture && mSpecularTexture->is_resident()) ||
+               (mGlossTexture && mGlossTexture->is_resident()) ||
+               (mEmmissiveTexture && mEmmissiveTexture->is_resident());
     }
 
     void SpecularGlossMaterial::make_resident(void* memory)
     {
         unsigned char* texture_mem = static_cast<unsigned char*>(memory);
         if(mDiffuseTexture)
+        {
             mDiffuseTexture->make_resident(texture_mem);
+            texture_mem += mDiffuseTexture->get_residence_size();
+        }
 
         if(mSpecularTexture)
         {
-            texture_mem += mSpecularTexture->get_residence_size();
             mSpecularTexture->make_resident(texture_mem);
+            texture_mem += mSpecularTexture->get_residence_size();
         }
 
         if(mGlossTexture)
         {
-            texture_mem += mGlossTexture->get_residence_size();
             mGlossTexture->make_resident(texture_mem);
+            texture_mem += mGlossTexture->get_residence_size();
         }
 
         if(mEmmissiveTexture)
-        {
-            texture_mem += mEmmissiveTexture->get_residence_size();
             mEmmissiveTexture->make_resident(texture_mem);
-        }
 
     }
 

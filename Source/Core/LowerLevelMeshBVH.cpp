@@ -22,9 +22,9 @@ namespace Core
             mPositions.resize(mesh->mNumVertices);
             memcpy(mPositions.data(), mesh->mVertices, sizeof(glm::vec3) * mesh->mNumVertices);
 
-            static_assert (sizeof(glm::vec2) == sizeof(aiVector2t<float>), "uv size mismatch");
             mUVs.resize(mesh->mNumVertices);
-            memcpy(mUVs.data(), mesh->mTextureCoords[0], sizeof(glm::vec2) * mesh->mNumVertices);
+            for(uint32_t i = 0; i < mesh->mNumVertices; ++i)
+                mUVs[i] = glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y);
 
             static_assert (sizeof(glm::vec3) == sizeof(aiVector3t<float>), "normals size mismatch");
             mNormals.resize(mesh->mNumVertices);
@@ -38,6 +38,9 @@ namespace Core
             mPred = std::make_unique<nanort::TriangleSAHPred<float>>(reinterpret_cast<float*>(mPositions.data()), mIndicies.data(), sizeof(glm::vec3));
 
             mAccelerationStructure.Build(mIndicies.size() / 3, *mMeshes, *mPred);
+
+            aiAABB aabb = mesh->mAABB;
+            mAABB = AABB({aabb.mMin.x, aabb.mMin.y, aabb.mMin.z, 1.0f}, {aabb.mMax.x, aabb.mMax.y, aabb.mMax.z, 1.0f});
         }
 
         bool LowerLevelMeshBVH::calculate_intersection(const Ray& ray, InterpolatedVertex* result) const

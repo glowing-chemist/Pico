@@ -56,11 +56,11 @@ int main(int argc, const char **argv)
         params.m_Pixels = frame_memory;
         params.m_SampleCount = sample_count;
 
-        Scene::Camera camera{glm::vec3{0.0f, 0.0f, -30.0f}, glm::vec3{0.0f, 0.0f, 1.0f}, 1.0f, 0.01, 100.0f};
+        Scene::Camera* camera = scene.get_camera("MainCamera");
 
         while(!glfwWindowShouldClose(window))
         {
-            scene.render_scene_to_memory(camera, params);
+            scene.render_scene_to_memory(*camera, params);
 
             frame_buffer.set_image(frame_memory);
 

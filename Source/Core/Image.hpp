@@ -19,7 +19,8 @@ namespace Core
     enum class Format
     {
         kRBGA_8UNorm,
-        kRGB_8UNorm
+        kRGB_8UNorm,
+        kR_8UNorm
     };
 
     size_t get_pixel_size(const Format);
@@ -37,7 +38,7 @@ namespace Core
 
         Image(const std::string& path);
 
-        ~Image();
+        virtual ~Image();
 
         virtual size_t get_residence_size() const final;
 

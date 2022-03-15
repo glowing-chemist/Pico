@@ -34,12 +34,12 @@ namespace Render
             for(uint32_t i_ray = 0; i_ray < rayCount; ++i_ray)
             {
                 Core::Ray diffuse_ray = ray;
-                diffuse_ray.m_payload = glm::vec4(1.0f);
+                diffuse_ray.m_payload = glm::vec4(0.0f);
                 diffuse_ray.m_weight = 0.0f;
                 trace_diffuse_ray(vertex, diffuse_ray, maxDepth);
 
                 Core::Ray specular_ray = ray;
-                specular_ray.m_payload = glm::vec4(1.0f);
+                specular_ray.m_payload = glm::vec4(0.0f);
                 specular_ray.m_weight = 0.0f;
                 trace_specular_ray(vertex, specular_ray, maxDepth);
 
@@ -104,7 +104,7 @@ namespace Render
         }
         else
         {
-            ray.m_payload *= diffuse * sample.P * m_skybox->sample4(sample.L);
+            ray.m_payload += diffuse * diffuse_factor * sample.P * m_skybox->sample4(sample.L);
         }
     }
 
@@ -143,7 +143,7 @@ namespace Render
         }
         else
         {
-             ray.m_payload *= specular * specular_factor * sample.P * m_skybox->sample4(sample.L);
+             ray.m_payload += specular * specular_factor * sample.P * m_skybox->sample4(sample.L);
         }
     }
 }

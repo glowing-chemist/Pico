@@ -38,6 +38,10 @@ namespace Scene
         Json::Value sceneRoot;
         sceneFile >> sceneRoot;
 
+        std::shared_ptr<Core::BVH::LowerLevelBVH> sphere = std::make_shared<Core::BVH::LowerLevelSphereBVH>(1.0f);
+        mInstanceIDs["Sphere"] = m_lowerLevelBVhs.size();
+        m_lowerLevelBVhs.push_back(sphere);
+
         std::array<std::string, 5> sections{"GLOBALS", "MESH", "MATERIALS", "INSTANCE",
                                             "CAMERA"};
         std::array<void(Scene::*)(const std::string&, const Json::Value&), 5> sectionFunctions
@@ -169,10 +173,11 @@ namespace Scene
                                                  aiProcess_GenNormals |
                                                  aiProcess_CalcTangentSpace |
                                                  aiProcess_GlobalScale |
-                                                 aiProcess_FlipUVs);
+                                                 aiProcess_FlipUVs |
+                                                 aiProcess_GenBoundingBoxes);
 
 
-        auto mesh_bvh = std::make_shared<Core::BVH::LowerLevelMeshBVH>(scene->mMeshes[0]);
+        auto mesh_bvh = std::make_shared<Core::BVH::LowerLevelMeshBVH>(scene->mMeshes[1]);
 
         mInstanceIDs[name] = m_lowerLevelBVhs.size();
         m_lowerLevelBVhs.push_back(mesh_bvh);
@@ -217,7 +222,7 @@ namespace Scene
         uint32_t material = 0;
         if(entry.isMember("Material"))
         {
-            const std::string materialName = entry["Material"][0].asString();
+            const std::string materialName = entry["Material"].asString();
             material = mMaterials[materialName];
         }
 
@@ -368,16 +373,19 @@ namespace Scene
 
             std::vector<unsigned char> skyboxData{};
 
+            uint32_t width, height;
             for(const std::string& file : skyboxPaths)
             {
                 int x, y, comp;
                 auto* data = stbi_load(file.c_str(), &x, &y, &comp, 4);
+                width = x;
+                height = y;
 
-                skyboxData.insert(skyboxData.end(), data, data + (x * y * comp));
+                skyboxData.insert(skyboxData.end(), data, data + (x * y * 4));
             }
 
             // create CPU skybox.
-            Core::ImageExtent extent = {1024, 1024, 6};
+            Core::ImageExtent extent = {width, height, 6};
             unsigned char* data = new unsigned char[skyboxData.size()];
             std::memcpy(data, skyboxData.data(), skyboxData.size());
             mSkybox = std::make_shared<Core::ImageCube>(data, extent, Core::Format::kRBGA_8UNorm);

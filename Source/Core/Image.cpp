@@ -13,6 +13,9 @@ namespace Core
 
             case Format::kRGB_8UNorm:
                 return 3;
+
+            case Format::kR_8UNorm:
+                return 1;
         }
 
         return 4;
@@ -27,6 +30,9 @@ namespace Core
 
             case Format::kRGB_8UNorm:
                 return 3;
+
+            case Format::kR_8UNorm:
+                return 1;
         }
 
         return 4;
@@ -42,8 +48,10 @@ namespace Core
         mExtent = {static_cast<uint32_t>(x), static_cast<uint32_t>(y), 1};
         if(components == 4)
             mFormat = Format::kRBGA_8UNorm;
-        else
+        else if(components == 3)
             mFormat = Format::kRGB_8UNorm;
+        else if(components == 1)
+            mFormat = Format::kR_8UNorm;
 
         mPixelSize = get_pixel_size(mFormat);
     }
@@ -51,12 +59,12 @@ namespace Core
 
     Image::~Image()
     {
-        free(mData);
+        delete[] mData;
     }
 
     size_t Image::get_residence_size() const
     {
-        return mExtent.height * mExtent.width * mPixelSize;
+        return mExtent.height * mExtent.width * mExtent.depth * mPixelSize;
     }
 
     void Image::make_resident(void* mem)
@@ -101,6 +109,7 @@ namespace Core
             float c = pix[0] / 255.0f;
             return c;
         }
+
 
         return 0.0f;
     }
@@ -174,6 +183,17 @@ namespace Core
             c.y = pix[1];
             c.z = pix[2];
             c.w = pix[3];
+
+            return c;
+        }
+        else if(mPixelSize == 3)
+        {
+            const uint8_t* pix = reinterpret_cast<const uint8_t*>(data);
+            glm::vec4 c;
+            c.x = pix[0] / 255.0f;
+            c.y = pix[1] / 255.0f;
+            c.z = pix[2] / 255.0f;
+            c.w = 0.0f;
 
             return c;
         }

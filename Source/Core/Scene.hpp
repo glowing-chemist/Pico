@@ -49,6 +49,16 @@ namespace Scene
         void render_scene_to_memory(const Camera&, const RenderParams&);
         void render_scene_to_file(const Camera&, RenderParams&, const char*);
 
+        Camera* get_camera(const std::string& name)
+        {
+            if(auto camera = mCamera.find(name); camera != mCamera.end())
+            {
+                return &camera->second;
+            }
+
+            return nullptr;
+        }
+
     private:
 
         // Scene loading functions
