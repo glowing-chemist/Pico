@@ -92,6 +92,22 @@ namespace Render
         virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2& uv) final;
     };
 
+    class ConstantMetalnessRoughnessMaterial : public ConstantMaterial
+    {
+    public:
+        ConstantMetalnessRoughnessMaterial(const glm::vec3& albedo, const float metalness, const float roughness, const glm::vec3& emissive);
+
+        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2& uv) final
+        {
+            return mMaterial;
+        }
+
+
+    private:
+
+        Core::EvaluatedMaterial mMaterial;
+    };
+
 
     // Non constant basic materials.
     class MetalnessRoughnessMaterial : public Core::Material

@@ -25,6 +25,19 @@ namespace Render
         return {{0.8f, 0.8f, 0.8f, 0.8f}, {0.0f, 0.0f, 0.0f, 0.8f}, {0.f, 1.0f, 0.0f}, {0.5f, 0.5f, 0.5f}};
     }
 
+    ConstantMetalnessRoughnessMaterial::ConstantMetalnessRoughnessMaterial(const glm::vec3& albedo, const float metalness, const float roughness, const glm::vec3& emissive)
+    {
+        mMaterial.diffuse = glm::vec4(albedo * (1.0f - 0.04f) * (1.0f - metalness), 1.0f);
+
+        const glm::vec3 F0 = glm::lerp(glm::vec3(0.04f, 0.04f, 0.04f), glm::vec3(albedo), metalness);
+        mMaterial.specularRoughness.x = F0.x;
+        mMaterial.specularRoughness.y = F0.y;
+        mMaterial.specularRoughness.z = F0.z;
+
+        mMaterial.specularRoughness.w = roughness;
+        mMaterial.emissive = emissive;
+    }
+
     MetalnessRoughnessMaterial::MetalnessRoughnessMaterial(std::unique_ptr<Core::Image2D>& albedo,
                                                            std::unique_ptr<Core::Image2D>& metalness,
                                                            std::unique_ptr<Core::Image2D>& roughness,

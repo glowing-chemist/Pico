@@ -269,7 +269,7 @@ namespace Scene
 
             material = std::make_unique<Render::MetalnessRoughnessMaterial>(albedo, metalness, roughness, emmissive);
         }
-        else
+        else if(entry["Type"].asString() == "Gloss")
         {
             std::unique_ptr<Core::Image2D> diffuse{};
             if(entry.isMember("Diffuse"))
@@ -300,6 +300,40 @@ namespace Scene
             }
 
             material = std::make_unique<Render::SpecularGlossMaterial>(diffuse, specular, gloss, emmissive);
+        }
+        else if(entry["Type"].asString() == "Constant")
+        {
+            glm::vec3 albedo(0.0f);
+            if(entry.isMember("Albedo"))
+            {
+                const Json::Value& albedo_enrty = entry["Albedo"];
+                albedo.x = albedo_enrty[0].asFloat();
+                albedo.y = albedo_enrty[1].asFloat();
+                albedo.z = albedo_enrty[2].asFloat();
+            }
+
+            float metalness;
+            if(entry.isMember("Metalness"))
+            {
+                metalness = entry["Metalness"].asFloat();
+            }
+
+            float roughness = 0.0f;
+            if(entry.isMember("Roughness"))
+            {
+                roughness = entry["Roughness"].asFloat();
+            }
+
+            glm::vec3 emmissive(0.0f);
+            if(entry.isMember("Emmissive"))
+            {
+                const Json::Value& albedo_enrty = entry["Emmissive"];
+                emmissive.x = albedo_enrty[0].asFloat();
+                emmissive.y = albedo_enrty[1].asFloat();
+                emmissive.z = albedo_enrty[2].asFloat();
+            }
+
+            material = std::make_unique<Render::ConstantMetalnessRoughnessMaterial>(albedo, metalness, roughness, emmissive);
         }
 
         mMaterials[name] = m_material_manager.add_material(material);

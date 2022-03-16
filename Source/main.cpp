@@ -18,6 +18,9 @@ void error_callback(int, const char* description)
 }
 
 
+#define WIDTH 1024
+#define HEIGHT 1024
+
 int main(int argc, const char **argv)
 {
     {
@@ -25,11 +28,11 @@ int main(int argc, const char **argv)
 
         glfwInit();
 
-        glm::vec4* frame_memory = new glm::vec4[512 * 512];
-        memset(frame_memory, ~0, 512 * 512 * 4);
+        glm::vec4* frame_memory = new glm::vec4[WIDTH * HEIGHT];
+        memset(frame_memory, ~0, WIDTH * HEIGHT * 4);
 
-        uint32_t* sample_count = new uint32_t[512 * 512];
-        memset(sample_count, 0, 512 * 512 * 4);
+        uint32_t* sample_count = new uint32_t[WIDTH * HEIGHT];
+        memset(sample_count, 0, WIDTH * HEIGHT * 4);
 
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -42,14 +45,14 @@ int main(int argc, const char **argv)
 
         gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
-        Util::FrameBuffer frame_buffer(512, 512);
+        Util::FrameBuffer frame_buffer(WIDTH, HEIGHT);
 
         ThreadPool threadPool{};
-        Scene::Scene scene(threadPool, "");
+        Scene::Scene scene(threadPool, "/home/ollie/Documents/Models/PicoTestScenes/MitsubaMaterials/scene.json");
 
         Scene::RenderParams params{};
-        params.m_Height = 512;
-        params.m_Width = 512;
+        params.m_Height = HEIGHT;
+        params.m_Width = WIDTH;
         params.m_maxRayDepth = 10;
         params.m_maxSamples = 512;
         params.m_sample = 1;
