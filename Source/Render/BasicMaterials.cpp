@@ -38,6 +38,13 @@ namespace Render
         mMaterial.emissive = emissive;
     }
 
+    ConstantDiffuseSpecularMaterial::ConstantDiffuseSpecularMaterial(const glm::vec3& diffuse, const glm::vec3& specular, const float gloss, const glm::vec3& emissive)
+    {
+        mMaterial.diffuse = glm::vec4(diffuse, 1.0f);
+        mMaterial.specularRoughness = glm::vec4(specular, 1.0f - (gloss * gloss));
+        mMaterial.emissive = emissive;
+    }
+
     MetalnessRoughnessMaterial::MetalnessRoughnessMaterial(std::unique_ptr<Core::Image2D>& albedo,
                                                            std::unique_ptr<Core::Image2D>& metalness,
                                                            std::unique_ptr<Core::Image2D>& roughness,

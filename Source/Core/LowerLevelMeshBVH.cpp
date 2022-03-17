@@ -22,9 +22,12 @@ namespace Core
             mPositions.resize(mesh->mNumVertices);
             memcpy(mPositions.data(), mesh->mVertices, sizeof(glm::vec3) * mesh->mNumVertices);
 
-            mUVs.resize(mesh->mNumVertices);
-            for(uint32_t i = 0; i < mesh->mNumVertices; ++i)
-                mUVs[i] = glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y);
+            if(mesh->mTextureCoords[0])
+            {
+                mUVs.resize(mesh->mNumVertices);
+                for(uint32_t i = 0; i < mesh->mNumVertices; ++i)
+                    mUVs[i] = glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y);
+            }
 
             static_assert (sizeof(glm::vec3) == sizeof(aiVector3t<float>), "normals size mismatch");
             mNormals.resize(mesh->mNumVertices);
@@ -78,19 +81,19 @@ namespace Core
 
             const uint32_t firstIndex = mIndicies[baseIndiciesIndex];
             const glm::vec3& firstPosition = mPositions[firstIndex];
-            const glm::vec2& firstuv = mUVs[firstIndex];
+            const glm::vec2& firstuv = mUVs.empty() ? glm::vec2(0.0f) : mUVs[firstIndex];
             const glm::vec3& firstNormal = mNormals[firstIndex];
             const glm::vec4 firstColour = mVertexColours[firstIndex];
 
             const uint32_t secondIndex = mIndicies[baseIndiciesIndex + 1];
             const glm::vec3& secondPosition = mPositions[secondIndex];
-            const glm::vec2& seconduv = mUVs[secondIndex];
+            const glm::vec2& seconduv = mUVs.empty() ? glm::vec2(0.0f) : mUVs[secondIndex];
             const glm::vec3& secondNormal = mNormals[secondIndex];
             const glm::vec4& secondColour = mVertexColours[secondIndex];
 
             const uint32_t thirdIndex = mIndicies[baseIndiciesIndex + 2];
             const glm::vec3& thirdPosition = mPositions[thirdIndex];
-            const glm::vec2& thirduv = mUVs[thirdIndex];
+            const glm::vec2& thirduv = mUVs.empty() ? glm::vec2(0.0f) : mUVs[thirdIndex];
             const glm::vec3& thirdNormal = mNormals[thirdIndex];
             const glm::vec4& thirdColour = mVertexColours[thirdIndex];
 

@@ -63,10 +63,38 @@ namespace Scene
         m_bvh.build();
     }
 
-    Scene::Scene(ThreadPool& pool, const Assimp::Importer* scene) :
+    Scene::Scene(ThreadPool& pool, const aiScene* scene) :
         m_threadPool(pool)
     {
+        // Create a black cubemap.
+        unsigned char* black_cube_map = new unsigned char[24];
+        memset(black_cube_map, 0, 24);
+        Core::ImageExtent extent{1, 1, 1};
+        mSkybox = std::make_shared<Core::ImageCube>(black_cube_map, extent, Core::Format::kRBGA_8UNorm);
 
+        for(uint32_t i_mat = 0; i_mat < scene->mNumMaterials; ++i_mat)
+        {
+            aiMaterial* mat = scene->mMaterials[i_mat];
+
+            aiColor3D diffuse;
+            mat->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse);
+
+            aiColor3D specular;
+            mat->Get(AI_MATKEY_COLOR_SPECULAR, specular);
+
+            aiColor3D emissive;
+            mat->Get(AI_MATKEY_COLOR_EMISSIVE, emissive);
+
+            float roughness = 0.1f;
+
+            std::unique_ptr<Core::Material> material =  std::make_unique<Render::ConstantDiffuseSpecularMaterial>(  glm::vec3(diffuse.r, diffuse.g, diffuse.b),
+                                                                                                                    glm::vec3(specular.r, specular.g, specular.b), roughness,
+                                                                                                                    glm::vec3(emissive.r, emissive.g, emissive.b));
+
+            m_material_manager.add_material(material);
+        }
+
+        parse_node(scene, scene->mRootNode, aiMatrix4x4{});
     }
 
     void Scene::render_scene_to_memory(const Camera& camera, const RenderParams& params)
@@ -91,8 +119,8 @@ namespace Scene
 
             ray.mLenght = farPlane;
 
-            std::unique_ptr<Render::Diffuse_Sampler> diffuse_sampler = std::make_unique<Render::Hammersley_GGX_Diffuse_Sampler>(100, seed);
-            std::unique_ptr<Render::Specular_Sampler> specular_sampler = std::make_unique<Render::Hammersley_GGX_Specular_Sampler>(100, seed);
+            std::unique_ptr<Render::Diffuse_Sampler> diffuse_sampler = std::make_unique<Render::Hammersley_GGX_Diffuse_Sampler>(10000, seed);
+            std::unique_ptr<Render::Specular_Sampler> specular_sampler = std::make_unique<Render::Hammersley_GGX_Specular_Sampler>(10000, seed);
 
             Render::Monte_Carlo_Integrator integrator(m_bvh, m_material_manager, mSkybox, diffuse_sampler, specular_sampler, seed);
 
@@ -156,7 +184,10 @@ namespace Scene
     {
         render_scene_to_memory(camera, params);
 
-        stbi_write_jpg(path, params.m_Width, params.m_Height, 4, params.m_Pixels, 100);
+        std::vector<uint32_t> buffer{};
+        std::transform(params.m_Pixels, params.m_Pixels + params.m_Height * params.m_Width, std::back_inserter(buffer), [](glm::vec4& pixel) { return Core::pack_colour(pixel); });
+
+        stbi_write_jpg(path, params.m_Width, params.m_Height, 4, buffer.data(), 100);
     }
 
 
@@ -424,5 +455,39 @@ namespace Scene
             std::memcpy(data, skyboxData.data(), skyboxData.size());
             mSkybox = std::make_shared<Core::ImageCube>(data, extent, Core::Format::kRBGA_8UNorm);
         }
+    }
+
+    void Scene::parse_node(const aiScene* scene,
+                          const aiNode* node,
+                          const aiMatrix4x4& parentTransofrmation)
+    {
+        aiMatrix4x4 transformation = parentTransofrmation * node->mTransformation;
+
+        for(uint32_t i = 0; i < node->mNumMeshes; ++i)
+        {
+            const aiMesh* currentMesh = scene->mMeshes[node->mMeshes[i]];
+            uint32_t materialIndex = currentMesh->mMaterialIndex;
+
+            std::shared_ptr<Core::BVH::LowerLevelBVH> meshBVH = std::make_shared<Core::BVH::LowerLevelMeshBVH>(currentMesh);
+
+            glm::mat4x4 transformationMatrix{};
+            transformationMatrix[0][0] = transformation.a1; transformationMatrix[0][1] = transformation.b1;  transformationMatrix[0][2] = transformation.c1; transformationMatrix[0][3] = transformation.d1;
+            transformationMatrix[1][0] = transformation.a2; transformationMatrix[1][1] = transformation.b2;  transformationMatrix[1][2] = transformation.c2; transformationMatrix[1][3] = transformation.d2;
+            transformationMatrix[2][0] = transformation.a3; transformationMatrix[2][1] = transformation.b3;  transformationMatrix[2][2] = transformation.c3; transformationMatrix[2][3] = transformation.d3;
+            transformationMatrix[3][0] = transformation.a4; transformationMatrix[3][1] = transformation.b4;  transformationMatrix[3][2] = transformation.c4; transformationMatrix[3][3] = transformation.d4;
+
+
+            m_bvh.add_lower_level_bvh(meshBVH, transformationMatrix, materialIndex);
+        }
+
+        // Recurse through all child nodes
+        for(uint32_t i = 0; i < node->mNumChildren; ++i)
+        {
+            parse_node(scene,
+                       node->mChildren[i],
+                       transformation);
+        }
+
+        m_bvh.build();
     }
 }

@@ -127,7 +127,7 @@ namespace Render
         return  lightScatter * viewScatter * energyFactor;
     }
 
-    float specular_GGX(const glm::vec3& N, const glm::vec3& wi, const glm::vec3& wo, const float roughness, const glm::vec3& F0)
+    glm::vec3 specular_GGX(const glm::vec3& N, const glm::vec3& wi, const glm::vec3& wo, const float roughness, const glm::vec3& F0)
     {
         const glm::vec3 H = glm::normalize(wi + wo);
 
@@ -142,10 +142,10 @@ namespace Render
             float weight = std::abs(glm::dot(wo, H))
                          / (glm::dot(N, wo) * glm::dot(N, H));
 
-            return F.x * G * weight;
+            return F * G * weight;
         }
         else
-            return 0.0f;
+            return glm::vec3(0.0f);
     }
 
 }

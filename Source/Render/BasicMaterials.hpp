@@ -108,6 +108,22 @@ namespace Render
         Core::EvaluatedMaterial mMaterial;
     };
 
+    class ConstantDiffuseSpecularMaterial : public ConstantMaterial
+    {
+    public:
+        ConstantDiffuseSpecularMaterial(const glm::vec3& diffuse, const glm::vec3& specular, const float gloss, const glm::vec3& emissive);
+
+        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2& uv) final
+        {
+            return mMaterial;
+        }
+
+
+    private:
+
+        Core::EvaluatedMaterial mMaterial;
+    };
+
 
     // Non constant basic materials.
     class MetalnessRoughnessMaterial : public Core::Material

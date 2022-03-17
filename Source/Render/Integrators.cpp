@@ -16,7 +16,7 @@ namespace Render
                            std::unique_ptr<Diffuse_Sampler>& diffuseSampler, std::unique_ptr<Specular_Sampler>& specSampler, const uint64_t seed) :
         Integrator(bvh, material_manager),
         mGenerator{seed},
-        mDistribution(0, 1),
+        mDistribution(0.0f, 1.0f),
         m_diffuse_sampler(std::move(diffuseSampler)),
         m_specular_sampler(std::move(specSampler)),
         m_skybox{skybox}
@@ -34,12 +34,12 @@ namespace Render
             for(uint32_t i_ray = 0; i_ray < rayCount; ++i_ray)
             {
                 Core::Ray diffuse_ray = ray;
-                diffuse_ray.m_payload = glm::vec4(0.0f);
+                diffuse_ray.m_payload = glm::vec4(1.0f);
                 diffuse_ray.m_weight = 0.0f;
                 trace_diffuse_ray(vertex, diffuse_ray, maxDepth);
 
                 Core::Ray specular_ray = ray;
-                specular_ray.m_payload = glm::vec4(0.0f);
+                specular_ray.m_payload = glm::vec4(1.0f);
                 specular_ray.m_weight = 0.0f;
                 trace_specular_ray(vertex, specular_ray, maxDepth);
 
@@ -76,6 +76,14 @@ namespace Render
         }
 
         const auto material = m_material_manager.evaluate_material(frag.mMaterialID, frag.mUV);
+
+        if(material.emits_light())
+        {
+            ray.m_payload *= glm::vec4(material.emissive, 1.0f);
+            ray.m_weight = ray.m_weight == 0.0f ? 1.0f : ray.m_weight;
+            return;
+        }
+
         glm::vec4 diffuse = material.diffuse;
         const glm::vec3 V = glm::normalize(glm::vec3(ray.mOrigin - frag.mPosition));
 
@@ -95,16 +103,16 @@ namespace Render
         Core::BVH::InterpolatedVertex intersection;
         if(m_bvh.get_closest_intersection(ray, &intersection))
         {
-            ray.m_payload += diffuse * diffuse_factor * sample.P;
+            ray.m_payload *= diffuse * diffuse_factor * sample.P;
 
-            if(mDistribution(mGenerator))
-                trace_diffuse_ray(intersection, ray, depth - 1);
-            else
+            if(weighted_random_ray_type(material))
                 trace_specular_ray(intersection, ray, depth - 1);
+            else
+                trace_diffuse_ray(intersection, ray, depth - 1);
         }
         else
         {
-            ray.m_payload += diffuse * diffuse_factor * sample.P * m_skybox->sample4(sample.L);
+            ray.m_payload *= diffuse * diffuse_factor * sample.P * m_skybox->sample4(sample.L);
         }
     }
 
@@ -118,6 +126,14 @@ namespace Render
         }
 
         const auto material = m_material_manager.evaluate_material(frag.mMaterialID, frag.mUV);
+
+        if(material.emissive.x > 0.0 || material.emissive.y > 0.0 || material.emissive.z > 0.0)
+        {
+            ray.m_payload *= glm::vec4(material.emissive, 1.0f);
+            ray.m_weight = ray.m_weight == 0.0f ? 1.0f : ray.m_weight;
+            return;
+        }
+
         glm::vec4 specular = glm::vec4(material.specularRoughness.x, material.specularRoughness.y, material.specularRoughness.z, 1.0f);
 
         const glm::vec3 V = glm::normalize(glm::vec3(ray.mOrigin - frag.mPosition));
@@ -125,7 +141,7 @@ namespace Render
         Render::Sample sample = m_specular_sampler->generate_sample(frag.mNormal, V, material.specularRoughness.w);
         ray.m_weight += sample.P;
 
-        const float specular_factor = Render::specular_GGX(frag.mNormal, V, sample.L, material.specularRoughness.w,
+        const glm::vec3 specular_factor = Render::specular_GGX(frag.mNormal, V, sample.L, material.specularRoughness.w,
                                                            glm::vec3(material.specularRoughness.x, material.specularRoughness.y, material.specularRoughness.z));
 
         ray.mOrigin = frag.mPosition + glm::vec4(0.01f * sample.L, 0.0f);
@@ -134,16 +150,27 @@ namespace Render
         Core::BVH::InterpolatedVertex intersection;
         if(m_bvh.get_closest_intersection(ray, &intersection))
         {
-            ray.m_payload += specular * specular_factor * sample.P;
+            ray.m_payload *= specular * glm::vec4(specular_factor, 1.0f) * sample.P;
 
-            if(mDistribution(mGenerator))
+            if(weighted_random_ray_type(material))
                 trace_specular_ray(intersection, ray, depth - 1);
             else
                 trace_diffuse_ray(intersection, ray, depth - 1);
         }
         else
         {
-             ray.m_payload += specular * specular_factor * sample.P * m_skybox->sample4(sample.L);
+             ray.m_payload *= specular * glm::vec4(specular_factor, 1.0f) * sample.P * m_skybox->sample4(sample.L);
         }
+    }
+
+
+    bool Monte_Carlo_Integrator::weighted_random_ray_type(const Core::EvaluatedMaterial& mat)
+    {
+        const float diffuse_weight = mat.diffuse_magnitude();
+        const float specular_weight = mat.specular_magnitude();
+
+        const float rand = mDistribution(mGenerator);
+
+        return rand <= (specular_weight / (specular_weight + diffuse_weight));
     }
 }

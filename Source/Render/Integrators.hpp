@@ -45,8 +45,10 @@ namespace Render
         void trace_diffuse_ray(const Core::BVH::InterpolatedVertex& frag, Core::Ray& ray, const uint32_t depth);
         void trace_specular_ray(const Core::BVH::InterpolatedVertex& frag, Core::Ray& ray, const uint32_t depth);
 
+        bool weighted_random_ray_type(const Core::EvaluatedMaterial& mat);
+
         std::mt19937 mGenerator;
-        std::uniform_int_distribution<> mDistribution;
+        std::uniform_real_distribution<float> mDistribution;
 
         std::unique_ptr<Diffuse_Sampler> m_diffuse_sampler;
         std::unique_ptr<Specular_Sampler> m_specular_sampler;

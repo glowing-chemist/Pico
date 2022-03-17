@@ -31,7 +31,7 @@ namespace Render
 
     float disney_diffuse(float  NdotV , float  NdotL , float  LdotH ,float linearRoughness);
 
-    float specular_GGX(const glm::vec3& N, const glm::vec3& V, const glm::vec3& L, const float roughness, const glm::vec3& F0);
+    glm::vec3 specular_GGX(const glm::vec3& N, const glm::vec3& V, const glm::vec3& L, const float roughness, const glm::vec3& F0);
 
 }
 

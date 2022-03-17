@@ -4,6 +4,7 @@
 #include <memory>
 #include <vector>
 
+#include "glm/glm.hpp"
 #include "glm/vec3.hpp"
 #include "glm/vec4.hpp"
 
@@ -19,6 +20,21 @@ namespace Core
         glm::vec4 specularRoughness; // xyz specular w roughness
         glm::vec3 normal;
         glm::vec3 emissive;
+
+        bool emits_light() const
+        {
+            return (emissive.x > 0.0f) || (emissive.y > 0.0f) || (emissive.z > 0.0f);
+        }
+
+        float diffuse_magnitude() const
+        {
+            return glm::length(glm::vec3(diffuse));
+        }
+
+        float specular_magnitude() const
+        {
+            return glm::length(glm::vec3(specularRoughness.x, specularRoughness.y, specularRoughness.z));
+        }
     };
 
 

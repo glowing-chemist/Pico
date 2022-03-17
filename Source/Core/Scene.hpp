@@ -5,6 +5,7 @@
 #include "ThirdParty/nanort/nanort.h"
 #include "json/json.h"
 #include "assimp/Importer.hpp"
+#include "assimp/scene.h"
 
 #include "Image.hpp"
 #include "Core/ThreadPool.hpp"
@@ -43,7 +44,7 @@ namespace Scene
     public:
 
         Scene(ThreadPool&, const std::filesystem::path& sceneFile);
-        Scene(ThreadPool&, const Assimp::Importer* scene);
+        Scene(ThreadPool&, const aiScene *scene);
         ~Scene() = default;
 
         void render_scene_to_memory(const Camera&, const RenderParams&);
@@ -67,6 +68,10 @@ namespace Scene
         void add_material(const std::string& name, const Json::Value& entry);
         void add_camera(const std::string& name, const Json::Value& entry);
         void process_globals(const std::string& name, const Json::Value& entry);
+
+        void parse_node(const aiScene* scene,
+                              const aiNode* node,
+                              const aiMatrix4x4& parentTransofrmation);
 
         std::filesystem::path mWorkingDir;
         std::unordered_map<std::string, Camera>  mCamera;
