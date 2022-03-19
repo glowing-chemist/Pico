@@ -28,7 +28,7 @@ namespace Render
     Render::Sample Monte_Carlo_Integrator::generate_next_diffuse_event(const glm::vec3& pos, const glm::vec3 &N)
     {
         // Importance sample cos(Theta)
-        if(mDistribution(mGenerator) >= 0.3f)
+        if(m_light_bounds.empty() || mDistribution(mGenerator) >= 0.3f)
             return m_diffuse_sampler->generate_sample(N);
         else // Try to find a light.
         {
