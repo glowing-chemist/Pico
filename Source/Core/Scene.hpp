@@ -81,6 +81,7 @@ namespace Scene
 
         Core::BVH::UpperLevelBVH m_bvh;
         Core::MaterialManager m_material_manager;
+        std::vector<Core::AABB> m_light_bounds;
 
         ThreadPool& m_threadPool;
 

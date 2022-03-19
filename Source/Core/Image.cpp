@@ -59,7 +59,7 @@ namespace Core
 
     Image::~Image()
     {
-        delete[] mData;
+        free(mData);
     }
 
     size_t Image::get_residence_size() const

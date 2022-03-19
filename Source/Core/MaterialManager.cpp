@@ -5,7 +5,8 @@ namespace Core
 
     MaterialManager::~MaterialManager()
     {
-        // TODO memory cleanup.
+        for(auto& mat : mMaterials)
+                mat->make_nonresident();
     }
 
     MaterialManager::MaterialID MaterialManager::add_material(std::unique_ptr<Material>& mat)

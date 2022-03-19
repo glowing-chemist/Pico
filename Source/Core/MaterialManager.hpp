@@ -47,6 +47,8 @@ namespace Core
         virtual ~Material() = default;
 
         virtual EvaluatedMaterial evaluate_material(const glm::vec2& uv) = 0;
+
+        virtual bool              is_light() const = 0;
     };
 
     // TODO add memory constraints.
@@ -64,6 +66,11 @@ namespace Core
         MaterialID add_material(std::unique_ptr<Material>&);
 
         EvaluatedMaterial evaluate_material(const MaterialID id, const glm::vec2& uv);
+
+        const std::unique_ptr<Material>& get_material(const MaterialID id) const
+        {
+            return mMaterials[id];
+        }
 
     private:
 

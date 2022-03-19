@@ -95,6 +95,8 @@ namespace Scene
         }
 
         parse_node(scene, scene->mRootNode, aiMatrix4x4{});
+
+        m_bvh.build();
     }
 
     void Scene::render_scene_to_memory(const Camera& camera, const RenderParams& params)
@@ -122,7 +124,7 @@ namespace Scene
             std::unique_ptr<Render::Diffuse_Sampler> diffuse_sampler = std::make_unique<Render::Hammersley_GGX_Diffuse_Sampler>(10000, seed);
             std::unique_ptr<Render::Specular_Sampler> specular_sampler = std::make_unique<Render::Hammersley_GGX_Specular_Sampler>(10000, seed);
 
-            Render::Monte_Carlo_Integrator integrator(m_bvh, m_material_manager, mSkybox, diffuse_sampler, specular_sampler, seed);
+            Render::Monte_Carlo_Integrator integrator(m_bvh, m_material_manager, m_light_bounds, mSkybox, diffuse_sampler, specular_sampler, seed);
 
             return integrator.integrate_ray(ray, params.m_maxRayDepth, params.m_sample);
         };
@@ -148,6 +150,7 @@ namespace Scene
 
                 uint32_t prev_sample_count = params.m_SampleCount[pixel_index];
                 glm::vec4 pixel_result =  trace_ray(pix, piy, random_generator());
+                pixel_result = glm::clamp(pixel_result, 0.0f, 1.0f);
 
                 if(prev_sample_count < 1)
                 {
@@ -262,6 +265,10 @@ namespace Scene
                                     glm::scale(glm::mat4x4(1.0f), scale);
 
         m_bvh.add_lower_level_bvh(m_lowerLevelBVhs[assetID], transform, material);
+
+        if(m_material_manager.get_material(material)->is_light())
+            m_light_bounds.push_back(m_lowerLevelBVhs[assetID]->get_bounds() * transform);
+
     }
 
     void Scene::add_material(const std::string &name, const Json::Value &entry)
@@ -476,8 +483,10 @@ namespace Scene
             transformationMatrix[2][0] = transformation.a3; transformationMatrix[2][1] = transformation.b3;  transformationMatrix[2][2] = transformation.c3; transformationMatrix[2][3] = transformation.d3;
             transformationMatrix[3][0] = transformation.a4; transformationMatrix[3][1] = transformation.b4;  transformationMatrix[3][2] = transformation.c4; transformationMatrix[3][3] = transformation.d4;
 
-
             m_bvh.add_lower_level_bvh(meshBVH, transformationMatrix, materialIndex);
+
+            if(m_material_manager.get_material(materialIndex)->is_light())
+                m_light_bounds.push_back(meshBVH->get_bounds() * transformationMatrix);
         }
 
         // Recurse through all child nodes
@@ -487,7 +496,5 @@ namespace Scene
                        node->mChildren[i],
                        transformation);
         }
-
-        m_bvh.build();
     }
 }

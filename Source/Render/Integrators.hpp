@@ -19,7 +19,7 @@ namespace Render
     {
     public:
 
-        Integrator(const Core::BVH::UpperLevelBVH&, Core::MaterialManager&);
+        Integrator(const Core::BVH::UpperLevelBVH&, Core::MaterialManager&, const std::vector<Core::AABB>& light_bounds);
 
 
         virtual glm::vec4 integrate_ray(const Core::Ray& ray, const uint32_t maxDepth, const uint32_t rayCount) = 0;
@@ -28,6 +28,7 @@ namespace Render
 
         const Core::BVH::UpperLevelBVH& m_bvh;
         Core::MaterialManager& m_material_manager;
+        std::vector<Core::AABB> m_light_bounds;
     };
 
 
@@ -35,12 +36,15 @@ namespace Render
     {
     public:
 
-        Monte_Carlo_Integrator(const Core::BVH::UpperLevelBVH&,  Core::MaterialManager&, std::shared_ptr<Core::ImageCube>& skybox,
+        Monte_Carlo_Integrator(const Core::BVH::UpperLevelBVH&,  Core::MaterialManager&, const std::vector<Core::AABB> &light_bounds, std::shared_ptr<Core::ImageCube>& skybox,
                                std::unique_ptr<Diffuse_Sampler>& diffuseSampler, std::unique_ptr<Specular_Sampler>& specSampler, const uint64_t seed);
 
         virtual glm::vec4 integrate_ray(const Core::Ray& ray, const uint32_t maxDepth, const uint32_t rayCount) final;
 
     private:
+
+        Render::Sample generate_next_diffuse_event(const glm::vec3& pos, const glm::vec3& N);
+        Render::Sample generate_next_specular_event(const glm::vec3& pos, const glm::vec3& N, const glm::vec3 V, const float R);
 
         void trace_diffuse_ray(const Core::BVH::InterpolatedVertex& frag, Core::Ray& ray, const uint32_t depth);
         void trace_specular_ray(const Core::BVH::InterpolatedVertex& frag, Core::Ray& ray, const uint32_t depth);

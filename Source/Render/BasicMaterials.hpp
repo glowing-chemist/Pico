@@ -48,6 +48,11 @@ namespace Render
 
         virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2& uv) final;
 
+        virtual bool              is_light() const final
+        {
+            return false;
+        }
+
     private:
 
         glm::vec3 m_colour;
@@ -63,6 +68,11 @@ namespace Render
 
         virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2& uv) final;
 
+        virtual bool              is_light() const final
+        {
+            return false;
+        }
+
     private:
 
         glm::vec3 m_colour;
@@ -77,6 +87,11 @@ namespace Render
 
         virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2& uv) final;
 
+        virtual bool              is_light() const final
+        {
+            return false;
+        }
+
     private:
 
         glm::vec3 m_colour;
@@ -90,6 +105,11 @@ namespace Render
         EmmissiveMaterial() = default;
 
         virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2& uv) final;
+
+        virtual bool              is_light() const final
+        {
+            return true;
+        }
     };
 
     class ConstantMetalnessRoughnessMaterial : public ConstantMaterial
@@ -97,11 +117,15 @@ namespace Render
     public:
         ConstantMetalnessRoughnessMaterial(const glm::vec3& albedo, const float metalness, const float roughness, const glm::vec3& emissive);
 
-        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2& uv) final
+        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2&) final
         {
             return mMaterial;
         }
 
+        virtual bool              is_light() const final
+        {
+            return mMaterial.emissive.x > 0.0f || mMaterial.emissive.y > 0.0f || mMaterial.emissive.z > 0.0f;
+        }
 
     private:
 
@@ -113,11 +137,15 @@ namespace Render
     public:
         ConstantDiffuseSpecularMaterial(const glm::vec3& diffuse, const glm::vec3& specular, const float gloss, const glm::vec3& emissive);
 
-        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2& uv) final
+        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2&) final
         {
             return mMaterial;
         }
 
+        virtual bool              is_light() const final
+        {
+            return mMaterial.emissive.x > 0.0f || mMaterial.emissive.y > 0.0f || mMaterial.emissive.z > 0.0f;
+        }
 
     private:
 
@@ -144,6 +172,11 @@ namespace Render
         virtual void make_nonresident() final;
 
         virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2& uv) final;
+
+        virtual bool              is_light() const final
+        {
+            return mEmmissiveTexture.get();
+        }
 
     private:
 
@@ -172,6 +205,11 @@ namespace Render
         virtual void make_nonresident() final;
 
         virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2& uv) final;
+
+        virtual bool              is_light() const final
+        {
+            return mEmmissiveTexture.get();
+        }
 
     private:
 

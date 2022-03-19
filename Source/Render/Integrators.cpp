@@ -5,16 +5,18 @@
 namespace Render
 {
 
-    Integrator::Integrator(const Core::BVH::UpperLevelBVH& bvh, Core::MaterialManager& material_manager) :
+    Integrator::Integrator(const Core::BVH::UpperLevelBVH& bvh, Core::MaterialManager& material_manager, const std::vector<Core::AABB> &light_bounds) :
         m_bvh{bvh},
-        m_material_manager{material_manager}
+        m_material_manager{material_manager},
+        m_light_bounds(light_bounds)
     {
     }
 
 
-    Monte_Carlo_Integrator::Monte_Carlo_Integrator(const Core::BVH::UpperLevelBVH& bvh,  Core::MaterialManager& material_manager, std::shared_ptr<Core::ImageCube>& skybox,
+    Monte_Carlo_Integrator::Monte_Carlo_Integrator(const Core::BVH::UpperLevelBVH& bvh,  Core::MaterialManager& material_manager, const std::vector<Core::AABB>& light_bounds,
+                                                   std::shared_ptr<Core::ImageCube>& skybox,
                            std::unique_ptr<Diffuse_Sampler>& diffuseSampler, std::unique_ptr<Specular_Sampler>& specSampler, const uint64_t seed) :
-        Integrator(bvh, material_manager),
+        Integrator(bvh, material_manager, light_bounds),
         mGenerator{seed},
         mDistribution(0.0f, 1.0f),
         m_diffuse_sampler(std::move(diffuseSampler)),
@@ -23,6 +25,32 @@ namespace Render
     {
     }
 
+    Render::Sample Monte_Carlo_Integrator::generate_next_diffuse_event(const glm::vec3& pos, const glm::vec3 &N)
+    {
+        // Importance sample cos(Theta)
+        if(mDistribution(mGenerator) >= 0.3f)
+            return m_diffuse_sampler->generate_sample(N);
+        else // Try to find a light.
+        {
+            const float rand_light = mDistribution(mGenerator);
+            const uint32_t light_index = rand_light * m_light_bounds.size();
+            const Core::AABB& bounds = m_light_bounds[light_index];
+            glm::vec3 bounds_size = bounds.get_side_lengths();
+            glm::vec3 rand_offset = glm::vec3{mDistribution(mGenerator), mDistribution(mGenerator), mDistribution(mGenerator)} - 0.5f;
+            glm::vec3 light_center = glm::vec3(bounds.get_central_point()) + (bounds_size * rand_offset);
+            glm::vec3 to_light = glm::normalize(light_center - pos);
+            const float LdotN = glm::dot(N, to_light);
+            if(LdotN > 0.0f)
+                return Render::Sample{to_light, LdotN};
+            else
+                return m_diffuse_sampler->generate_sample(N);
+        }
+    }
+
+    Render::Sample Monte_Carlo_Integrator::generate_next_specular_event(const glm::vec3&, const glm::vec3 &N, const glm::vec3 V, const float R)
+    {
+        return m_specular_sampler->generate_sample(N, V, R);
+    }
 
     glm::vec4 Monte_Carlo_Integrator::integrate_ray(const Core::Ray& ray, const uint32_t maxDepth, const uint32_t rayCount)
     {
@@ -87,7 +115,7 @@ namespace Render
         glm::vec4 diffuse = material.diffuse;
         const glm::vec3 V = glm::normalize(glm::vec3(ray.mOrigin - frag.mPosition));
 
-        Render::Sample sample = m_diffuse_sampler->generate_sample(frag.mNormal);
+        Render::Sample sample = generate_next_diffuse_event(frag.mPosition, frag.mNormal);
         ray.m_weight += sample.P;
 
         const float NdotV = glm::clamp(glm::dot(glm::vec3(frag.mNormal), V), 0.0f, 1.0f);
@@ -138,7 +166,7 @@ namespace Render
 
         const glm::vec3 V = glm::normalize(glm::vec3(ray.mOrigin - frag.mPosition));
 
-        Render::Sample sample = m_specular_sampler->generate_sample(frag.mNormal, V, material.specularRoughness.w);
+        Render::Sample sample = generate_next_specular_event(frag.mPosition, frag.mNormal, V, material.specularRoughness.w);
         ray.m_weight += sample.P;
 
         const glm::vec3 specular_factor = Render::specular_GGX(frag.mNormal, V, sample.L, material.specularRoughness.w,
