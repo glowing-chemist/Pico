@@ -21,11 +21,14 @@ set(SOURCE
 	Source/Core/AABB.cpp
 	Source/Core/OctTree.cpp
 	Source/Core/MaterialManager.cpp
+	Source/Core/vectorUtils.cpp
 
 	Source/Render/Sampler.cpp
 	Source/Render/PBR.cpp
 	Source/Render/Integrators.cpp
 	Source/Render/BasicMaterials.cpp
+	Source/Render/SolidAngle.cpp
+	Source/Render/Distributions.cpp
 
 	Source/Util/Options.cpp
 	Source/Util/FrameBuffer.cpp

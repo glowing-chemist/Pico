@@ -121,8 +121,11 @@ namespace Scene
 
             ray.mLenght = farPlane;
 
-            std::unique_ptr<Render::Diffuse_Sampler> diffuse_sampler = std::make_unique<Render::Hammersley_GGX_Diffuse_Sampler>(10000, seed);
-            std::unique_ptr<Render::Specular_Sampler> specular_sampler = std::make_unique<Render::Hammersley_GGX_Specular_Sampler>(10000, seed);
+            std::unique_ptr<Render::Distribution> cosine_weighted_dist = std::make_unique<Render::Cos_Weighted_Hemisphere_Distribution>();
+            std::unique_ptr<Render::Distribution> beckmann_microfact_dist = std::make_unique<Render::Beckmann_All_Microfacet_Distribution>();
+
+            auto diffuse_sampler = std::make_unique<Render::Diffuse_Sampler>(10000, seed, cosine_weighted_dist);
+            auto specular_sampler = std::make_unique<Render::Specular_Sampler>(10000, seed, beckmann_microfact_dist);
 
             Render::Monte_Carlo_Integrator integrator(m_bvh, m_material_manager, m_light_bounds, mSkybox, diffuse_sampler, specular_sampler, seed);
 

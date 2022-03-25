@@ -1,4 +1,6 @@
 #include "PBR.hpp"
+#include "Core/vectorUtils.hpp"
+#include "Core/Asserts.hpp"
 
 #include "glm/ext.hpp"
 
@@ -8,49 +10,6 @@
 
 namespace Render
 {
-
-    void  importance_sample_CosDir(const glm::vec2& u, const glm::vec3& N, glm::vec3& L, float& NdotL)
-    {
-        //  Local  referencial
-        glm::vec3  upVector = abs(N.z) < 0.999 ? glm::vec3 (0,0,1) : glm::vec3 (1,0,0);
-        glm::vec3  tangentX = normalize( cross( upVector , N ) );
-        glm::vec3  tangentY = cross( N, tangentX );
-
-        float  u1 = u.x;
-        float  u2 = u.y;
-
-        float r = sqrt(u1);
-        float  phi = u2 * M_PI * 2;
-
-        L = glm::vec3(r*cos(phi), r*sin(phi), sqrt(std::max(0.0f,1.0f-u1)));
-        L = normalize(tangentX * L.y + tangentY * L.x + N * L.z);
-
-        NdotL = dot(L,N);
-    }
-
-    glm::vec3 importance_sample_GGX(const glm::vec2& Xi, const float roughness, const glm::vec3& N)
-    {
-        float a = roughness*roughness;
-
-        float phi = 2.0 * M_PI * Xi.x;
-        float cosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a*a - 1.0) * Xi.y));
-        float sinTheta = sqrt(1.0 - cosTheta*cosTheta);
-
-        // from spherical coordinates to cartesian coordinates
-        glm::vec3 H;
-        H.x = cos(phi) * sinTheta;
-        H.y = sin(phi) * sinTheta;
-        H.z = cosTheta;
-
-        // from tangent-space vector to world-space sample vector
-        glm::vec3 up        = abs(N.z) < 0.999 ? glm::vec3(0.0, 0.0, 1.0) : glm::vec3(1.0, 0.0, 0.0);
-        glm::vec3 tangent   = normalize(cross(up, N));
-        glm::vec3 bitangent = cross(N, tangent);
-
-        glm::vec3 sampleVec = tangent * H.x + bitangent * H.y + N * H.z;
-        return normalize(sampleVec);
-    }
-
     float radical_inverse_VdC(uint32_t bits)
     {
         bits = (bits << 16u) | (bits >> 16u);

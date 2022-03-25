@@ -1,5 +1,5 @@
 #include "LowerLevelImplicitShapesBVH.hpp"
-
+#include "Core/Asserts.hpp"
 
 #ifndef M_PI
 #define M_PI 3.14159265359
@@ -39,6 +39,7 @@ namespace Core
         if(t < 0.0f)
             t = 0.0f;
 
+        PICO_ASSERT(t > 0.0f);
         result->mPosition = ray.mOrigin + t * glm::vec4(ray.mDirection, 1.0f);
         result->mPosition.w = 1.0f;
         result->mVertexColour = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);

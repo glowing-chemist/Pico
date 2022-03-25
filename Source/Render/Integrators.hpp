@@ -43,8 +43,8 @@ namespace Render
 
     private:
 
-        Render::Sample generate_next_diffuse_event(const glm::vec3& pos, const glm::vec3& N);
-        Render::Sample generate_next_specular_event(const glm::vec3& pos, const glm::vec3& N, const glm::vec3 V, const float R);
+        Render::Sample generate_next_diffuse_event(const glm::vec3& pos, const glm::vec3& N, const glm::vec3& V, const float R);
+        Render::Sample generate_next_specular_event(const glm::vec3& pos, const glm::vec3& N, const glm::vec3& V, const float R);
 
         void trace_diffuse_ray(const Core::BVH::InterpolatedVertex& frag, Core::Ray& ray, const uint32_t depth);
         void trace_specular_ray(const Core::BVH::InterpolatedVertex& frag, Core::Ray& ray, const uint32_t depth);

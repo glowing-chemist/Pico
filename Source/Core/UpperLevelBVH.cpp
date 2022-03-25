@@ -1,6 +1,7 @@
 #include "UpperLevelBVH.hpp"
 #include "LowerLevelImplicitShapesBVH.hpp"
 #include "LowerLevelMeshBVH.hpp"
+#include "Core/Asserts.hpp"
 
 #include <iterator>
 
@@ -26,6 +27,8 @@ namespace Core
                     found_vertex.mPosition = intersection->mTransform * found_vertex.mPosition;
                     found_vertex.mNormal   = glm::mat3x3(intersection->mTransform) * found_vertex.mNormal;
 
+                    //PICO_ASSERT(!(found_vertex.mPosition != ray.mOrigin));
+
                     *vertex = found_vertex;
 
                     return true;
@@ -37,6 +40,9 @@ namespace Core
 
         void UpperLevelBVH::get_all_intersections(const Ray& ray, std::vector<InterpolatedVertex>& vertices) const
         {
+            PICO_ASSERT_VALID(ray.mDirection);
+            PICO_ASSERT_VALID(ray.mOrigin);
+
             const auto rough_intersections = mOctTree.get_all_intersections(ray);
 
             for(const auto& intersection : rough_intersections)
@@ -52,6 +58,9 @@ namespace Core
                     // Bring vertex back to world space.
                     found_vertex.mPosition = intersection->mTransform * found_vertex.mPosition;
                     found_vertex.mNormal   = glm::mat3x3(intersection->mTransform) * found_vertex.mNormal;
+
+                    PICO_ASSERT_VALID(found_vertex.mPosition);
+                    PICO_ASSERT_VALID(found_vertex.mNormal);
 
                     vertices.push_back(found_vertex);
                 }

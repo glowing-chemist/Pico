@@ -1,7 +1,10 @@
 #ifndef RT_SAMPLERS_HPP
 #define RT_SAMPLERS_HPP
 
+#include "Distributions.hpp"
+
 #include "glm/common.hpp"
+#include <memory>
 #include <random>
 
 namespace Render
@@ -11,15 +14,29 @@ namespace Render
     {
         glm::vec3 L;
         float P;
+        glm::vec3 energy;
     };
 
     class Diffuse_Sampler
     {
     public:
 
-        Diffuse_Sampler() = default;
+        Diffuse_Sampler(const uint32_t maxSamples, const uint64_t seed, std::unique_ptr<Distribution>& dist) :
+            m_distribution(std::move(dist)),
+            m_max_samples(maxSamples),
+            m_generator(seed),
+            m_random_sample_distribution(0, m_max_samples) {}
 
-        virtual Sample generate_sample(const glm::vec3 &normal) = 0;
+        Sample generate_sample(const glm::vec3& N, const glm::vec3& V, const float R);
+
+    private:
+
+        std::unique_ptr<Distribution> m_distribution;
+
+        uint32_t m_max_samples;
+
+        std::mt19937 m_generator;
+        std::uniform_int_distribution<> m_random_sample_distribution;
 
     };
 
@@ -27,46 +44,23 @@ namespace Render
     {
     public:
 
-        Specular_Sampler() = default;
-
-        virtual Sample generate_sample(const glm::vec3& N, const glm::vec3& V, const float R) = 0;
-
-    };
-
-    class Hammersley_GGX_Diffuse_Sampler : public Diffuse_Sampler
-    {
-    public:
-        Hammersley_GGX_Diffuse_Sampler(const uint32_t maxSamples, const uint64_t seed) :
-            mMaxSamples(maxSamples),
-            mGenerator{seed},
-            mDistribution(0, maxSamples) {}
-
-        virtual Sample generate_sample(const glm::vec3 &normal) final;
-
-    private:
-
-        uint32_t mMaxSamples;
-
-        std::mt19937 mGenerator;
-        std::uniform_int_distribution<> mDistribution;
-    };
-
-
-    class Hammersley_GGX_Specular_Sampler : public Specular_Sampler
-    {
-    public:
-        Hammersley_GGX_Specular_Sampler(const uint32_t maxSamples, const uint64_t seed) :
-            mMaxSamples(maxSamples),
-            mGenerator{seed},
-            mDistribution(0, maxSamples) {}
+        Specular_Sampler(const uint32_t maxSamples, const uint64_t seed, std::unique_ptr<Distribution>& dist) :
+            m_distribution(std::move(dist)),
+            m_max_samples(maxSamples),
+            m_generator(seed),
+            m_random_sample_distribution(0, m_max_samples) {}
 
         Sample generate_sample(const glm::vec3& N, const glm::vec3& V, const float R);
 
     private:
-        uint32_t mMaxSamples;
 
-        std::mt19937 mGenerator;
-        std::uniform_int_distribution<> mDistribution;
+        std::unique_ptr<Distribution> m_distribution;
+
+        uint32_t m_max_samples;
+
+        std::mt19937 m_generator;
+        std::uniform_int_distribution<> m_random_sample_distribution;
+
     };
 
 }

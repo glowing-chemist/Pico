@@ -1,6 +1,7 @@
 #include "Integrators.hpp"
 #include "Render/PBR.hpp"
 #include "Core/Image.hpp"
+#include "Core/Asserts.hpp"
 
 namespace Render
 {
@@ -25,11 +26,11 @@ namespace Render
     {
     }
 
-    Render::Sample Monte_Carlo_Integrator::generate_next_diffuse_event(const glm::vec3& pos, const glm::vec3 &N)
+    Render::Sample Monte_Carlo_Integrator::generate_next_diffuse_event(const glm::vec3& pos, const glm::vec3 &N, const glm::vec3& V, const float R)
     {
         // Importance sample cos(Theta)
         if(m_light_bounds.empty() || mDistribution(mGenerator) >= 0.3f)
-            return m_diffuse_sampler->generate_sample(N);
+            return m_diffuse_sampler->generate_sample(N, V, R);
         else // Try to find a light.
         {
             const float rand_light = mDistribution(mGenerator);
@@ -41,13 +42,13 @@ namespace Render
             glm::vec3 to_light = glm::normalize(light_center - pos);
             const float LdotN = glm::dot(N, to_light);
             if(LdotN > 0.0f)
-                return Render::Sample{to_light, LdotN};
+                return Render::Sample{to_light, 1.0f / ( 2.0f * float(M_PI)), glm::vec3(1.0f)};
             else
-                return m_diffuse_sampler->generate_sample(N);
+                return m_diffuse_sampler->generate_sample(N, V, R);
         }
     }
 
-    Render::Sample Monte_Carlo_Integrator::generate_next_specular_event(const glm::vec3&, const glm::vec3 &N, const glm::vec3 V, const float R)
+    Render::Sample Monte_Carlo_Integrator::generate_next_specular_event(const glm::vec3&, const glm::vec3 &N, const glm::vec3 &V, const float R)
     {
         return m_specular_sampler->generate_sample(N, V, R);
     }
@@ -84,7 +85,6 @@ namespace Render
             if(glm::any(glm::isinf(diffuse)) || glm::any(glm::isnan(diffuse)))
                 diffuse = glm::vec4(0.0f);
 
-
             return diffuse + specular;
         }
         else
@@ -115,7 +115,8 @@ namespace Render
         glm::vec4 diffuse = material.diffuse;
         const glm::vec3 V = glm::normalize(glm::vec3(ray.mOrigin - frag.mPosition));
 
-        Render::Sample sample = generate_next_diffuse_event(frag.mPosition, frag.mNormal);
+        Render::Sample sample = generate_next_diffuse_event(frag.mPosition, frag.mNormal, V, material.specularRoughness.w);
+        PICO_ASSERT_VALID(sample.L);
         ray.m_weight += sample.P;
 
         const float NdotV = glm::clamp(glm::dot(glm::vec3(frag.mNormal), V), 0.0f, 1.0f);
@@ -123,15 +124,15 @@ namespace Render
         const glm::vec3 H = glm::normalize(V + sample.L);
         const float LdotH  = glm::clamp(glm::dot(sample.L, H), 0.0f, 1.0f);
 
-        const float diffuse_factor = Render::disney_diffuse(NdotV, NdotL, LdotH, material.specularRoughness.w);
+        const glm::vec4 diffuse_factor = glm::vec4(sample.energy, 1.0f);
 
-        ray.mOrigin = frag.mPosition + glm::vec4(0.01f * sample.L, 0.0f);
+        ray.mOrigin = frag.mPosition + glm::vec4(0.01f * frag.mNormal, 0.0f);
         ray.mDirection = sample.L;
 
         Core::BVH::InterpolatedVertex intersection;
         if(m_bvh.get_closest_intersection(ray, &intersection))
         {
-            ray.m_payload *= diffuse * diffuse_factor * sample.P;
+            ray.m_payload *= diffuse * diffuse_factor;
 
             if(weighted_random_ray_type(material))
                 trace_specular_ray(intersection, ray, depth - 1);
@@ -139,9 +140,7 @@ namespace Render
                 trace_diffuse_ray(intersection, ray, depth - 1);
         }
         else
-        {
-            ray.m_payload *= diffuse * diffuse_factor * sample.P * m_skybox->sample4(sample.L);
-        }
+            ray.m_payload *= diffuse * diffuse_factor * m_skybox->sample4(sample.L);
     }
 
     void Monte_Carlo_Integrator::trace_specular_ray(const Core::BVH::InterpolatedVertex& frag, Core::Ray& ray, const uint32_t depth)
@@ -167,18 +166,18 @@ namespace Render
         const glm::vec3 V = glm::normalize(glm::vec3(ray.mOrigin - frag.mPosition));
 
         Render::Sample sample = generate_next_specular_event(frag.mPosition, frag.mNormal, V, material.specularRoughness.w);
+        PICO_ASSERT_VALID(sample.L);
         ray.m_weight += sample.P;
 
-        const glm::vec3 specular_factor = Render::specular_GGX(frag.mNormal, V, sample.L, material.specularRoughness.w,
-                                                           glm::vec3(material.specularRoughness.x, material.specularRoughness.y, material.specularRoughness.z));
+        const glm::vec4 specular_factor = glm::vec4(sample.energy, 1.0f);
 
-        ray.mOrigin = frag.mPosition + glm::vec4(0.01f * sample.L, 0.0f);
+        ray.mOrigin = frag.mPosition + glm::vec4(0.01f * frag.mNormal, 0.0f);
         ray.mDirection = sample.L;
 
         Core::BVH::InterpolatedVertex intersection;
         if(m_bvh.get_closest_intersection(ray, &intersection))
         {
-            ray.m_payload *= specular * glm::vec4(specular_factor, 1.0f) * sample.P;
+            ray.m_payload *= specular * specular_factor;
 
             if(weighted_random_ray_type(material))
                 trace_specular_ray(intersection, ray, depth - 1);
@@ -186,9 +185,7 @@ namespace Render
                 trace_diffuse_ray(intersection, ray, depth - 1);
         }
         else
-        {
-             ray.m_payload *= specular * glm::vec4(specular_factor, 1.0f) * sample.P * m_skybox->sample4(sample.L);
-        }
+             ray.m_payload *= specular * specular_factor * m_skybox->sample4(sample.L);
     }
 
 
