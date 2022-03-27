@@ -1,4 +1,6 @@
 #include "LowerLevelMeshBVH.hpp"
+#include "Render/SolidAngle.hpp"
+#include "Core/Asserts.hpp"
 
 namespace Core
 {
@@ -59,6 +61,77 @@ namespace Core
             newRay.max_t = ray.mLenght;
 
             return trace_ray(newRay, result);
+        }
+
+        void LowerLevelMeshBVH::generate_sampling_data()
+        {
+            for(uint32_t i_index = 0; i_index < mIndicies.size(); i_index += 3)
+            {
+                TriangleFace face{};
+                face.m_normal = glm::normalize(mNormals[mIndicies[i_index]] + mNormals[mIndicies[i_index + 1]] + mNormals[mIndicies[i_index + 1]]);
+
+                // calculate triangle area.
+                const glm::vec3 a = mPositions[mIndicies[i_index]];
+                const glm::vec3 b = mPositions[mIndicies[i_index + 1]];
+                const glm::vec3 c = mPositions[mIndicies[i_index + 2]];
+
+                const glm::vec3 ac = a - c;
+                const glm::vec3 bc = b - c;
+                const float bc_length = glm::length(bc);
+
+                const float base = glm::length(ac);
+                const float theta = std::sin(std::acos(glm::dot(glm::normalize(ac), glm::normalize(bc))) * (180.0f / M_PI));
+                const float height = theta * bc_length;
+
+                face.m_area = (base * height) / 2.0f;
+
+                m_triangle_faces.push_back(face);
+
+            }
+        }
+
+        bool LowerLevelMeshBVH::sample_geometry(Rand::Hammersley_Generator& rand, const glm::vec3& point, glm::vec3& sample_point, float& solid_angle)
+        {
+            std::vector<float> sample_solid_angle{};
+            sample_solid_angle.reserve(m_triangle_faces.size());
+            std::vector<glm::vec3> sample_positions{};
+            sample_positions.reserve(m_triangle_faces.size());
+
+            float total_solid_angle = 0.0f;
+            for(uint32_t i_face = 0; i_face < m_triangle_faces.size(); ++i_face)
+            {
+                const glm::vec2 Xi = rand.next();
+                const glm::vec2 barycentrics = Core::Rand::uniform_sample_triangle(Xi);
+
+                const uint32_t index_start = 3 * i_face;
+                const glm::vec3 sampled_pos = ((1.0f - barycentrics.x - barycentrics.y) * mPositions[mIndicies[index_start]] +
+                                               (barycentrics.x * mPositions[mIndicies[index_start + 1]])) +
+                                                (barycentrics.y * mPositions[mIndicies[index_start + 2]]);
+
+                glm::vec3 wi = glm::normalize(sampled_pos - point);
+
+                const TriangleFace& face = m_triangle_faces[i_face];
+
+                if(glm::dot(face.m_normal, -wi) >= 0.0f)
+                {
+                    sample_positions.push_back(sampled_pos);
+
+                    const float solid_angle = Render::solid_angle(point, sampled_pos, face.m_normal, face.m_area);
+                    total_solid_angle += solid_angle;
+                    sample_solid_angle.push_back(solid_angle);
+                }
+            }
+
+            const glm::vec2 Xi = rand.next();
+            uint32_t sample_index = Core::Rand::choose(Xi.y, sample_solid_angle, total_solid_angle);
+            if(sample_index != UINT_MAX)
+            {
+                sample_point = sample_positions[sample_index];
+                solid_angle = total_solid_angle;
+                return true;
+            }
+
+            return false;
         }
 
         bool LowerLevelMeshBVH::trace_ray(const nanort::Ray<float>& ray, InterpolatedVertex *result) const

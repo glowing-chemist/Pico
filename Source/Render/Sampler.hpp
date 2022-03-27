@@ -2,10 +2,10 @@
 #define RT_SAMPLERS_HPP
 
 #include "Distributions.hpp"
+#include "Core/RandUtils.hpp"
 
 #include "glm/common.hpp"
 #include <memory>
-#include <random>
 
 namespace Render
 {
@@ -21,11 +21,9 @@ namespace Render
     {
     public:
 
-        Diffuse_Sampler(const uint32_t maxSamples, const uint64_t seed, std::unique_ptr<Distribution>& dist) :
+        Diffuse_Sampler(const uint64_t seed, std::unique_ptr<Distribution>& dist) :
             m_distribution(std::move(dist)),
-            m_max_samples(maxSamples),
-            m_generator(seed),
-            m_random_sample_distribution(0, m_max_samples) {}
+            m_generator(seed) {}
 
         Sample generate_sample(const glm::vec3& N, const glm::vec3& V, const float R);
 
@@ -33,10 +31,7 @@ namespace Render
 
         std::unique_ptr<Distribution> m_distribution;
 
-        uint32_t m_max_samples;
-
-        std::mt19937 m_generator;
-        std::uniform_int_distribution<> m_random_sample_distribution;
+        Core::Rand::Hammersley_Generator m_generator;
 
     };
 
@@ -44,11 +39,9 @@ namespace Render
     {
     public:
 
-        Specular_Sampler(const uint32_t maxSamples, const uint64_t seed, std::unique_ptr<Distribution>& dist) :
+        Specular_Sampler(const uint64_t seed, std::unique_ptr<Distribution>& dist) :
             m_distribution(std::move(dist)),
-            m_max_samples(maxSamples),
-            m_generator(seed),
-            m_random_sample_distribution(0, m_max_samples) {}
+            m_generator(seed) {}
 
         Sample generate_sample(const glm::vec3& N, const glm::vec3& V, const float R);
 
@@ -56,10 +49,7 @@ namespace Render
 
         std::unique_ptr<Distribution> m_distribution;
 
-        uint32_t m_max_samples;
-
-        std::mt19937 m_generator;
-        std::uniform_int_distribution<> m_random_sample_distribution;
+        Core::Rand::Hammersley_Generator m_generator;
 
     };
 

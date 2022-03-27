@@ -124,10 +124,10 @@ namespace Scene
             std::unique_ptr<Render::Distribution> cosine_weighted_dist = std::make_unique<Render::Cos_Weighted_Hemisphere_Distribution>();
             std::unique_ptr<Render::Distribution> beckmann_microfact_dist = std::make_unique<Render::Beckmann_All_Microfacet_Distribution>();
 
-            auto diffuse_sampler = std::make_unique<Render::Diffuse_Sampler>(10000, seed, cosine_weighted_dist);
-            auto specular_sampler = std::make_unique<Render::Specular_Sampler>(10000, seed, beckmann_microfact_dist);
+            auto diffuse_sampler = std::make_unique<Render::Diffuse_Sampler>(seed, cosine_weighted_dist);
+            auto specular_sampler = std::make_unique<Render::Specular_Sampler>(seed, beckmann_microfact_dist);
 
-            Render::Monte_Carlo_Integrator integrator(m_bvh, m_material_manager, m_light_bounds, mSkybox, diffuse_sampler, specular_sampler, seed);
+            Render::Monte_Carlo_Integrator integrator(m_bvh, m_material_manager, m_lights, mSkybox, diffuse_sampler, specular_sampler, seed);
 
             return integrator.integrate_ray(ray, params.m_maxRayDepth, params.m_sample);
         };
@@ -270,7 +270,12 @@ namespace Scene
         m_bvh.add_lower_level_bvh(m_lowerLevelBVhs[assetID], transform, material);
 
         if(m_material_manager.get_material(material)->is_light())
-            m_light_bounds.push_back(m_lowerLevelBVhs[assetID]->get_bounds() * transform);
+        {
+            auto& bvh = m_lowerLevelBVhs[assetID];
+            // This geometry will be sampled as a light so create the sampling info/weightings.
+            bvh->generate_sampling_data();
+            m_lights.push_back({transform, glm::inverse(transform), bvh});
+        }
 
     }
 
@@ -489,7 +494,10 @@ namespace Scene
             m_bvh.add_lower_level_bvh(meshBVH, transformationMatrix, materialIndex);
 
             if(m_material_manager.get_material(materialIndex)->is_light())
-                m_light_bounds.push_back(meshBVH->get_bounds() * transformationMatrix);
+            {
+                meshBVH->generate_sampling_data();
+                m_lights.push_back({ transformationMatrix, glm::inverse(transformationMatrix), meshBVH });
+            }
         }
 
         // Recurse through all child nodes

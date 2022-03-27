@@ -3,6 +3,7 @@
 
 #include "glm/common.hpp"
 #include "AABB.hpp"
+#include "Core/RandUtils.hpp"
 
 namespace Core
 {
@@ -30,6 +31,10 @@ namespace Core
 
             virtual AABB get_bounds() const = 0;
 
+            // Light sampling methods.
+            virtual void generate_sampling_data() = 0;
+
+            virtual bool sample_geometry(Core::Rand::Hammersley_Generator&, const glm::vec3& point, glm::vec3& sample_point, float& solid_angle) = 0;
         };
 
     }

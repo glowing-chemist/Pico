@@ -28,6 +28,10 @@ namespace Core
                 return mAABB;
             }
 
+            virtual void generate_sampling_data() final;
+
+            virtual bool sample_geometry(Core::Rand::Hammersley_Generator& Xi, const glm::vec3& point, glm::vec3&, float&) final;
+
         private:
 
             bool trace_ray(const nanort::Ray<float>& ray, Core::BVH::InterpolatedVertex* result) const;
@@ -39,6 +43,14 @@ namespace Core
             std::vector<glm::vec3> mNormals;
             std::vector<glm::vec4> mVertexColours;
             std::vector<uint32_t>  mIndicies;
+
+            // Data used for light sampling.
+            struct TriangleFace
+            {
+                glm::vec3 m_normal;
+                float m_area;
+            };
+            std::vector<TriangleFace> m_triangle_faces;
 
             std::unique_ptr<nanort::TriangleMesh<float>> mMeshes;
             std::unique_ptr<nanort::TriangleSAHPred<float>> mPred;

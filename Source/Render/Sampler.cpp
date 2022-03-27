@@ -1,5 +1,6 @@
 #include "Sampler.hpp"
 #include "Core/vectorUtils.hpp"
+#include "Core/RandUtils.hpp"
 #include "Core/Asserts.hpp"
 #include "Render/PBR.hpp"
 
@@ -20,7 +21,7 @@ namespace Render
 
         const glm::vec3 view_tangent = glm::normalize(world_to_tangent_transform * V);
 
-        const glm::vec2 xi = hammersley(m_random_sample_distribution(m_generator), m_max_samples);
+        const glm::vec2 xi = m_generator.next();
         const glm::vec3 H = m_distribution->sample(xi, view_tangent, R);
         const float pdf = m_distribution->pdf(view_tangent, H, R);
         PICO_ASSERT_VALID(H);
@@ -48,7 +49,7 @@ namespace Render
         const glm::vec3 view_tangent = glm::normalize(world_to_tangent_transform * V);
 
         // Sample microfacet direction
-        const glm::vec2 Xi = hammersley(m_random_sample_distribution(m_generator), m_max_samples);
+        const glm::vec2 Xi = m_generator.next();
         const glm::vec3 H = m_distribution->sample(Xi, view_tangent, R);
         PICO_ASSERT_VALID(H);
         const glm::vec3 L = glm::normalize(glm::reflect(-view_tangent, H));

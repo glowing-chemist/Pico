@@ -39,6 +39,13 @@ namespace Scene
         float*     m_variance;
     };
 
+    struct Light
+    {
+        glm::mat4x4 m_transform;
+        glm::mat4x4 m_inverse_transform;
+        std::shared_ptr<Core::BVH::LowerLevelBVH> m_geometry;
+    };
+
     class Scene
     {
     public:
@@ -81,7 +88,7 @@ namespace Scene
 
         Core::BVH::UpperLevelBVH m_bvh;
         Core::MaterialManager m_material_manager;
-        std::vector<Core::AABB> m_light_bounds;
+        std::vector<Light> m_lights;
 
         ThreadPool& m_threadPool;
 

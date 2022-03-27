@@ -4,6 +4,7 @@
 #include "Core/UpperLevelBVH.hpp"
 #include "Core/MaterialManager.hpp"
 #include "Sampler.hpp"
+#include "Core/Scene.hpp"
 
 #include <memory>
 
@@ -19,7 +20,7 @@ namespace Render
     {
     public:
 
-        Integrator(const Core::BVH::UpperLevelBVH&, Core::MaterialManager&, const std::vector<Core::AABB>& light_bounds);
+        Integrator(const Core::BVH::UpperLevelBVH&, Core::MaterialManager&, const std::vector<Scene::Light>& light_bounds);
 
 
         virtual glm::vec4 integrate_ray(const Core::Ray& ray, const uint32_t maxDepth, const uint32_t rayCount) = 0;
@@ -28,7 +29,7 @@ namespace Render
 
         const Core::BVH::UpperLevelBVH& m_bvh;
         Core::MaterialManager& m_material_manager;
-        std::vector<Core::AABB> m_light_bounds;
+        std::vector<Scene::Light> m_lights;
     };
 
 
@@ -36,7 +37,7 @@ namespace Render
     {
     public:
 
-        Monte_Carlo_Integrator(const Core::BVH::UpperLevelBVH&,  Core::MaterialManager&, const std::vector<Core::AABB> &light_bounds, std::shared_ptr<Core::ImageCube>& skybox,
+        Monte_Carlo_Integrator(const Core::BVH::UpperLevelBVH&,  Core::MaterialManager&, const std::vector<Scene::Light> &light_bounds, std::shared_ptr<Core::ImageCube>& skybox,
                                std::unique_ptr<Diffuse_Sampler>& diffuseSampler, std::unique_ptr<Specular_Sampler>& specSampler, const uint64_t seed);
 
         virtual glm::vec4 integrate_ray(const Core::Ray& ray, const uint32_t maxDepth, const uint32_t rayCount) final;
@@ -53,6 +54,8 @@ namespace Render
 
         std::mt19937 mGenerator;
         std::uniform_real_distribution<float> mDistribution;
+
+        Core::Rand::Hammersley_Generator m_hammersley_generator;
 
         std::unique_ptr<Diffuse_Sampler> m_diffuse_sampler;
         std::unique_ptr<Specular_Sampler> m_specular_sampler;

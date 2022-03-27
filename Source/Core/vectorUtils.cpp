@@ -14,16 +14,22 @@ namespace Core
             glm::vec3 tangent;
             if(glm::dot(V, N) > 0.95f)
             {
-                glm::vec3 v_vec = N.z > 0.99f ? glm::vec3(1, 0, 0) : glm::vec3(0, 0, 1);
+                glm::vec3 v_vec = std::abs(N.z) > 0.99f ? glm::vec3(1, 0, 0) : glm::vec3(0, 0, 1);
 
                 PICO_ASSERT(!std::isnan(glm::dot(v_vec, N)));
 
                 tangent = glm::normalize(glm::cross(v_vec, N));
+
+                PICO_ASSERT_VALID(tangent);
             }
             else
+            {
                 tangent = glm::normalize(glm::cross(V, N));
+                PICO_ASSERT_VALID(tangent);
+            }
 
             const glm::vec3 bitangent = glm::normalize(glm::cross(tangent, N));
+            PICO_ASSERT_VALID(bitangent);
 
             return glm::transpose(glm::mat3x3(tangent, bitangent, N));
         }

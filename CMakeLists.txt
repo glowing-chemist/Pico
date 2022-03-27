@@ -22,6 +22,7 @@ set(SOURCE
 	Source/Core/OctTree.cpp
 	Source/Core/MaterialManager.cpp
 	Source/Core/vectorUtils.cpp
+	Source/Core/RandUtils.cpp
 
 	Source/Render/Sampler.cpp
 	Source/Render/PBR.cpp

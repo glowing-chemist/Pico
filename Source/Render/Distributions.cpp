@@ -64,7 +64,7 @@ namespace Render
 
     glm::vec3 Beckmann_All_Microfacet_Distribution::energy(const glm::vec3& wo, const glm::vec3& wi, const float R)
     {
-        return glm::vec3(1.0f);
+        return Render::specular_GGX(wi, wo, R, glm::vec3(1.0f));
     }
 
     float Beckmann_All_Microfacet_Distribution::D(const glm::vec3 &wh, const float a)

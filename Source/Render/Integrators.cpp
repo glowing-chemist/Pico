@@ -6,20 +6,21 @@
 namespace Render
 {
 
-    Integrator::Integrator(const Core::BVH::UpperLevelBVH& bvh, Core::MaterialManager& material_manager, const std::vector<Core::AABB> &light_bounds) :
+    Integrator::Integrator(const Core::BVH::UpperLevelBVH& bvh, Core::MaterialManager& material_manager, const std::vector<Scene::Light>& lights) :
         m_bvh{bvh},
         m_material_manager{material_manager},
-        m_light_bounds(light_bounds)
+        m_lights(lights)
     {
     }
 
 
-    Monte_Carlo_Integrator::Monte_Carlo_Integrator(const Core::BVH::UpperLevelBVH& bvh,  Core::MaterialManager& material_manager, const std::vector<Core::AABB>& light_bounds,
+    Monte_Carlo_Integrator::Monte_Carlo_Integrator(const Core::BVH::UpperLevelBVH& bvh,  Core::MaterialManager& material_manager, const std::vector<Scene::Light>& lights,
                                                    std::shared_ptr<Core::ImageCube>& skybox,
                            std::unique_ptr<Diffuse_Sampler>& diffuseSampler, std::unique_ptr<Specular_Sampler>& specSampler, const uint64_t seed) :
-        Integrator(bvh, material_manager, light_bounds),
+        Integrator(bvh, material_manager, lights),
         mGenerator{seed},
         mDistribution(0.0f, 1.0f),
+        m_hammersley_generator(seed),
         m_diffuse_sampler(std::move(diffuseSampler)),
         m_specular_sampler(std::move(specSampler)),
         m_skybox{skybox}
@@ -28,23 +29,56 @@ namespace Render
 
     Render::Sample Monte_Carlo_Integrator::generate_next_diffuse_event(const glm::vec3& pos, const glm::vec3 &N, const glm::vec3& V, const float R)
     {
-        // Importance sample cos(Theta)
-        if(m_light_bounds.empty() || mDistribution(mGenerator) >= 0.3f)
-            return m_diffuse_sampler->generate_sample(N, V, R);
-        else // Try to find a light.
+        // Sample lights 75% of the time and random direction 25% (TODO find better way to decide this).
+        if(mDistribution(mGenerator) > 0.25f)
         {
-            const float rand_light = mDistribution(mGenerator);
-            const uint32_t light_index = rand_light * m_light_bounds.size();
-            const Core::AABB& bounds = m_light_bounds[light_index];
-            glm::vec3 bounds_size = bounds.get_side_lengths();
-            glm::vec3 rand_offset = glm::vec3{mDistribution(mGenerator), mDistribution(mGenerator), mDistribution(mGenerator)} - 0.5f;
-            glm::vec3 light_center = glm::vec3(bounds.get_central_point()) + (bounds_size * rand_offset);
-            glm::vec3 to_light = glm::normalize(light_center - pos);
-            const float LdotN = glm::dot(N, to_light);
-            if(LdotN > 0.0f)
-                return Render::Sample{to_light, 1.0f / ( 2.0f * float(M_PI)), glm::vec3(1.0f)};
-            else
+            // calculate aproximate solid angles of all lights above the points hemisphere
+            // and pick one at random weighted by it's solid angle.
+            float total_solid_angle = 0.0f;
+
+            std::vector<float> sample_solid_angle{};
+            sample_solid_angle.reserve(m_lights.size());
+            std::vector<glm::vec3> sample_positions{};
+            sample_positions.reserve(m_lights.size());
+
+            for(uint32_t i_light = 0; i_light < m_lights.size(); ++i_light)
+            {
+                float solid_angle;
+                glm::vec3 sample_pos;
+                const glm::vec3 light_space_pos = m_lights[i_light].m_inverse_transform * glm::vec4(pos, 1.0f);
+                auto& geometrty = m_lights[i_light].m_geometry;
+                const bool found_sample = geometrty->sample_geometry(m_hammersley_generator, light_space_pos, sample_pos, solid_angle);
+                sample_pos = m_lights[i_light].m_transform * glm::vec4(sample_pos, 1.0f);
+
+                if(found_sample)
+                {
+                    total_solid_angle += solid_angle;
+                    sample_solid_angle.push_back(solid_angle);
+                    sample_positions.push_back(sample_pos);
+                }
+            }
+
+            const uint32_t selected_light_index = Core::Rand::choose(mDistribution(mGenerator), sample_solid_angle, total_solid_angle);
+
+            // if we fail to find any lights generate a "random" diffuse sample.
+            if(selected_light_index == UINT_MAX)
                 return m_diffuse_sampler->generate_sample(N, V, R);
+            else // Try to find a light.
+            {
+                const glm::vec3& sample_pos = sample_positions[selected_light_index];
+                const float pdf = sample_solid_angle[selected_light_index];
+                PICO_ASSERT(pdf < 1.0f);
+                glm::vec3 to_light = glm::normalize(sample_pos - pos);
+                const float NdotV = glm::dot(N, V);
+                const float NdotL = glm::dot(N, to_light);
+                const glm::vec3 H = glm::normalize(to_light + V);
+                const float LdotH = glm::dot(to_light, H);
+                return Render::Sample{to_light, pdf, glm::vec3(Render::disney_diffuse(NdotV, NdotL, LdotH, R))};
+            }
+        }
+        else
+        {
+            return m_diffuse_sampler->generate_sample(N, V, R);
         }
     }
 
@@ -118,11 +152,6 @@ namespace Render
         Render::Sample sample = generate_next_diffuse_event(frag.mPosition, frag.mNormal, V, material.specularRoughness.w);
         PICO_ASSERT_VALID(sample.L);
         ray.m_weight += sample.P;
-
-        const float NdotV = glm::clamp(glm::dot(glm::vec3(frag.mNormal), V), 0.0f, 1.0f);
-        const float NdotL = glm::clamp(glm::dot(glm::vec3(frag.mNormal), sample.L), 0.0f, 1.0f);
-        const glm::vec3 H = glm::normalize(V + sample.L);
-        const float LdotH  = glm::clamp(glm::dot(sample.L, H), 0.0f, 1.0f);
 
         const glm::vec4 diffuse_factor = glm::vec4(sample.energy, 1.0f);
 

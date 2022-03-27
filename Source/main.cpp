@@ -76,7 +76,7 @@ int main(int argc, const char **argv)
         params.m_Height = resolution.y;
         params.m_Width = resolution.x;
         params.m_maxRayDepth = 6;
-        params.m_maxSamples = 64;
+        params.m_maxSamples = 512;
         params.m_sample = 1;
         params.m_Pixels = frame_memory;
         params.m_SampleCount = sample_count;
