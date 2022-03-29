@@ -1,4 +1,6 @@
 #include "Image.hpp"
+#include "Core/Asserts.hpp"
+
 #include "stb_image.h"
 
 namespace Core
@@ -43,7 +45,8 @@ namespace Core
         mData(nullptr)
     {
         int x, y, components;
-        stbi_info(mPath.c_str(), &x, &y, &components);
+        const int error = stbi_info(mPath.c_str(), &x, &y, &components);
+        //PICO_ASSERT(error == 0);
 
         mExtent = {static_cast<uint32_t>(x), static_cast<uint32_t>(y), 1};
         if(components == 4)
@@ -71,6 +74,7 @@ namespace Core
     {
         int x, y, c;
         auto* image = stbi_load(mPath.c_str(), &x, &y, &c, get_format_channels(mFormat));
+        PICO_ASSERT(image);
 
         const size_t size = get_residence_size();
         mData = static_cast<unsigned char*>(mem);

@@ -68,14 +68,14 @@ int main(int argc, const char **argv)
                                                      aiProcess_FlipUVs |
                                                      aiProcess_GenBoundingBoxes);
 
-            scene = std::make_unique<Scene::Scene>(threadPool, assimp_scene);
+            scene = std::make_unique<Scene::Scene>(threadPool, scene_file.parent_path(),  assimp_scene);
         }
 
 
         Scene::RenderParams params{};
         params.m_Height = resolution.y;
         params.m_Width = resolution.x;
-        params.m_maxRayDepth = 6;
+        params.m_maxRayDepth = 10;
         params.m_maxSamples = 512;
         params.m_sample = 1;
         params.m_Pixels = frame_memory;

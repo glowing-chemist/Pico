@@ -11,6 +11,8 @@ namespace Core
         LowerLevelMeshBVH::LowerLevelMeshBVH(const aiMesh* mesh) :
             LowerLevelBVH()
         {
+            m_name = mesh->mName.C_Str();
+
             // Copy the index data
             for(uint32_t i = 0; i < mesh->mNumFaces; ++i)
             {
@@ -86,11 +88,12 @@ namespace Core
                 face.m_area = (base * height) / 2.0f;
 
                 m_triangle_faces.push_back(face);
-
             }
+
+            PICO_LOG("Generating sampling data for %s. %zu faces generated\n", m_name.c_str(), m_triangle_faces.size());
         }
 
-        bool LowerLevelMeshBVH::sample_geometry(Rand::Hammersley_Generator& rand, const glm::vec3& point, glm::vec3& sample_point, float& solid_angle)
+        bool LowerLevelMeshBVH::sample_geometry(Rand::Hammersley_Generator& rand, const glm::vec3& point, const glm::vec3& N, glm::vec3& sample_point, float& solid_angle)
         {
             std::vector<float> sample_solid_angle{};
             sample_solid_angle.reserve(m_triangle_faces.size());
@@ -100,25 +103,28 @@ namespace Core
             float total_solid_angle = 0.0f;
             for(uint32_t i_face = 0; i_face < m_triangle_faces.size(); ++i_face)
             {
-                const glm::vec2 Xi = rand.next();
-                const glm::vec2 barycentrics = Core::Rand::uniform_sample_triangle(Xi);
-
-                const uint32_t index_start = 3 * i_face;
-                const glm::vec3 sampled_pos = ((1.0f - barycentrics.x - barycentrics.y) * mPositions[mIndicies[index_start]] +
-                                               (barycentrics.x * mPositions[mIndicies[index_start + 1]])) +
-                                                (barycentrics.y * mPositions[mIndicies[index_start + 2]]);
-
-                glm::vec3 wi = glm::normalize(sampled_pos - point);
-
                 const TriangleFace& face = m_triangle_faces[i_face];
 
-                if(glm::dot(face.m_normal, -wi) >= 0.0f)
+                if(glm::dot(-N, face.m_normal) > 0.0f)
                 {
-                    sample_positions.push_back(sampled_pos);
+                    const glm::vec2 Xi = rand.next();
+                    const glm::vec2 barycentrics = Core::Rand::uniform_sample_triangle(Xi);
 
-                    const float solid_angle = Render::solid_angle(point, sampled_pos, face.m_normal, face.m_area);
-                    total_solid_angle += solid_angle;
-                    sample_solid_angle.push_back(solid_angle);
+                    const uint32_t index_start = 3 * i_face;
+                    const glm::vec3 sampled_pos = ((1.0f - barycentrics.x - barycentrics.y) * mPositions[mIndicies[index_start]] +
+                                                   (barycentrics.x * mPositions[mIndicies[index_start + 1]])) +
+                                                    (barycentrics.y * mPositions[mIndicies[index_start + 2]]);
+
+                    glm::vec3 wi = glm::normalize(sampled_pos - point);
+
+                    if(glm::dot(face.m_normal, -wi) > 0.0f)
+                    {
+                        sample_positions.push_back(sampled_pos);
+
+                        const float face_solid_angle = Render::solid_angle(point, sampled_pos, face.m_normal, face.m_area);
+                        total_solid_angle += face_solid_angle;
+                        sample_solid_angle.push_back(face_solid_angle);
+                    }
                 }
             }
 

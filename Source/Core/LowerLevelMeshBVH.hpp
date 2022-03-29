@@ -30,13 +30,15 @@ namespace Core
 
             virtual void generate_sampling_data() final;
 
-            virtual bool sample_geometry(Core::Rand::Hammersley_Generator& Xi, const glm::vec3& point, glm::vec3&, float&) final;
+            virtual bool sample_geometry(Core::Rand::Hammersley_Generator& Xi, const glm::vec3& point, const glm::vec3& N,  glm::vec3&, float&) final;
 
         private:
 
             bool trace_ray(const nanort::Ray<float>& ray, Core::BVH::InterpolatedVertex* result) const;
 
             InterpolatedVertex interpolate_fragment(const uint32_t primID, const float u, const float v) const;
+
+            std::string m_name;
 
             std::vector<glm::vec3> mPositions;
             std::vector<glm::vec2> mUVs;

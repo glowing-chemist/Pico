@@ -51,7 +51,7 @@ namespace Scene
     public:
 
         Scene(ThreadPool&, const std::filesystem::path& sceneFile);
-        Scene(ThreadPool&, const aiScene *scene);
+        Scene(ThreadPool&, const std::filesystem::path& working_dir, const aiScene *scene);
         ~Scene() = default;
 
         void render_scene_to_memory(const Camera&, const RenderParams&);
@@ -79,6 +79,7 @@ namespace Scene
         void parse_node(const aiScene* scene,
                               const aiNode* node,
                               const aiMatrix4x4& parentTransofrmation);
+        void add_material(const aiMaterial*);
 
         std::filesystem::path mWorkingDir;
         std::unordered_map<std::string, Camera>  mCamera;

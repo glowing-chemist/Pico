@@ -25,7 +25,7 @@ namespace Core
 
                     // Bring vertex back to world space.
                     found_vertex.mPosition = intersection->mTransform * found_vertex.mPosition;
-                    found_vertex.mNormal   = glm::mat3x3(intersection->mTransform) * found_vertex.mNormal;
+                    found_vertex.mNormal   = glm::normalize(glm::mat3x3(intersection->mTransform) * found_vertex.mNormal);
 
                     //PICO_ASSERT(!(found_vertex.mPosition != ray.mOrigin));
 
@@ -57,7 +57,7 @@ namespace Core
 
                     // Bring vertex back to world space.
                     found_vertex.mPosition = intersection->mTransform * found_vertex.mPosition;
-                    found_vertex.mNormal   = glm::mat3x3(intersection->mTransform) * found_vertex.mNormal;
+                    found_vertex.mNormal   = glm::normalize(glm::mat3x3(intersection->mTransform) * found_vertex.mNormal);
 
                     PICO_ASSERT_VALID(found_vertex.mPosition);
                     PICO_ASSERT_VALID(found_vertex.mNormal);

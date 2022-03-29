@@ -29,7 +29,6 @@ namespace Render
 
     Render::Sample Monte_Carlo_Integrator::generate_next_diffuse_event(const glm::vec3& pos, const glm::vec3 &N, const glm::vec3& V, const float R)
     {
-        // Sample lights 75% of the time and random direction 25% (TODO find better way to decide this).
         if(mDistribution(mGenerator) > 0.25f)
         {
             // calculate aproximate solid angles of all lights above the points hemisphere
@@ -46,8 +45,9 @@ namespace Render
                 float solid_angle;
                 glm::vec3 sample_pos;
                 const glm::vec3 light_space_pos = m_lights[i_light].m_inverse_transform * glm::vec4(pos, 1.0f);
+                const glm::vec3 light_space_normal = glm::normalize(glm::mat3x3(m_lights[i_light].m_inverse_transform) * N);
                 auto& geometrty = m_lights[i_light].m_geometry;
-                const bool found_sample = geometrty->sample_geometry(m_hammersley_generator, light_space_pos, sample_pos, solid_angle);
+                const bool found_sample = geometrty->sample_geometry(m_hammersley_generator, light_space_pos, light_space_normal, sample_pos, solid_angle);
                 sample_pos = m_lights[i_light].m_transform * glm::vec4(sample_pos, 1.0f);
 
                 if(found_sample)
@@ -66,19 +66,20 @@ namespace Render
             else // Try to find a light.
             {
                 const glm::vec3& sample_pos = sample_positions[selected_light_index];
-                const float pdf = sample_solid_angle[selected_light_index];
-                PICO_ASSERT(pdf < 1.0f);
                 glm::vec3 to_light = glm::normalize(sample_pos - pos);
-                const float NdotV = glm::dot(N, V);
-                const float NdotL = glm::dot(N, to_light);
+                const float NdotV = std::abs(glm::dot(N, V));
+                const float NdotL = std::abs(glm::dot(N, to_light));
                 const glm::vec3 H = glm::normalize(to_light + V);
-                const float LdotH = glm::dot(to_light, H);
-                return Render::Sample{to_light, pdf, glm::vec3(Render::disney_diffuse(NdotV, NdotL, LdotH, R))};
+                const float LdotH = std::abs(glm::dot(to_light, H));
+                return Render::Sample{to_light, (sample_solid_angle[selected_light_index] / total_solid_angle) * 0.75f, glm::vec3(Render::disney_diffuse(NdotV, NdotL, LdotH, R))};
             }
         }
         else
         {
-            return m_diffuse_sampler->generate_sample(N, V, R);
+            Render::Sample samp = m_diffuse_sampler->generate_sample(N, V, R);
+            samp.P *= 0.25f;
+
+            return samp;
         }
     }
 
@@ -92,6 +93,8 @@ namespace Render
         Core::BVH::InterpolatedVertex vertex;
         if(m_bvh.get_closest_intersection(ray, &vertex))
         {
+            //return m_material_manager.evaluate_material(vertex.mMaterialID, vertex.mUV).diffuse;
+
             glm::vec4 diffuse{0.0f, 0.0f, 0.0f, 0.0f};
             glm::vec4 specular{0.0f, 0.0f, 0.0f, 0.0f};
             for(uint32_t i_ray = 0; i_ray < rayCount; ++i_ray)

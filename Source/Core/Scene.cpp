@@ -1,6 +1,7 @@
 #include "Core/Scene.hpp"
 #include "Core/Camera.hpp"
 #include "Core/vectorUtils.hpp"
+#include "Core/Asserts.hpp"
 #include "Render/Sampler.hpp"
 #include "Render/PBR.hpp"
 #include "Render/Integrators.hpp"
@@ -63,9 +64,12 @@ namespace Scene
         m_bvh.build();
     }
 
-    Scene::Scene(ThreadPool& pool, const aiScene* scene) :
+    Scene::Scene(ThreadPool& pool, const std::filesystem::path& working_dir, const aiScene* scene) :
+        mWorkingDir(working_dir),
         m_threadPool(pool)
     {
+        PICO_ASSERT(scene);
+
         // Create a black cubemap.
         unsigned char* black_cube_map = new unsigned char[24];
         memset(black_cube_map, 0, 24);
@@ -76,22 +80,7 @@ namespace Scene
         {
             aiMaterial* mat = scene->mMaterials[i_mat];
 
-            aiColor3D diffuse;
-            mat->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse);
-
-            aiColor3D specular;
-            mat->Get(AI_MATKEY_COLOR_SPECULAR, specular);
-
-            aiColor3D emissive;
-            mat->Get(AI_MATKEY_COLOR_EMISSIVE, emissive);
-
-            float roughness = 0.1f;
-
-            std::unique_ptr<Core::Material> material =  std::make_unique<Render::ConstantDiffuseSpecularMaterial>(  glm::vec3(diffuse.r, diffuse.g, diffuse.b),
-                                                                                                                    glm::vec3(specular.r, specular.g, specular.b), roughness,
-                                                                                                                    glm::vec3(emissive.r, emissive.g, emissive.b));
-
-            m_material_manager.add_material(material);
+            add_material(mat);
         }
 
         parse_node(scene, scene->mRootNode, aiMatrix4x4{});
@@ -132,54 +121,54 @@ namespace Scene
             return integrator.integrate_ray(ray, params.m_maxRayDepth, params.m_sample);
         };
 
-        auto trace_rays = [&](const uint32_t start, const uint32_t stepSize)
+        auto trace_rays = [&](const uint32_t start, const uint32_t stepSize, const size_t random_seed)
         {
-            std::random_device random_device{};
-            std::mt19937 random_generator(random_device());
+            std::mt19937 random_generator(random_seed);
 
             uint32_t location = start;
             while(location < (params.m_Height * params.m_Width))
             {                
-                const uint32_t pix = location % params.m_Height;
-                const uint32_t piy = location / params.m_Height;
+                const uint32_t pix = location % params.m_Width;
+                const uint32_t piy = location / params.m_Width;
 
-                const uint32_t pixel_index = pix + (piy * params.m_Height);
-
-                if(params.m_SampleCount[pixel_index] >= params.m_maxSamples)
+                if(params.m_SampleCount[location] >= params.m_maxSamples)
                 {
                     location += stepSize;
                     continue;
                 }
 
-                uint32_t prev_sample_count = params.m_SampleCount[pixel_index];
+                uint32_t prev_sample_count = params.m_SampleCount[location];
                 glm::vec4 pixel_result =  trace_ray(pix, piy, random_generator());
                 pixel_result = glm::clamp(pixel_result, 0.0f, 1.0f);
 
                 if(prev_sample_count < 1)
                 {
-                    params.m_SampleCount[pixel_index] = 1;
+                    params.m_SampleCount[location] = 1;
                 }
                 else
                 {
-                    const glm::vec4& previous_pixle = params.m_Pixels[pixel_index];
+                    const glm::vec4& previous_pixle = params.m_Pixels[location];
                     pixel_result = previous_pixle + ((pixel_result - previous_pixle) * (1.0f / prev_sample_count));
-                    params.m_SampleCount[pixel_index] += 1;
+                    params.m_SampleCount[location] += 1;
                 }
 
-                params.m_Pixels[pixel_index] = pixel_result;
+                params.m_Pixels[location] = pixel_result;
 
                 location += stepSize;
             }
         };
 
+        std::random_device random_device{};
+        std::mt19937 random_generator(random_device());
+
         const uint32_t processor_count = m_threadPool.get_worker_count(); // use this many threads for tracing rays.
         std::vector<std::future<void>> handles{};
         for(uint32_t i = 1; i < processor_count; ++i)
         {
-            handles.push_back(m_threadPool.add_task(trace_rays, i, processor_count));
+            handles.push_back(m_threadPool.add_task(trace_rays, i, processor_count, random_generator()));
         }
 
-        trace_rays(0, processor_count);
+        trace_rays(0, processor_count, random_generator());
 
         for(auto& thread : handles)
             thread.wait();
@@ -507,5 +496,194 @@ namespace Scene
                        node->mChildren[i],
                        transformation);
         }
+    }
+
+    void Scene::add_material(const aiMaterial* material)
+    {
+        aiString name;
+        material->Get(AI_MATKEY_NAME, name);
+
+        PICO_LOG("Adding material %s\n", name.C_Str());
+
+        auto path_mapping = [](const std::filesystem::path& path) -> std::string
+        {
+            std::string mappedPath = path.string();
+            std::replace(mappedPath.begin(), mappedPath.end(),
+                 #ifdef _MSC_VER
+                    '/', '\\'
+                 #else
+                    '\\', '/'
+                 #endif
+                         );
+
+            return mappedPath;
+        };
+
+        std::unique_ptr<Core::Material> pico_material;
+        if(material->GetTextureCount(aiTextureType_BASE_COLOR) > 0 || material->GetTextureCount(aiTextureType_DIFFUSE) > 1)
+        {
+            std::unique_ptr<Core::Image2D> albedo;
+            std::unique_ptr<Core::Image2D> metalness;
+            std::unique_ptr<Core::Image2D> roughness;
+            std::unique_ptr<Core::Image2D> combined_metalness_roughness;
+            std::unique_ptr<Core::Image2D> emissive;
+
+            if(material->GetTextureCount(aiTextureType_BASE_COLOR) > 0)
+            {
+                aiString path;
+                material->GetTexture(aiTextureType_BASE_COLOR, 0, &path);
+
+                std::filesystem::path fsPath(path.C_Str());
+                std::string albedo_path = path_mapping(mWorkingDir / fsPath);
+                albedo = std::make_unique<Core::Image2D>(albedo_path);
+            }
+            else if(material->GetTextureCount(aiTextureType_DIFFUSE) > 1)
+            {
+                aiString path;
+                material->GetTexture(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_BASE_COLOR_TEXTURE, &path);
+
+                std::filesystem::path fsPath(path.C_Str());
+                std::string albedo_path = path_mapping(mWorkingDir / fsPath);
+                albedo = std::make_unique<Core::Image2D>(albedo_path);
+
+            }
+
+            // AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLICROUGHNESS_TEXTURE maps to aiTextureType_UNKNOWN for gltf becuase why not.
+            if(material->GetTextureCount(aiTextureType_UNKNOWN) > 0)
+            {
+                aiString path;
+                material->GetTexture(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLICROUGHNESS_TEXTURE, &path);
+
+                std::filesystem::path fsPath(path.C_Str());
+                std::string combined_path = path_mapping(mWorkingDir / fsPath);
+                combined_metalness_roughness = std::make_unique<Core::Image2D>(combined_path);
+            }
+            else
+            {
+
+                if(material->GetTextureCount(aiTextureType_DIFFUSE_ROUGHNESS) > 0)
+                {
+                    aiString path;
+                    material->GetTexture(aiTextureType_DIFFUSE_ROUGHNESS, 0, &path);
+
+                    std::filesystem::path fsPath(path.C_Str());
+                    std::string roughness_path = path_mapping(mWorkingDir / fsPath);
+                    roughness = std::make_unique<Core::Image2D>(roughness_path);
+                }
+
+                if(material->GetTextureCount(aiTextureType_METALNESS) > 0)
+                {
+                    aiString path;
+                    material->GetTexture(aiTextureType_METALNESS, 0, &path);
+
+                    std::filesystem::path fsPath(path.C_Str());
+                    std::string metalness_path = path_mapping(mWorkingDir / fsPath);
+                    metalness = std::make_unique<Core::Image2D>(metalness_path);
+                }
+            }
+
+            if(material->GetTextureCount(aiTextureType_EMISSIVE) > 0)
+            {
+                aiString path;
+                material->GetTexture(aiTextureType_EMISSIVE, 0, &path);
+
+                std::filesystem::path fsPath(path.C_Str());
+                std::string emissive_path = path_mapping(mWorkingDir / fsPath);
+                emissive = std::make_unique<Core::Image2D>(emissive_path);
+            }
+            else if(material->GetTextureCount(aiTextureType_EMISSION_COLOR) > 0)
+            {
+                aiString path;
+                material->GetTexture(aiTextureType_EMISSIVE, 0, &path);
+
+                std::filesystem::path fsPath(path.C_Str());
+                std::string emissive_path = path_mapping(mWorkingDir / fsPath);
+                emissive = std::make_unique<Core::Image2D>(emissive_path);
+            }
+
+            if(combined_metalness_roughness)
+                pico_material = std::make_unique<Render::MetalnessRoughnessMaterial>(albedo, combined_metalness_roughness, emissive);
+            else
+                pico_material = std::make_unique<Render::MetalnessRoughnessMaterial>(albedo, metalness, roughness, emissive);
+        }
+        else if(material->GetTextureCount(aiTextureType_DIFFUSE) == 1)
+        {
+            std::unique_ptr<Core::Image2D> diffuse;
+            std::unique_ptr<Core::Image2D> specular;
+            std::unique_ptr<Core::Image2D> gloss;
+            std::unique_ptr<Core::Image2D> emissive;
+
+
+            if(material->GetTextureCount(aiTextureType_DIFFUSE) > 0)
+            {
+                aiString path;
+                material->GetTexture(aiTextureType_DIFFUSE, 0, &path);
+
+                std::filesystem::path fsPath(path.C_Str());
+                std::string diffuse_path = path_mapping(mWorkingDir / fsPath);
+                diffuse = std::make_unique<Core::Image2D>(diffuse_path);
+            }
+
+            if(material->GetTextureCount(aiTextureType_SPECULAR) > 0)
+            {
+                aiString path;
+                material->GetTexture(aiTextureType_SPECULAR, 0, &path);
+
+                std::filesystem::path fsPath(path.C_Str());
+                std::string specular_path = path_mapping(mWorkingDir / fsPath);
+                specular = std::make_unique<Core::Image2D>(specular_path);
+            }
+
+            if(material->GetTextureCount(aiTextureType_SHININESS) > 0)
+            {
+                aiString path;
+                material->GetTexture(aiTextureType_SHININESS, 0, &path);
+
+                std::filesystem::path fsPath(path.C_Str());
+                std::string gloss_path = path_mapping(mWorkingDir / fsPath);
+                gloss = std::make_unique<Core::Image2D>(gloss_path);
+            }
+
+            if(material->GetTextureCount(aiTextureType_EMISSIVE) > 0)
+            {
+                aiString path;
+                material->GetTexture(aiTextureType_EMISSIVE, 0, &path);
+
+                std::filesystem::path fsPath(path.C_Str());
+                std::string emissive_path = path_mapping(mWorkingDir / fsPath);
+                emissive = std::make_unique<Core::Image2D>(emissive_path);
+            }
+            else if(material->GetTextureCount(aiTextureType_EMISSION_COLOR) > 0)
+            {
+                aiString path;
+                material->GetTexture(aiTextureType_EMISSIVE, 0, &path);
+
+                std::filesystem::path fsPath(path.C_Str());
+                std::string emissive_path = path_mapping(mWorkingDir / fsPath);
+                emissive = std::make_unique<Core::Image2D>(emissive_path);
+            }
+
+            pico_material = std::make_unique<Render::SpecularGlossMaterial>(diffuse, specular, gloss, emissive);
+        }
+        else
+        {
+            aiColor3D diffuse;
+            material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse);
+
+            aiColor3D specular;
+            material->Get(AI_MATKEY_COLOR_SPECULAR, specular);
+
+            aiColor3D emissive;
+            material->Get(AI_MATKEY_COLOR_EMISSIVE, emissive);
+
+            float roughness;
+            material->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_ROUGHNESS_FACTOR, roughness);
+
+            pico_material =  std::make_unique<Render::ConstantDiffuseSpecularMaterial>(  glm::vec3(diffuse.r, diffuse.g, diffuse.b),
+                                                                                         glm::vec3(specular.r, specular.g, specular.b), roughness,
+                                                                                         glm::vec3(emissive.r, emissive.g, emissive.b));
+       }
+
+        m_material_manager.add_material(pico_material);
     }
 }

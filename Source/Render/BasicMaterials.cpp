@@ -55,6 +55,16 @@ namespace Render
           mRoughnessTexture(std::move(roughness)),
           mEmmissiveTexture(std::move(emmissive)) {}
 
+    MetalnessRoughnessMaterial::MetalnessRoughnessMaterial(std::unique_ptr<Core::Image2D>& albedo,
+                               std::unique_ptr<Core::Image2D>& combinedMetalnessRoughness,
+                               std::unique_ptr<Core::Image2D>& emmissive)
+        :
+          m_combined_metalness_roughness(true),
+          mAlbedoTexture(std::move(albedo)),
+          mMetalnessTexture(std::move(combinedMetalnessRoughness)),
+          mEmmissiveTexture(std::move(emmissive)) {}
+
+
     size_t MetalnessRoughnessMaterial::get_residence_size() const
     {
         return (mAlbedoTexture ? mAlbedoTexture->get_residence_size() : 0) +
@@ -120,7 +130,26 @@ namespace Render
         Core::EvaluatedMaterial material{{0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
 
         const glm::vec4 albedo = mAlbedoTexture->sample4(uv);
-        const float metalness = mMetalnessTexture->sample(uv);
+
+        float metalness = 0.0f;
+        if(m_combined_metalness_roughness) // Follow the gltf convention of metalness roughness is the zy channels.
+        {
+            if(mMetalnessTexture)
+            {
+                const glm::vec4 combined_metalness_roughness = mMetalnessTexture->sample4(uv);
+                metalness = combined_metalness_roughness.z;
+                material.specularRoughness.w = combined_metalness_roughness.y;
+            }
+        }
+        else
+        {
+            if(mMetalnessTexture)
+                metalness = mMetalnessTexture->sample(uv);
+
+            if(mRoughnessTexture)
+                material.specularRoughness.w = mRoughnessTexture->sample(uv);
+        }
+
         material.diffuse = albedo * (1.0f - 0.04f) * (1.0f - metalness);
         material.diffuse.w = albedo.w;
 
@@ -131,9 +160,6 @@ namespace Render
 
         if(mEmmissiveTexture)
             material.emissive = mEmmissiveTexture->sample3(uv);
-
-        if(mRoughnessTexture)
-            material.specularRoughness.w = mRoughnessTexture->sample(uv);
 
         return material;
     }
@@ -208,11 +234,12 @@ namespace Render
 
     Core::EvaluatedMaterial SpecularGlossMaterial::evaluate_material(const glm::vec2& uv)
     {
-        Core::EvaluatedMaterial material{{0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
+        Core::EvaluatedMaterial material{{0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
 
         material.diffuse = mDiffuseTexture->sample4(uv);
 
-        material.specularRoughness = glm::vec4(mSpecularTexture->sample3(uv), 1.0f);
+        if(mSpecularTexture)
+            material.specularRoughness = glm::vec4(mSpecularTexture->sample3(uv), 1.0f);
 
         if(mEmmissiveTexture)
             material.emissive = mEmmissiveTexture->sample3(uv);

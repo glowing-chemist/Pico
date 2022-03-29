@@ -163,6 +163,10 @@ namespace Render
                                    std::unique_ptr<Core::Image2D>& roughness,
                                    std::unique_ptr<Core::Image2D>& emmissive);
 
+        MetalnessRoughnessMaterial(std::unique_ptr<Core::Image2D>& albedo,
+                                   std::unique_ptr<Core::Image2D>& combinedMetalnessRoughness,
+                                   std::unique_ptr<Core::Image2D>& emmissive);
+
         virtual size_t get_residence_size() const final;
 
         virtual bool is_resident() const;
@@ -179,6 +183,8 @@ namespace Render
         }
 
     private:
+
+        bool m_combined_metalness_roughness = false;
 
         std::unique_ptr<Core::Image2D> mAlbedoTexture;
         std::unique_ptr<Core::Image2D> mMetalnessTexture;

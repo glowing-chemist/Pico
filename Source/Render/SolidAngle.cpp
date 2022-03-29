@@ -19,6 +19,6 @@ namespace Render
         const float distance_squared = glm::length(to_point) * glm::length(to_point);
         const glm::vec3 wi = glm::normalize(to_point);
 
-        return (std::abs(glm::dot(intersect_normal, -wi)) * area) / distance_squared;
+        return (std::abs(glm::dot(intersect_normal, -wi)) * area * 2.0f * M_PI) / distance_squared;
     }
 }
