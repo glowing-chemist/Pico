@@ -69,7 +69,7 @@ namespace Core
         // Allow a zero sized AABB to be constructed
         AABB() = default;
 
-        Cube getCube() const;
+        Cube get_cube() const;
         std::array<glm::vec4, 8> get_cube_as_vertex_array() const;
 
         // std::limits<float>::max() to indicate no intersection

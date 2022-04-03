@@ -63,7 +63,7 @@ namespace Core
     }
 
 
-    Cube AABB::getCube() const
+    Cube AABB::get_cube() const
     {
 
         auto verticies = get_cube_as_vertex_array();

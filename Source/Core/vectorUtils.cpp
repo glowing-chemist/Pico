@@ -12,7 +12,7 @@ namespace Core
             PICO_ASSERT_VALID(V);
             // If N and V aparralle of anti parralle we shoudl use a different vector for calculatign the tangent frame.
             glm::vec3 tangent;
-            if(glm::dot(V, N) > 0.95f)
+            if(std::abs(glm::dot(V, N)) > 0.95f)
             {
                 glm::vec3 v_vec = std::abs(N.z) > 0.99f ? glm::vec3(1, 0, 0) : glm::vec3(0, 0, 1);
 

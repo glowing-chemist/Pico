@@ -260,14 +260,14 @@ namespace Scene
         }
         else
         {
-            std::unique_ptr<Render::Distribution> distribution = std::make_unique<Render::Beckmann_All_Microfacet_Distribution>();
+            std::unique_ptr<Render::Distribution> distribution = std::make_unique<Render::Cos_Weighted_Hemisphere_Distribution>();
             brdf = std::make_shared<Render::Diffuse_BRDF>(distribution, m_material_manager, material);
         }
 
         m_bvh.add_lower_level_bvh(m_lowerLevelBVhs[assetID], transform, brdf);
     }
 
-    void Scene::add_material(const std::string &name, const Json::Value &entry)
+    void Scene::add_material(const std::string& name, const Json::Value& entry)
     {
         std::unique_ptr<Core::Material> material;
 
@@ -489,7 +489,7 @@ namespace Scene
             }
             else
             {
-                std::unique_ptr<Render::Distribution> distribution = std::make_unique<Render::Beckmann_All_Microfacet_Distribution>();
+                std::unique_ptr<Render::Distribution> distribution = std::make_unique<Render::Cos_Weighted_Hemisphere_Distribution>();
                 brdf = std::make_shared<Render::Diffuse_BRDF>(distribution, m_material_manager, material_index);
             }
 
@@ -683,7 +683,7 @@ namespace Scene
             aiColor3D emissive;
             material->Get(AI_MATKEY_COLOR_EMISSIVE, emissive);
 
-            float roughness;
+            float roughness = 1.0f;
             material->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_ROUGHNESS_FACTOR, roughness);
 
             pico_material =  std::make_unique<Render::ConstantDiffuseSpecularMaterial>(  glm::vec3(diffuse.r, diffuse.g, diffuse.b),

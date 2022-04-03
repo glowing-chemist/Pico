@@ -13,28 +13,41 @@ namespace Core
         {
             const auto rough_intersections = mOctTree.get_all_intersections(ray);
 
-            for(const auto& intersection : rough_intersections)
+            float clostest_distance = INFINITY;
+            InterpolatedVertex closest_intersection{};
+            for(uint32_t i = 0; i < rough_intersections.size(); ++i)
             {
+                const auto& intersection = rough_intersections[i];
+
                 // Move the ray in to the local space of the lower level bvh.
                 const Ray object_space_ray = Core::transform_ray(ray, intersection->mInverseTransform);
 
                 InterpolatedVertex found_vertex;
                 if(intersection->mBVH->calculate_intersection(object_space_ray, &found_vertex))
                 {
+                    const float intersection_distance = glm::length(found_vertex.mPosition - ray.mOrigin);
+
                     found_vertex.m_bsrdf = intersection->m_material;
 
                     // Bring vertex back to world space.
                     found_vertex.mPosition = intersection->mTransform * found_vertex.mPosition;
                     found_vertex.mNormal   = glm::normalize(glm::mat3x3(intersection->mTransform) * found_vertex.mNormal);
 
-                    //PICO_ASSERT(!(found_vertex.mPosition != ray.mOrigin));
-
-                    *vertex = found_vertex;
-
-                    return true;
+                    if(intersection_distance <= clostest_distance)
+                    {
+                        closest_intersection = found_vertex;
+                        clostest_distance = intersection_distance;
+                    }
                 }
             }
 
+            if(clostest_distance < INFINITY)
+            {
+                *vertex = closest_intersection;
+                return true;
+            }
+
+            //PICO_ASSERT(rough_intersections.empty());
             return false;
         }
 

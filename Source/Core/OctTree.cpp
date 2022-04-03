@@ -140,7 +140,7 @@ namespace Core
     template<typename T>
     std::array<AABB, 8> OctTreeFactory<T>::split_AABB(const AABB& aabb) const
     {
-        Cube cube = aabb.getCube();
+        Cube cube = aabb.get_cube();
 
         const glm::vec4 diagonal = cube.mLower3 - cube.mUpper1;
         const glm::vec4 centre = cube.mUpper1 + (diagonal / 2.0f);
