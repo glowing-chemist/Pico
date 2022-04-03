@@ -16,8 +16,9 @@ namespace Core
 
     struct EvaluatedMaterial
     {
-        glm::vec4 diffuse;
-        glm::vec4 specularRoughness; // xyz specular w roughness
+        glm::vec3 diffuse;
+        glm::vec3 specular;
+        float     roughness;
         glm::vec3 normal;
         glm::vec3 emissive;
 
@@ -33,7 +34,7 @@ namespace Core
 
         float specular_magnitude() const
         {
-            return glm::length(glm::vec3(specularRoughness.x, specularRoughness.y, specularRoughness.z));
+            return glm::length(specular);
         }
     };
 

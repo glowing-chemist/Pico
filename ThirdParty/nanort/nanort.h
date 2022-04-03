@@ -611,7 +611,7 @@ class BVHTraceOptions {
     prim_ids_range[1] = 0x7FFFFFFF;  // Up to 2G face IDs.
 
     skip_prim_id = static_cast<unsigned int>(-1);
-    cull_back_face = false;
+    cull_back_face = true;
   }
 };
 

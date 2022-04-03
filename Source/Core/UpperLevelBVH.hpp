@@ -4,6 +4,7 @@
 #include "AABB.hpp"
 #include "LowerLevelBVH.hpp"
 #include "OctTree.hpp"
+#include "Render/BSRDF.hpp"
 
 #include "glm/mat4x4.hpp"
 
@@ -25,7 +26,7 @@ namespace Core
                 glm::mat4x4                     mTransform;
                 glm::mat4x4                     mInverseTransform;
                 std::shared_ptr<LowerLevelBVH>  mBVH;
-                uint32_t                        mMaterialIndex;
+                std::shared_ptr<Render::BSRDF>  m_material;
             };
 
             UpperLevelBVH() = default;
@@ -34,7 +35,7 @@ namespace Core
 
             void get_all_intersections(const Ray&, std::vector<InterpolatedVertex>& vertex) const;
 
-            void add_lower_level_bvh(std::shared_ptr<LowerLevelBVH>& bvh, const glm::mat4x4& transform, uint32_t materialIndex);
+            void add_lower_level_bvh(std::shared_ptr<LowerLevelBVH>& bvh, const glm::mat4x4& transform, std::shared_ptr<Render::BSRDF>& bsrdf);
 
             void build();
 

@@ -13,7 +13,6 @@
 #include "Core/UpperLevelBVH.hpp"
 #include "Core/MaterialManager.hpp"
 #include "Camera.hpp"
-#include "Render/Sampler.hpp"
 
 #include <filesystem>
 #include <memory>

@@ -3,7 +3,6 @@
 
 #include "Core/UpperLevelBVH.hpp"
 #include "Core/MaterialManager.hpp"
-#include "Sampler.hpp"
 #include "Core/Scene.hpp"
 
 #include <memory>
@@ -37,18 +36,16 @@ namespace Render
     {
     public:
 
-        Monte_Carlo_Integrator(const Core::BVH::UpperLevelBVH&,  Core::MaterialManager&, const std::vector<Scene::Light> &light_bounds, std::shared_ptr<Core::ImageCube>& skybox,
-                               std::unique_ptr<Diffuse_Sampler>& diffuseSampler, std::unique_ptr<Specular_Sampler>& specSampler, const uint64_t seed);
+        Monte_Carlo_Integrator(const Core::BVH::UpperLevelBVH&,  Core::MaterialManager&, const std::vector<Scene::Light> &light_bounds, std::shared_ptr<Core::ImageCube>& skybox,const uint64_t seed);
 
         virtual glm::vec4 integrate_ray(const Core::Ray& ray, const uint32_t maxDepth, const uint32_t rayCount) final;
 
     private:
 
-        Render::Sample generate_next_diffuse_event(const glm::vec3& pos, const glm::vec3& N, const glm::vec3& V, const float R);
-        Render::Sample generate_next_specular_event(const glm::vec3& pos, const glm::vec3& N, const glm::vec3& V, const float R);
+        Render::Sample generate_next_diffuse_event(const Core::BVH::InterpolatedVertex& frag, const glm::vec3& V);
+        Render::Sample generate_next_specular_event(const Core::BVH::InterpolatedVertex& frag, const glm::vec3& V);
 
-        void trace_diffuse_ray(const Core::BVH::InterpolatedVertex& frag, Core::Ray& ray, const uint32_t depth);
-        void trace_specular_ray(const Core::BVH::InterpolatedVertex& frag, Core::Ray& ray, const uint32_t depth);
+        void trace_ray(const Core::BVH::InterpolatedVertex& frag, Core::Ray& ray, const uint32_t depth);
 
         bool weighted_random_ray_type(const Core::EvaluatedMaterial& mat);
 
@@ -56,9 +53,6 @@ namespace Render
         std::uniform_real_distribution<float> mDistribution;
 
         Core::Rand::Hammersley_Generator m_hammersley_generator;
-
-        std::unique_ptr<Diffuse_Sampler> m_diffuse_sampler;
-        std::unique_ptr<Specular_Sampler> m_specular_sampler;
 
         std::shared_ptr<Core::ImageCube> m_skybox;
     };

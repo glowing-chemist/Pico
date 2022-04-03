@@ -2,7 +2,6 @@
 #include "Core/Camera.hpp"
 #include "Core/vectorUtils.hpp"
 #include "Core/Asserts.hpp"
-#include "Render/Sampler.hpp"
 #include "Render/PBR.hpp"
 #include "Render/Integrators.hpp"
 #include "Render/BasicMaterials.hpp"
@@ -110,13 +109,7 @@ namespace Scene
 
             ray.mLenght = farPlane;
 
-            std::unique_ptr<Render::Distribution> cosine_weighted_dist = std::make_unique<Render::Cos_Weighted_Hemisphere_Distribution>();
-            std::unique_ptr<Render::Distribution> beckmann_microfact_dist = std::make_unique<Render::Beckmann_All_Microfacet_Distribution>();
-
-            auto diffuse_sampler = std::make_unique<Render::Diffuse_Sampler>(seed, cosine_weighted_dist);
-            auto specular_sampler = std::make_unique<Render::Specular_Sampler>(seed, beckmann_microfact_dist);
-
-            Render::Monte_Carlo_Integrator integrator(m_bvh, m_material_manager, m_lights, mSkybox, diffuse_sampler, specular_sampler, seed);
+            Render::Monte_Carlo_Integrator integrator(m_bvh, m_material_manager, m_lights, mSkybox, seed);
 
             return integrator.integrate_ray(ray, params.m_maxRayDepth, params.m_sample);
         };
@@ -256,16 +249,22 @@ namespace Scene
                                     glm::mat4_cast(rotation) *
                                     glm::scale(glm::mat4x4(1.0f), scale);
 
-        m_bvh.add_lower_level_bvh(m_lowerLevelBVhs[assetID], transform, material);
-
+        std::shared_ptr<Render::BSRDF> brdf;
         if(m_material_manager.get_material(material)->is_light())
         {
+            brdf = std::make_shared<Render::Light_BRDF>(m_material_manager, material);
+
             auto& bvh = m_lowerLevelBVhs[assetID];
-            // This geometry will be sampled as a light so create the sampling info/weightings.
             bvh->generate_sampling_data();
-            m_lights.push_back({transform, glm::inverse(transform), bvh});
+            m_lights.push_back({ transform, glm::inverse(transform), bvh });
+        }
+        else
+        {
+            std::unique_ptr<Render::Distribution> distribution = std::make_unique<Render::Beckmann_All_Microfacet_Distribution>();
+            brdf = std::make_shared<Render::Diffuse_BRDF>(distribution, m_material_manager, material);
         }
 
+        m_bvh.add_lower_level_bvh(m_lowerLevelBVhs[assetID], transform, brdf);
     }
 
     void Scene::add_material(const std::string &name, const Json::Value &entry)
@@ -469,10 +468,10 @@ namespace Scene
 
         for(uint32_t i = 0; i < node->mNumMeshes; ++i)
         {
-            const aiMesh* currentMesh = scene->mMeshes[node->mMeshes[i]];
-            uint32_t materialIndex = currentMesh->mMaterialIndex;
+            const aiMesh* current_mesh = scene->mMeshes[node->mMeshes[i]];
+            uint32_t material_index = current_mesh->mMaterialIndex;
 
-            std::shared_ptr<Core::BVH::LowerLevelBVH> meshBVH = std::make_shared<Core::BVH::LowerLevelMeshBVH>(currentMesh);
+            std::shared_ptr<Core::BVH::LowerLevelBVH> meshBVH = std::make_shared<Core::BVH::LowerLevelMeshBVH>(current_mesh);
 
             glm::mat4x4 transformationMatrix{};
             transformationMatrix[0][0] = transformation.a1; transformationMatrix[0][1] = transformation.b1;  transformationMatrix[0][2] = transformation.c1; transformationMatrix[0][3] = transformation.d1;
@@ -480,13 +479,21 @@ namespace Scene
             transformationMatrix[2][0] = transformation.a3; transformationMatrix[2][1] = transformation.b3;  transformationMatrix[2][2] = transformation.c3; transformationMatrix[2][3] = transformation.d3;
             transformationMatrix[3][0] = transformation.a4; transformationMatrix[3][1] = transformation.b4;  transformationMatrix[3][2] = transformation.c4; transformationMatrix[3][3] = transformation.d4;
 
-            m_bvh.add_lower_level_bvh(meshBVH, transformationMatrix, materialIndex);
-
-            if(m_material_manager.get_material(materialIndex)->is_light())
+            std::shared_ptr<Render::BSRDF> brdf;
+            if(m_material_manager.get_material(material_index)->is_light())
             {
+                brdf = std::make_shared<Render::Light_BRDF>(m_material_manager, material_index);
+
                 meshBVH->generate_sampling_data();
                 m_lights.push_back({ transformationMatrix, glm::inverse(transformationMatrix), meshBVH });
             }
+            else
+            {
+                std::unique_ptr<Render::Distribution> distribution = std::make_unique<Render::Beckmann_All_Microfacet_Distribution>();
+                brdf = std::make_shared<Render::Diffuse_BRDF>(distribution, m_material_manager, material_index);
+            }
+
+            m_bvh.add_lower_level_bvh(meshBVH, transformationMatrix, brdf);
         }
 
         // Recurse through all child nodes

@@ -7,22 +7,22 @@ namespace Render
 
     Core::EvaluatedMaterial SmoothMetalMaterial::evaluate_material(const glm::vec2&)
     {
-        return {{0.04f, 0.04f, 0.04f, 1.0f}, {m_colour, 0.05f}, {0.f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
+        return {{0.04f, 0.04f, 0.04f}, {m_colour}, 0.05f, {0.f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
     }
 
     Core::EvaluatedMaterial RoughMetalMaterial::evaluate_material(const glm::vec2&)
     {
-        return {{0.04f, 0.04f, 0.04f, 1.0f}, {m_colour, 0.8f}, {0.f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
+        return {{0.04f, 0.04f, 0.04f}, {m_colour}, 0.8f, {0.f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
     }
 
     Core::EvaluatedMaterial MattPlasticMaterial::evaluate_material(const glm::vec2&)
     {
-        return {{m_colour, 1.0f}, {0.04f, 0.04f, 0.04f, 0.8f}, {0.f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
+        return {m_colour, {0.04f, 0.04f, 0.04f}, 0.8f, {0.f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
     }
 
     Core::EvaluatedMaterial EmmissiveMaterial::evaluate_material(const glm::vec2&)
     {
-        return {{0.8f, 0.8f, 0.8f, 0.8f}, {0.0f, 0.0f, 0.0f, 0.8f}, {0.f, 1.0f, 0.0f}, {0.5f, 0.5f, 0.5f}};
+        return {{0.8f, 0.8f, 0.8f}, {0.0f, 0.0f, 0.0f}, 0.8f, {0.f, 1.0f, 0.0f}, {0.5f, 0.5f, 0.5f}};
     }
 
     ConstantMetalnessRoughnessMaterial::ConstantMetalnessRoughnessMaterial(const glm::vec3& albedo, const float metalness, const float roughness, const glm::vec3& emissive)
@@ -30,18 +30,19 @@ namespace Render
         mMaterial.diffuse = glm::vec4(albedo * (1.0f - 0.04f) * (1.0f - metalness), 1.0f);
 
         const glm::vec3 F0 = glm::lerp(glm::vec3(0.04f, 0.04f, 0.04f), glm::vec3(albedo), metalness);
-        mMaterial.specularRoughness.x = F0.x;
-        mMaterial.specularRoughness.y = F0.y;
-        mMaterial.specularRoughness.z = F0.z;
+        mMaterial.specular.x = F0.x;
+        mMaterial.specular.y = F0.y;
+        mMaterial.specular.z = F0.z;
 
-        mMaterial.specularRoughness.w = roughness;
+        mMaterial.roughness = roughness;
         mMaterial.emissive = emissive;
     }
 
     ConstantDiffuseSpecularMaterial::ConstantDiffuseSpecularMaterial(const glm::vec3& diffuse, const glm::vec3& specular, const float gloss, const glm::vec3& emissive)
     {
         mMaterial.diffuse = glm::vec4(diffuse, 1.0f);
-        mMaterial.specularRoughness = glm::vec4(specular, 1.0f - (gloss * gloss));
+        mMaterial.specular = specular;
+        mMaterial.roughness = 1.0f - (gloss * gloss);
         mMaterial.emissive = emissive;
     }
 
@@ -127,7 +128,7 @@ namespace Render
 
     Core::EvaluatedMaterial MetalnessRoughnessMaterial::evaluate_material(const glm::vec2& uv)
     {
-        Core::EvaluatedMaterial material{{0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
+        Core::EvaluatedMaterial material{{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, 1.0f, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
 
         const glm::vec4 albedo = mAlbedoTexture->sample4(uv);
 
@@ -138,7 +139,7 @@ namespace Render
             {
                 const glm::vec4 combined_metalness_roughness = mMetalnessTexture->sample4(uv);
                 metalness = combined_metalness_roughness.z;
-                material.specularRoughness.w = combined_metalness_roughness.y;
+                material.roughness = combined_metalness_roughness.y;
             }
         }
         else
@@ -147,16 +148,15 @@ namespace Render
                 metalness = mMetalnessTexture->sample(uv);
 
             if(mRoughnessTexture)
-                material.specularRoughness.w = mRoughnessTexture->sample(uv);
+                material.roughness = mRoughnessTexture->sample(uv);
         }
 
         material.diffuse = albedo * (1.0f - 0.04f) * (1.0f - metalness);
-        material.diffuse.w = albedo.w;
 
         const glm::vec3 F0 = glm::lerp(glm::vec3(0.04f, 0.04f, 0.04f), glm::vec3(albedo), metalness);
-        material.specularRoughness.x = F0.x;
-        material.specularRoughness.y = F0.y;
-        material.specularRoughness.z = F0.z;
+        material.specular.x = F0.x;
+        material.specular.y = F0.y;
+        material.specular.z = F0.z;
 
         if(mEmmissiveTexture)
             material.emissive = mEmmissiveTexture->sample3(uv);
@@ -234,18 +234,21 @@ namespace Render
 
     Core::EvaluatedMaterial SpecularGlossMaterial::evaluate_material(const glm::vec2& uv)
     {
-        Core::EvaluatedMaterial material{{0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
+        Core::EvaluatedMaterial material{{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, 1.0f, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
 
         material.diffuse = mDiffuseTexture->sample4(uv);
 
         if(mSpecularTexture)
-            material.specularRoughness = glm::vec4(mSpecularTexture->sample3(uv), 1.0f);
+            material.specular = mSpecularTexture->sample3(uv);
 
         if(mEmmissiveTexture)
             material.emissive = mEmmissiveTexture->sample3(uv);
 
         if(mGlossTexture)
-            material.specularRoughness.w = 1.0f - mGlossTexture->sample(uv);
+        {
+            const float gloss = mGlossTexture->sample(uv);
+            material.roughness = 1.0f - (gloss * gloss);
+        }
 
         return material;
     }

@@ -24,12 +24,12 @@ set(SOURCE
 	Source/Core/vectorUtils.cpp
 	Source/Core/RandUtils.cpp
 
-	Source/Render/Sampler.cpp
 	Source/Render/PBR.cpp
 	Source/Render/Integrators.cpp
 	Source/Render/BasicMaterials.cpp
 	Source/Render/SolidAngle.cpp
 	Source/Render/Distributions.cpp
+	Source/Render/BSRDF.cpp
 
 	Source/Util/Options.cpp
 	Source/Util/FrameBuffer.cpp

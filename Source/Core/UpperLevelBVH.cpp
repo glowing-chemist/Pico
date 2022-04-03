@@ -21,7 +21,7 @@ namespace Core
                 InterpolatedVertex found_vertex;
                 if(intersection->mBVH->calculate_intersection(object_space_ray, &found_vertex))
                 {
-                    found_vertex.mMaterialID = intersection->mMaterialIndex;
+                    found_vertex.m_bsrdf = intersection->m_material;
 
                     // Bring vertex back to world space.
                     found_vertex.mPosition = intersection->mTransform * found_vertex.mPosition;
@@ -53,7 +53,7 @@ namespace Core
                 InterpolatedVertex found_vertex;
                 if(intersection->mBVH->calculate_intersection(object_space_ray, &found_vertex))
                 {
-                    found_vertex.mMaterialID = intersection->mMaterialIndex;
+                    found_vertex.m_bsrdf = intersection->m_material;
 
                     // Bring vertex back to world space.
                     found_vertex.mPosition = intersection->mTransform * found_vertex.mPosition;
@@ -67,9 +67,9 @@ namespace Core
             }
         }
 
-        void UpperLevelBVH::add_lower_level_bvh(std::shared_ptr<LowerLevelBVH>& bvh, const glm::mat4x4& transform, uint32_t materialIndex)
+        void UpperLevelBVH::add_lower_level_bvh(std::shared_ptr<LowerLevelBVH>& bvh, const glm::mat4x4& transform, std::shared_ptr<Render::BSRDF>& bssrdf)
         {
-            mLowerLevelBVHs.push_back(Entry{transform, glm::inverse(transform), bvh, materialIndex});
+            mLowerLevelBVHs.push_back(Entry{transform, glm::inverse(transform), bvh, bssrdf});
         }
 
         void UpperLevelBVH::build()

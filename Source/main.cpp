@@ -77,7 +77,7 @@ int main(int argc, const char **argv)
         params.m_Width = resolution.x;
         params.m_maxRayDepth = 10;
         params.m_maxSamples = 512;
-        params.m_sample = 1;
+        params.m_sample = 5;
         params.m_Pixels = frame_memory;
         params.m_SampleCount = sample_count;
 
@@ -86,13 +86,19 @@ int main(int argc, const char **argv)
 
         Scene::Camera camera(camera_pos, camera_dir, resolution.x / resolution.y, 0.1f, 10000.0f);
 
-        uint32_t frame = 0;
+        auto render_func = [](std::unique_ptr<Scene::Scene>& scene, const Scene::Camera& cam, const Scene::RenderParams& params)
+        {
+            for(uint32_t sample_i = 0; sample_i < params.m_maxSamples; sample_i += params.m_sample)
+            {
+                scene->render_scene_to_memory(cam, params);
+                printf("Rendered frame %d\n", sample_i);
+            }
+        };
+
+        std::thread render_thread(render_func, std::ref(scene), std::ref(camera), std::ref(params));
+
         while(!glfwWindowShouldClose(window))
         {
-            scene->render_scene_to_memory(camera, params);
-
-            printf("Rendered frame %d\n", frame++);
-
             frame_buffer.set_image(frame_memory);
 
             glfwSwapBuffers(window);
