@@ -25,13 +25,13 @@ namespace Core
                 InterpolatedVertex found_vertex;
                 if(intersection->mBVH->calculate_intersection(object_space_ray, &found_vertex))
                 {
-                    const float intersection_distance = glm::length(found_vertex.mPosition - ray.mOrigin);
-
                     found_vertex.m_bsrdf = intersection->m_material;
 
                     // Bring vertex back to world space.
                     found_vertex.mPosition = intersection->mTransform * found_vertex.mPosition;
                     found_vertex.mNormal   = glm::normalize(glm::mat3x3(intersection->mTransform) * found_vertex.mNormal);
+
+                    const float intersection_distance = glm::length(found_vertex.mPosition - ray.mOrigin);
 
                     if(intersection_distance <= clostest_distance)
                     {
