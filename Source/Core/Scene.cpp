@@ -114,40 +114,54 @@ namespace Scene
             return integrator.integrate_ray(ray, params.m_maxRayDepth, params.m_sample);
         };
 
-        auto trace_rays = [&](const uint32_t start, const uint32_t stepSize, const size_t random_seed)
+        auto trace_rays = [&](const glm::uvec2 start, const glm::uvec2& tile_size, const size_t random_seed)
         {
             std::mt19937 random_generator(random_seed);
 
-            uint32_t location = start;
-            while(location < (params.m_Height * params.m_Width))
-            {                
-                const uint32_t pix = location % params.m_Width;
-                const uint32_t piy = location / params.m_Width;
+            glm::uvec2 location = start;
+            glm::uvec2 offset = {0, 0};
+            while(offset.x < tile_size.x && offset.y < tile_size.y && location.x < params.m_Width && location.y < params.m_Height)
+            {
+                const uint32_t flat_location = (location.y * params.m_Width) + location.x;
 
-                if(params.m_SampleCount[location] >= params.m_maxSamples)
+                if(params.m_SampleCount[flat_location] >= params.m_maxSamples)
                 {
-                    location += stepSize;
+                    if(offset.x ==  (tile_size.x - 1))
+                    {
+                        offset.y += 1;
+                        offset.x = 0;
+                    }
+                    else
+                        offset.x += 1;
                     continue;
                 }
 
-                uint32_t prev_sample_count = params.m_SampleCount[location];
-                glm::vec4 pixel_result =  trace_ray(pix, piy, random_generator());
+                uint32_t prev_sample_count = params.m_SampleCount[flat_location];
+                glm::vec4 pixel_result =  trace_ray(location.x, location.y, random_generator());
                 pixel_result = glm::clamp(pixel_result, 0.0f, 1.0f);
 
                 if(prev_sample_count < 1)
                 {
-                    params.m_SampleCount[location] = 1;
+                    params.m_SampleCount[flat_location] = 1;
                 }
                 else
                 {
-                    const glm::vec4& previous_pixle = params.m_Pixels[location];
+                    const glm::vec4& previous_pixle = params.m_Pixels[flat_location];
                     pixel_result = previous_pixle + ((pixel_result - previous_pixle) * (1.0f / prev_sample_count));
-                    params.m_SampleCount[location] += 1;
+                    params.m_SampleCount[flat_location] += 1;
                 }
 
-                params.m_Pixels[location] = pixel_result;
+                params.m_Pixels[flat_location] = pixel_result;
 
-                location += stepSize;
+                if(offset.x ==  (tile_size.x - 1))
+                {
+                    offset.y += 1;
+                    offset.x = 0;
+                }
+                else
+                    offset.x += 1;
+
+                location = start + offset;
             }
         };
 
@@ -155,13 +169,19 @@ namespace Scene
         std::mt19937 random_generator(random_device());
 
         const uint32_t processor_count = m_threadPool.get_worker_count(); // use this many threads for tracing rays.
+        const uint32_t xCount = std::sqrt(processor_count);
+        const uint32_t yCount = processor_count / xCount;
+        PICO_ASSERT(xCount * yCount == processor_count);
+
+        glm::uvec2 tile_size{(params.m_Width + (xCount - 1)) / xCount, (params.m_Height + (yCount - 1)) / yCount};
+
         std::vector<std::future<void>> handles{};
         for(uint32_t i = 1; i < processor_count; ++i)
         {
-            handles.push_back(m_threadPool.add_task(trace_rays, i, processor_count, random_generator()));
+            handles.push_back(m_threadPool.add_task(trace_rays, glm::uvec2((i % xCount) * tile_size.x, (i / xCount) * tile_size.y), tile_size, random_generator()));
         }
 
-        trace_rays(0, processor_count, random_generator());
+        trace_rays(glm::uvec2(0, 0), tile_size, random_generator());
 
         for(auto& thread : handles)
             thread.wait();
