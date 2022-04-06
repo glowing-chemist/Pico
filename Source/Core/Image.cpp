@@ -40,7 +40,7 @@ namespace Core
         return 4;
     }
 
-    Image::Image(const std::string& path) :
+    Image::Image(const std::filesystem::path& path) :
         mPath(path),
         mData(nullptr)
     {

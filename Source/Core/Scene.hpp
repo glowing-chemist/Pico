@@ -12,6 +12,7 @@
 #include "Core/LowerLevelBVH.hpp"
 #include "Core/UpperLevelBVH.hpp"
 #include "Core/MaterialManager.hpp"
+#include "Core/FileMappings.hpp"
 #include "Camera.hpp"
 
 #include <filesystem>
@@ -91,6 +92,8 @@ namespace Scene
         std::vector<Light> m_lights;
 
         ThreadPool& m_threadPool;
+
+        std::unique_ptr<Core::File_System_Mappings> m_file_mapper;
 
         std::shared_ptr<Core::ImageCube> mSkybox;
     };

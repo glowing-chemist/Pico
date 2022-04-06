@@ -23,6 +23,7 @@ set(SOURCE
 	Source/Core/MaterialManager.cpp
 	Source/Core/vectorUtils.cpp
 	Source/Core/RandUtils.cpp
+	Source/Core/FileMappings.cpp
 
 	Source/Render/PBR.cpp
 	Source/Render/Integrators.cpp

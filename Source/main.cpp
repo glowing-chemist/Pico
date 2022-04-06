@@ -22,6 +22,9 @@ void error_callback(int, const char* description)
 
 int main(int argc, const char **argv)
 {
+    glm::vec4* frame_memory;
+    uint32_t* sample_count;
+
     {
         Util::Options options(argv, argc);
 
@@ -29,10 +32,10 @@ int main(int argc, const char **argv)
 
         glm::ivec2 resolution = options.get_option<Util::Option::kResolution>();
 
-        glm::vec4* frame_memory = new glm::vec4[resolution.x * resolution.y];
+        frame_memory = new glm::vec4[resolution.x * resolution.y];
         memset(frame_memory, ~0, resolution.x * resolution.y * 4);
 
-        uint32_t* sample_count = new uint32_t[resolution.x * resolution.y];
+        sample_count = new uint32_t[resolution.x * resolution.y];
         memset(sample_count, 0, resolution.x * resolution.y * 4);
 
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -86,16 +89,20 @@ int main(int argc, const char **argv)
 
         Scene::Camera camera(camera_pos, camera_dir, resolution.x / resolution.y, 0.1f, 10000.0f);
 
-        auto render_func = [](std::unique_ptr<Scene::Scene>& scene, const Scene::Camera& cam, const Scene::RenderParams& params)
+        bool should_quit = false;
+        auto render_func = [](std::unique_ptr<Scene::Scene>& scene, const Scene::Camera& cam, const Scene::RenderParams& params, bool* quit)
         {
             for(uint32_t sample_i = 0; sample_i < params.m_maxSamples; sample_i += params.m_sample)
             {
                 scene->render_scene_to_memory(cam, params);
                 printf("Rendered frame %d\n", sample_i);
+
+                if(*quit)
+                    return;
             }
         };
 
-        std::thread render_thread(render_func, std::ref(scene), std::ref(camera), std::ref(params));
+        std::thread render_thread(render_func, std::ref(scene), std::ref(camera), std::ref(params), &should_quit);
 
         while(!glfwWindowShouldClose(window))
         {
@@ -105,9 +112,14 @@ int main(int argc, const char **argv)
             glfwPollEvents();
         }
 
+        should_quit = true;
+        render_thread.join();
+
         glfwDestroyWindow(window);
-        delete[] frame_memory;
-        delete[] sample_count;
     }
+
+    delete[] frame_memory;
+    delete[] sample_count;
+
     glfwTerminate();
 }

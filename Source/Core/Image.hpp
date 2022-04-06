@@ -1,6 +1,7 @@
 #ifndef PICO_IMAGE_HPP
 #define PICO_IMAGE_HPP
 
+#include <filesystem>
 #include <string>
 #include <vector>
 #include <cstdint>
@@ -36,7 +37,7 @@ namespace Core
         mPixelSize(get_pixel_size(mFormat))
         {}
 
-        Image(const std::string& path);
+        Image(const std::filesystem::path& path);
 
         virtual ~Image();
 
@@ -61,7 +62,7 @@ namespace Core
         const unsigned char* get_data_ptr(const glm::vec2& uv) const;
         const unsigned char* get_data_ptr(const glm::vec2& uv, const uint32_t face) const;
 
-        std::string mPath;
+        std::filesystem::path mPath;
 
         unsigned char* mData;
         ImageExtent mExtent;
@@ -76,7 +77,7 @@ namespace Core
 
         Image2D(unsigned char* data, const ImageExtent& extent, const Format format);
 
-        Image2D(const std::string& path) :
+        Image2D(const std::filesystem::path& path) :
             Image(path) {}
 
         float sample(const glm::vec2& uv) const;
