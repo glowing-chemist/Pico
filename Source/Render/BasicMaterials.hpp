@@ -9,7 +9,7 @@
 namespace Render
 {
 
-    // BAse material that doesn't reply on external data/textures.
+    // Base material that doesn't reply on external data/textures.
     class ConstantMaterial : public Core::Material
     {
     public:
@@ -36,6 +36,32 @@ namespace Render
         {
 
         }
+    };
+
+    class ConstantTransparentMaterial : public ConstantMaterial
+    {
+    public:
+
+        ConstantTransparentMaterial(const float transparency, const float IoR) :
+            m_transparency{transparency},
+            m_index_of_refraction{IoR} {}
+
+        virtual ~ConstantTransparentMaterial() = default;
+
+        float get_transparency_factor() const
+        {
+            return m_transparency;
+        }
+
+        float get_index_of_refraction() const
+        {
+            return m_index_of_refraction;
+        }
+
+    private:
+
+        float m_transparency;
+        float m_index_of_refraction;
     };
 
 
@@ -145,6 +171,48 @@ namespace Render
         virtual bool              is_light() const final
         {
             return mMaterial.emissive.x > 0.0f || mMaterial.emissive.y > 0.0f || mMaterial.emissive.z > 0.0f;
+        }
+
+    private:
+
+        Core::EvaluatedMaterial mMaterial;
+    };
+
+
+    class ConstantTransparentDiffuseSpecularMaterial : public ConstantTransparentMaterial
+    {
+    public:
+        ConstantTransparentDiffuseSpecularMaterial(const glm::vec3& diffuse, const glm::vec3& specular, const float gloss, const float transparency, const float IoR);
+
+        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2&) final
+        {
+            return mMaterial;
+        }
+
+        virtual bool              is_light() const final
+        {
+            return false;
+        }
+
+    private:
+
+        Core::EvaluatedMaterial mMaterial;
+    };
+
+
+    class ConstantTransparentMetalnessRoughnessMaterial : public ConstantTransparentMaterial
+    {
+    public:
+        ConstantTransparentMetalnessRoughnessMaterial(const glm::vec3& albedo, const float metalness, const float roughness, const float transparency, const float IoR);
+
+        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2&) final
+        {
+            return mMaterial;
+        }
+
+        virtual bool              is_light() const final
+        {
+            return false;
         }
 
     private:

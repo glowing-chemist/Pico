@@ -29,7 +29,7 @@ namespace Core
 
         float diffuse_magnitude() const
         {
-            return glm::length(glm::vec3(diffuse));
+            return glm::length(diffuse);
         }
 
         float specular_magnitude() const

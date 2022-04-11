@@ -116,6 +116,38 @@ namespace Render
         }
     };
 
+    class Transparent_BTDF : public BSRDF
+    {
+    public:
+
+        Transparent_BTDF(std::unique_ptr<Render::Distribution>& dist, Core::MaterialManager& mat_manager, Core::MaterialManager::MaterialID id) :
+            BSRDF(mat_manager, id),
+            m_distribution(std::move(dist))
+        {
+            const auto& material = m_material_manager.get_material(id);
+            if(auto* transparent_material = dynamic_cast<Render::ConstantTransparentMaterial*>(material.get()))
+            {
+                m_index_of_refraction = transparent_material->get_index_of_refraction();
+            }
+        }
+
+
+        virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::BVH::InterpolatedVertex &position, const glm::vec3& V) final;
+
+        virtual BSRDF_Type get_type() const final
+        {
+            return BSRDF_Type::kBTDF;
+        }
+
+    private:
+
+        float calculate_critical_angle(const float outer_IoR) const;
+
+        std::unique_ptr<Render::Distribution> m_distribution;
+
+        float m_index_of_refraction;
+    };
+
 }
 
 #endif

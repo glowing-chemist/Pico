@@ -270,26 +270,36 @@ namespace Scene
             material = mMaterials[materialName];
         }
 
+        std::shared_ptr<Render::BSRDF> bsrdf;
+        if(entry.isMember("BSRDF"))
+        {
+            const std::string bsrdf_type = entry["BRSDF"].asString();
+            if(bsrdf_type == "Diffuse")
+            {
+                std::unique_ptr<Render::Distribution> distribution = std::make_unique<Render::Cos_Weighted_Hemisphere_Distribution>();
+                bsrdf = std::make_shared<Render::Diffuse_BRDF>(distribution, m_material_manager, material);
+            }
+            else if(bsrdf_type == "Specular")
+            {
+                std::unique_ptr<Render::Distribution> distribution = std::make_unique<Render::Beckmann_All_Microfacet_Distribution>();
+                bsrdf = std::make_shared<Render::Specular_BRDF>(distribution, m_material_manager, material);
+            }
+            else if(bsrdf_type == "Transparent")
+            {
+                std::unique_ptr<Render::Distribution> distribution = std::make_unique<Render::Beckmann_All_Microfacet_Distribution>();
+                bsrdf = std::make_shared<Render::Transparent_BTDF>(distribution, m_material_manager, material);
+            }
+            else if(bsrdf_type == "Light")
+            {
+                bsrdf = std::make_shared<Render::Light_BRDF>(m_material_manager, material);
+            }
+        }
+
         const glm::mat4x4 transform =  glm::translate(glm::mat4x4(1.0f), position) *
                                     glm::mat4_cast(rotation) *
                                     glm::scale(glm::mat4x4(1.0f), scale);
 
-        std::shared_ptr<Render::BSRDF> brdf;
-        if(m_material_manager.get_material(material)->is_light())
-        {
-            brdf = std::make_shared<Render::Light_BRDF>(m_material_manager, material);
-
-            auto& bvh = m_lowerLevelBVhs[assetID];
-            bvh->generate_sampling_data();
-            m_lights.push_back({ transform, glm::inverse(transform), bvh });
-        }
-        else
-        {
-            std::unique_ptr<Render::Distribution> distribution = std::make_unique<Render::Cos_Weighted_Hemisphere_Distribution>();
-            brdf = std::make_shared<Render::Diffuse_BRDF>(distribution, m_material_manager, material);
-        }
-
-        m_bvh.add_lower_level_bvh(m_lowerLevelBVhs[assetID], transform, brdf);
+        m_bvh.add_lower_level_bvh(m_lowerLevelBVhs[assetID], transform, bsrdf);
     }
 
     void Scene::add_material(const std::string& name, const Json::Value& entry)
@@ -392,7 +402,13 @@ namespace Scene
                 emmissive.z = albedo_enrty[2].asFloat();
             }
 
-            material = std::make_unique<Render::ConstantMetalnessRoughnessMaterial>(albedo, metalness, roughness, emmissive);
+            if(entry.isMember("IndexOfRefraction"))
+            {
+                const float index_of_refraction = entry["IndexOfRefraction"].asFloat();
+                material = std::make_unique<Render::ConstantTransparentMetalnessRoughnessMaterial>(albedo, metalness, roughness, 1.0f, index_of_refraction);
+            }
+            else
+                material = std::make_unique<Render::ConstantMetalnessRoughnessMaterial>(albedo, metalness, roughness, emmissive);
         }
 
         mMaterials[name] = m_material_manager.add_material(material);
@@ -697,9 +713,22 @@ namespace Scene
             float roughness = 1.0f;
             material->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_ROUGHNESS_FACTOR, roughness);
 
-            pico_material =  std::make_unique<Render::ConstantDiffuseSpecularMaterial>(  glm::vec3(diffuse.r, diffuse.g, diffuse.b),
-                                                                                         glm::vec3(specular.r, specular.g, specular.b), roughness,
-                                                                                         glm::vec3(emissive.r, emissive.g, emissive.b));
+            float transparency = 0.0f;
+            material->Get(AI_MATKEY_TRANSPARENCYFACTOR, transparency);
+
+            float index_of_refraction = 1.0f;
+            material->Get(AI_MATKEY_REFRACTI, index_of_refraction);
+
+            if(transparency > 0.0f)
+            {
+                pico_material =  std::make_unique<Render::ConstantTransparentDiffuseSpecularMaterial>(  glm::vec3(diffuse.r, diffuse.g, diffuse.b),
+                                                                                                        glm::vec3(specular.r, specular.g, specular.b), roughness,
+                                                                                                        transparency, index_of_refraction);
+            }
+            else
+                pico_material =  std::make_unique<Render::ConstantDiffuseSpecularMaterial>(  glm::vec3(diffuse.r, diffuse.g, diffuse.b),
+                                                                                             glm::vec3(specular.r, specular.g, specular.b), roughness,
+                                                                                             glm::vec3(emissive.r, emissive.g, emissive.b));
        }
 
         m_material_manager.add_material(pico_material);

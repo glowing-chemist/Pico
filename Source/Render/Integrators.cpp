@@ -146,7 +146,7 @@ namespace Render
 
         const glm::vec4 diffuse_factor = glm::vec4(sample.energy, 1.0f);
 
-        ray.mOrigin = frag.mPosition + glm::vec4(0.01f * frag.mNormal, 0.0f);
+        ray.mOrigin = frag.mPosition + glm::vec4(0.01f * sample.L, 0.0f);
         ray.mDirection = sample.L;
 
         Core::BVH::InterpolatedVertex intersection;

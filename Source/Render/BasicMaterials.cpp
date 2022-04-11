@@ -46,6 +46,29 @@ namespace Render
         mMaterial.emissive = emissive;
     }
 
+    ConstantTransparentDiffuseSpecularMaterial::ConstantTransparentDiffuseSpecularMaterial(const glm::vec3& diffuse, const glm::vec3& specular, const float gloss, const float transparency, const float IoR) :
+        ConstantTransparentMaterial(transparency, IoR)
+    {
+        mMaterial.diffuse = glm::vec4(diffuse, 1.0f);
+        mMaterial.specular = specular;
+        mMaterial.roughness = 1.0f - (gloss * gloss);
+        mMaterial.emissive = glm::vec3(0.0f);
+    }
+
+    ConstantTransparentMetalnessRoughnessMaterial::ConstantTransparentMetalnessRoughnessMaterial(const glm::vec3& albedo, const float metalness, const float roughness, const float transparency, const float IoR) :
+        ConstantTransparentMaterial(transparency, IoR)
+    {
+        mMaterial.diffuse = albedo * (1.0f - 0.04f) * (1.0f - metalness);
+
+        const glm::vec3 F0 = glm::lerp(glm::vec3(0.04f, 0.04f, 0.04f), glm::vec3(albedo), metalness);
+        mMaterial.specular.x = F0.x;
+        mMaterial.specular.y = F0.y;
+        mMaterial.specular.z = F0.z;
+
+        mMaterial.roughness = roughness;
+        mMaterial.emissive = glm::vec3(0.0f);
+    }
+
     MetalnessRoughnessMaterial::MetalnessRoughnessMaterial(std::unique_ptr<Core::Image2D>& albedo,
                                                            std::unique_ptr<Core::Image2D>& metalness,
                                                            std::unique_ptr<Core::Image2D>& roughness,
