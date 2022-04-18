@@ -42,8 +42,7 @@ namespace Render
 
     private:
 
-        Render::Sample generate_next_diffuse_event(const Core::BVH::InterpolatedVertex& frag, const glm::vec3& V);
-        Render::Sample generate_next_specular_event(const Core::BVH::InterpolatedVertex& frag, const glm::vec3& V);
+        Render::Sample generate_next_event(const Core::BVH::InterpolatedVertex& frag, Core::Ray& ray);
 
         void trace_ray(const Core::BVH::InterpolatedVertex& frag, Core::Ray& ray, const uint32_t depth);
 

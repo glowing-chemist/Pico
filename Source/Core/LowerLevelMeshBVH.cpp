@@ -59,7 +59,7 @@ namespace Core
             newRay.dir[0] = ray.mDirection.x;
             newRay.dir[1] = ray.mDirection.y;
             newRay.dir[2] = ray.mDirection.z;
-            newRay.min_t = 0.01f;
+            newRay.min_t = 0.0f;
             newRay.max_t = ray.mLenght;
 
             return trace_ray(newRay, result);

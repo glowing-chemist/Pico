@@ -29,6 +29,22 @@ namespace Core
             return glm::vec2(1 - su0, Xi.y * su0);
         }
 
+        glm::vec3 uniform_sample_hemisphere(const glm::vec2& Xi)
+        {
+            const float z = Xi.x;
+            const float r = std::sqrt(std::max(0.0f, 1.0f - z * z));
+            const float phi = 2 * M_PI * Xi.y;
+            return glm::vec3(r * std::cos(phi), r * std::sin(phi), z);
+        }
+
+        glm::vec3 uniform_sample_sphere(const glm::vec2& Xi)
+        {
+            const float z = 1 - 2 * Xi.x;
+            const float r = std::sqrt(std::max(0.0f, 1.0f - z * z));
+            const float phi = 2 * M_PI * Xi.y;
+            return glm::vec3(r * std::cos(phi), r * std::sin(phi), z);
+        }
+
         Hammersley_Generator::Hammersley_Generator(const size_t seed) :
             m_generator(seed),
             m_random_sample_distribution(0, kMaxSamples)

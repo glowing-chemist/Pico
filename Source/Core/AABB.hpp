@@ -2,6 +2,7 @@
 #define AABB_HPP
 
 #include <array>
+#include <vector>
 
 #include "glm/vec4.hpp"
 #include "glm/mat4x4.hpp"
@@ -24,6 +25,14 @@ namespace Core
 
         glm::vec4 m_payload;
         float     m_weight;
+
+        void push_index_of_refraction(const float);
+        float pop_index_of_refraction();
+        float get_current_index_of_refraction() const;
+
+    private:
+
+        std::vector<float> m_index_or_refraction_stack;
     };
 
     Ray transform_ray(const Ray&, const glm::mat4x4& transform);

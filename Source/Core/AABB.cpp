@@ -1,4 +1,5 @@
 #include "AABB.hpp"
+#include "Core/Asserts.hpp"
 
 namespace Core
 {
@@ -44,6 +45,28 @@ namespace Core
         newRay.mLenght = ray.mLenght;
 
         return newRay;
+    }
+
+    void Ray::push_index_of_refraction(const float IoR)
+    {
+        m_index_or_refraction_stack.push_back(IoR);
+    }
+
+    float Ray::pop_index_of_refraction()
+    {
+        PICO_ASSERT(!m_index_or_refraction_stack.empty());
+        const float IoR = m_index_or_refraction_stack.back();
+        m_index_or_refraction_stack.pop_back();
+        PICO_ASSERT(!m_index_or_refraction_stack.empty());
+
+        return IoR;
+    }
+
+    float Ray::get_current_index_of_refraction() const
+    {
+        PICO_ASSERT(!m_index_or_refraction_stack.empty());
+
+        return m_index_or_refraction_stack.back();
     }
 
     std::array<glm::vec4, 8> AABB::get_cube_as_vertex_array() const

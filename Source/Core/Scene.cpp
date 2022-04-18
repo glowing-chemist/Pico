@@ -75,7 +75,7 @@ namespace Scene
         m_file_mapper = std::make_unique<Core::File_System_Mappings>(working_dir);
 
         // Create a black cubemap.
-        unsigned char* black_cube_map = new unsigned char[24];
+        unsigned char* black_cube_map = static_cast<unsigned char*>(malloc(sizeof(unsigned char) * 24));
         memset(black_cube_map, 0, 24);
         Core::ImageExtent extent{1, 1, 1};
         mSkybox = std::make_shared<Core::ImageCube>(black_cube_map, extent, Core::Format::kRBGA_8UNorm);
@@ -109,10 +109,9 @@ namespace Scene
 
             Core::Ray ray;
             ray.mDirection = dir;
-
             ray.mOrigin = glm::vec4(origin, 1.0f);
-
             ray.mLenght = farPlane;
+            ray.push_index_of_refraction(1.0f);
 
             Render::Monte_Carlo_Integrator integrator(m_bvh, m_material_manager, m_lights, mSkybox, seed);
 
@@ -221,7 +220,7 @@ namespace Scene
                                                  aiProcess_GenBoundingBoxes);
 
 
-        auto mesh_bvh = std::make_shared<Core::BVH::LowerLevelMeshBVH>(scene->mMeshes[1]);
+        auto mesh_bvh = std::make_shared<Core::BVH::LowerLevelMeshBVH>(scene->mMeshes[0]);
 
         mInstanceIDs[name] = m_lowerLevelBVhs.size();
         m_lowerLevelBVhs.push_back(mesh_bvh);
@@ -270,10 +269,15 @@ namespace Scene
             material = mMaterials[materialName];
         }
 
+        const glm::mat4x4 transform =  glm::translate(glm::mat4x4(1.0f), position) *
+                                    glm::mat4_cast(rotation) *
+                                    glm::scale(glm::mat4x4(1.0f), scale);
+
+
         std::shared_ptr<Render::BSRDF> bsrdf;
         if(entry.isMember("BSRDF"))
         {
-            const std::string bsrdf_type = entry["BRSDF"].asString();
+            const std::string bsrdf_type = entry["BSRDF"].asString();
             if(bsrdf_type == "Diffuse")
             {
                 std::unique_ptr<Render::Distribution> distribution = std::make_unique<Render::Cos_Weighted_Hemisphere_Distribution>();
@@ -289,15 +293,25 @@ namespace Scene
                 std::unique_ptr<Render::Distribution> distribution = std::make_unique<Render::Beckmann_All_Microfacet_Distribution>();
                 bsrdf = std::make_shared<Render::Transparent_BTDF>(distribution, m_material_manager, material);
             }
+            else if(bsrdf_type == "Fresnel")
+            {
+                std::unique_ptr<Render::Distribution> specular_distribution = std::make_unique<Render::Beckmann_All_Microfacet_Distribution>();
+                std::unique_ptr<Render::Distribution> transmission_distribution = std::make_unique<Render::Beckmann_All_Microfacet_Distribution>();
+                bsrdf = std::make_shared<Render::Fresnel_BTDF>(specular_distribution, transmission_distribution, m_material_manager, material);
+            }
             else if(bsrdf_type == "Light")
             {
                 bsrdf = std::make_shared<Render::Light_BRDF>(m_material_manager, material);
+
+                m_lowerLevelBVhs[assetID]->generate_sampling_data();
+                m_lights.push_back({ transform, glm::inverse(transform), m_lowerLevelBVhs[assetID] });
+            }
+            else if(bsrdf_type == "Delta")
+            {
+                bsrdf = std::make_shared<Render::Specular_Delta_BRDF>(m_material_manager, material);
             }
         }
-
-        const glm::mat4x4 transform =  glm::translate(glm::mat4x4(1.0f), position) *
-                                    glm::mat4_cast(rotation) *
-                                    glm::scale(glm::mat4x4(1.0f), scale);
+        PICO_ASSERT(bsrdf);
 
         m_bvh.add_lower_level_bvh(m_lowerLevelBVhs[assetID], transform, bsrdf);
     }
@@ -372,43 +386,89 @@ namespace Scene
         }
         else if(entry["Type"].asString() == "Constant")
         {
-            glm::vec3 albedo(0.0f);
             if(entry.isMember("Albedo"))
             {
-                const Json::Value& albedo_enrty = entry["Albedo"];
-                albedo.x = albedo_enrty[0].asFloat();
-                albedo.y = albedo_enrty[1].asFloat();
-                albedo.z = albedo_enrty[2].asFloat();
-            }
+                glm::vec3 albedo(0.0f);
+                if(entry.isMember("Albedo"))
+                {
+                    const Json::Value& albedo_enrty = entry["Albedo"];
+                    albedo.x = albedo_enrty[0].asFloat();
+                    albedo.y = albedo_enrty[1].asFloat();
+                    albedo.z = albedo_enrty[2].asFloat();
+                }
 
-            float metalness;
-            if(entry.isMember("Metalness"))
-            {
-                metalness = entry["Metalness"].asFloat();
-            }
+                float metalness;
+                if(entry.isMember("Metalness"))
+                {
+                    metalness = entry["Metalness"].asFloat();
+                }
 
-            float roughness = 0.0f;
-            if(entry.isMember("Roughness"))
-            {
-                roughness = entry["Roughness"].asFloat();
-            }
+                float roughness = 0.0f;
+                if(entry.isMember("Roughness"))
+                {
+                    roughness = entry["Roughness"].asFloat();
+                }
 
-            glm::vec3 emmissive(0.0f);
-            if(entry.isMember("Emmissive"))
-            {
-                const Json::Value& albedo_enrty = entry["Emmissive"];
-                emmissive.x = albedo_enrty[0].asFloat();
-                emmissive.y = albedo_enrty[1].asFloat();
-                emmissive.z = albedo_enrty[2].asFloat();
-            }
+                glm::vec3 emmissive(0.0f);
+                if(entry.isMember("Emissive"))
+                {
+                    const Json::Value& albedo_enrty = entry["Emissive"];
+                    emmissive.x = albedo_enrty[0].asFloat();
+                    emmissive.y = albedo_enrty[1].asFloat();
+                    emmissive.z = albedo_enrty[2].asFloat();
+                }
 
-            if(entry.isMember("IndexOfRefraction"))
-            {
-                const float index_of_refraction = entry["IndexOfRefraction"].asFloat();
-                material = std::make_unique<Render::ConstantTransparentMetalnessRoughnessMaterial>(albedo, metalness, roughness, 1.0f, index_of_refraction);
+                if(entry.isMember("IndexOfRefraction"))
+                {
+                    const float index_of_refraction = entry["IndexOfRefraction"].asFloat();
+                    material = std::make_unique<Render::ConstantTransparentMetalnessRoughnessMaterial>(albedo, metalness, roughness, 1.0f, index_of_refraction);
+                }
+                else
+                    material = std::make_unique<Render::ConstantMetalnessRoughnessMaterial>(albedo, metalness, roughness, emmissive);
             }
-            else
-                material = std::make_unique<Render::ConstantMetalnessRoughnessMaterial>(albedo, metalness, roughness, emmissive);
+            else if(entry.isMember("Diffuse") || entry.isMember("Specular"))
+            {
+                glm::vec3 diffuse(0.0f);
+                if(entry.isMember("Diffuse"))
+                {
+                    const Json::Value& albedo_enrty = entry["Diffuse"];
+                    diffuse.x = albedo_enrty[0].asFloat();
+                    diffuse.y = albedo_enrty[1].asFloat();
+                    diffuse.z = albedo_enrty[2].asFloat();
+                }
+
+                glm::vec3 specular(0.0f);
+                if(entry.isMember("Specular"))
+                {
+                    const Json::Value& albedo_enrty = entry["Specular"];
+                    specular.x = albedo_enrty[0].asFloat();
+                    specular.y = albedo_enrty[1].asFloat();
+                    specular.z = albedo_enrty[2].asFloat();
+                }
+
+                float gloss = 0.0f;
+                if(entry.isMember("Gloss"))
+                {
+                    gloss = entry["Gloss"].asFloat();
+                }
+
+                glm::vec3 emmissive(0.0f);
+                if(entry.isMember("Emissive"))
+                {
+                    const Json::Value& albedo_enrty = entry["Emissive"];
+                    emmissive.x = albedo_enrty[0].asFloat();
+                    emmissive.y = albedo_enrty[1].asFloat();
+                    emmissive.z = albedo_enrty[2].asFloat();
+                }
+
+                if(entry.isMember("IndexOfRefraction"))
+                {
+                    const float index_of_refraction = entry["IndexOfRefraction"].asFloat();
+                    material = std::make_unique<Render::ConstantTransparentDiffuseSpecularMaterial>(diffuse, specular, gloss, 1.0f, index_of_refraction);
+                }
+                else
+                    material = std::make_unique<Render::ConstantDiffuseSpecularMaterial>(diffuse, specular, gloss, emmissive);
+            }
         }
 
         mMaterials[name] = m_material_manager.add_material(material);
@@ -498,6 +558,14 @@ namespace Scene
             unsigned char* data = new unsigned char[skyboxData.size()];
             std::memcpy(data, skyboxData.data(), skyboxData.size());
             mSkybox = std::make_shared<Core::ImageCube>(data, extent, Core::Format::kRBGA_8UNorm);
+        }
+        else
+        {
+            // Create a black cubemap.
+            unsigned char* black_cube_map = static_cast<unsigned char*>(malloc(sizeof(unsigned char) * 24));
+            memset(black_cube_map, 0, 24);
+            Core::ImageExtent extent{1, 1, 1};
+            mSkybox = std::make_shared<Core::ImageCube>(black_cube_map, extent, Core::Format::kRBGA_8UNorm);
         }
     }
 

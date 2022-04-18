@@ -16,7 +16,7 @@ namespace Render
 
         virtual glm::vec3 sample(const glm::vec2& Xi, const glm::vec3& V, const float R) = 0;
 
-        virtual float pdf(const glm::vec3& wo, const glm::vec3& wi, const float R) = 0;
+        virtual float pdf(const glm::vec3& wo, const glm::vec3& H, const float R) = 0;
 
         virtual glm::vec3 energy(const glm::vec3& wo, const glm::vec3& wi, const float R) = 0;
 
@@ -31,7 +31,7 @@ namespace Render
 
         virtual glm::vec3 sample(const glm::vec2& Xi, const glm::vec3& V, const float R) final;
 
-        virtual float pdf(const glm::vec3& wo, const glm::vec3& wi, const float R) final;
+        virtual float pdf(const glm::vec3& wo, const glm::vec3& H, const float R) final;
 
         virtual glm::vec3 energy(const glm::vec3& wo, const glm::vec3& wi, const float R) final;
     };
@@ -44,13 +44,15 @@ namespace Render
 
         virtual glm::vec3 sample(const glm::vec2& Xi, const glm::vec3& V, const float R) final;
 
-        virtual float pdf(const glm::vec3& wo, const glm::vec3& wi, const float R) final;
+        virtual float pdf(const glm::vec3&, const glm::vec3& H, const float R) final;
 
         virtual glm::vec3 energy(const glm::vec3& wo, const glm::vec3& wi, const float R) final;
 
     private:
 
-        float D(const glm::vec3 &wh, const float a);
+        float roughness_to_alpha(float) const;
+
+        float D(const glm::vec3 &wh, const float R) const;
     };
 }
 

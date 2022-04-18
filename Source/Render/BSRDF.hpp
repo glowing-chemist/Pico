@@ -15,6 +15,8 @@ namespace Core
     {
         struct InterpolatedVertex;
     }
+
+    struct Ray;
 }
 
 namespace Render
@@ -29,7 +31,8 @@ namespace Render
 
     enum class BSRDF_Type
     {
-        kBRDF,
+        kDiffuse_BRDF,
+        kSpecular_BRDF,
         kBTDF,
         kLight
     };
@@ -43,7 +46,7 @@ namespace Render
 
         virtual ~BSRDF() = default;
 
-        virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::BVH::InterpolatedVertex& position, const glm::vec3& V) = 0;
+        virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::BVH::InterpolatedVertex& position, Core::Ray& ray) = 0;
 
         virtual BSRDF_Type get_type() const = 0;
 
@@ -68,11 +71,11 @@ namespace Render
             BSRDF(mat_manager, id),
             m_distribution(std::move(dist)) {}
 
-        virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::BVH::InterpolatedVertex& position, const glm::vec3& V) final;
+        virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::BVH::InterpolatedVertex& position, Core::Ray& ray) final;
 
         virtual BSRDF_Type get_type() const final
         {
-            return BSRDF_Type::kBRDF;
+            return BSRDF_Type::kDiffuse_BRDF;
         }
 
     private:
@@ -89,11 +92,11 @@ namespace Render
             BSRDF(mat_manager, id),
             m_distribution(std::move(dist)) {}
 
-        virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::BVH::InterpolatedVertex &position, const glm::vec3& V) final;
+        virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::BVH::InterpolatedVertex &position, Core::Ray& ray) final;
 
         virtual BSRDF_Type get_type() const final
         {
-            return BSRDF_Type::kBRDF;
+            return BSRDF_Type::kSpecular_BRDF;
         }
 
     private:
@@ -108,11 +111,26 @@ namespace Render
         Light_BRDF(Core::MaterialManager& mat_manager, Core::MaterialManager::MaterialID id) :
             BSRDF(mat_manager, id) {}
 
-        virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::BVH::InterpolatedVertex &position, const glm::vec3& V) final;
+        virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::BVH::InterpolatedVertex &position, Core::Ray& ray) final;
 
         virtual BSRDF_Type get_type() const final
         {
             return BSRDF_Type::kLight;
+        }
+    };
+
+    class Specular_Delta_BRDF : public BSRDF
+    {
+    public:
+
+        Specular_Delta_BRDF(Core::MaterialManager& mat_manager, Core::MaterialManager::MaterialID id) :
+            BSRDF(mat_manager, id) {}
+
+        virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::BVH::InterpolatedVertex &position, Core::Ray& ray) final;
+
+        virtual BSRDF_Type get_type() const final
+        {
+            return BSRDF_Type::kSpecular_BRDF;
         }
     };
 
@@ -132,7 +150,43 @@ namespace Render
         }
 
 
-        virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::BVH::InterpolatedVertex &position, const glm::vec3& V) final;
+        virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::BVH::InterpolatedVertex &position, Core::Ray &ray) final;
+
+        virtual BSRDF_Type get_type() const final
+        {
+            return BSRDF_Type::kBTDF;
+        }
+
+        float get_index_of_refraction() const
+        {
+            return m_index_of_refraction;
+        }
+
+    private:
+
+        bool refract(const glm::vec3& wi, const glm::vec3& n, const float eta, glm::vec3& wt);
+
+        float calculate_critical_angle(const float outer_IoR) const;
+
+        std::unique_ptr<Render::Distribution> m_distribution;
+
+        float m_index_of_refraction;
+    };
+
+    class Fresnel_BTDF : public BSRDF
+    {
+    public:
+
+        Fresnel_BTDF(std::unique_ptr<Render::Distribution>& specular_dist, std::unique_ptr<Render::Distribution>& transparent_dist,
+                     Core::MaterialManager& mat_manager, Core::MaterialManager::MaterialID id) :
+            BSRDF(mat_manager, id)
+        {
+            m_transparent_bsrdf = std::make_unique<Transparent_BTDF>(transparent_dist, mat_manager, id);
+            m_specular_bsrdf    = std::make_unique<Specular_BRDF>(specular_dist, mat_manager, id);
+        }
+
+
+        virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::BVH::InterpolatedVertex &position, Core::Ray& ray) final;
 
         virtual BSRDF_Type get_type() const final
         {
@@ -141,11 +195,11 @@ namespace Render
 
     private:
 
-        float calculate_critical_angle(const float outer_IoR) const;
+        float fresnel_factor(const float cosThetaI, float etaI, float etaT);
 
-        std::unique_ptr<Render::Distribution> m_distribution;
+        std::unique_ptr<Transparent_BTDF> m_transparent_bsrdf;
+        std::unique_ptr<Specular_BRDF>    m_specular_bsrdf;
 
-        float m_index_of_refraction;
     };
 
 }

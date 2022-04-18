@@ -4,6 +4,8 @@
 #include "glm/vec3.hpp"
 #include "glm/vec4.hpp"
 #include "glm/mat3x3.hpp"
+
+#include <algorithm>
 #include <cstdint>
 
 
@@ -37,7 +39,7 @@ namespace Core
 
         inline float abs_cos_theta(const glm::vec3& w) { return std::abs(w.z); }
 
-        inline float sin2_theta(const glm::vec3 &w) { return std::max((float)0, (float)1 - cos2_theta(w)); }
+        inline float sin2_theta(const glm::vec3 &w) { return std::max(0.0f, 1.0f - cos2_theta(w)); }
 
         inline float sin_theta(const glm::vec3 &w) { return std::sqrt(sin2_theta(w)); }
 
@@ -48,13 +50,13 @@ namespace Core
         inline float cos_phi(const glm::vec3& w)
         {
             float sinTheta = sin_theta(w);
-            return (sinTheta == 0) ? 1 : glm::clamp(w.x / sinTheta, -1.0f, 1.0f);
+            return (sinTheta == 0) ? 1 : std::clamp(w.x / sinTheta, -1.0f, 1.0f);
         }
 
         inline float sin_phi(const glm::vec3& w)
         {
             float sinTheta = sin_theta(w);
-            return (sinTheta == 0) ? 0 : glm::clamp(w.y / sinTheta, -1.0f, 1.0f);
+            return (sinTheta == 0) ? 0 : std::clamp(w.y / sinTheta, -1.0f, 1.0f);
         }
 
         inline float cos2_phi(const glm::vec3& w)
@@ -69,7 +71,7 @@ namespace Core
 
         inline bool same_hemisphere(const glm::vec3& w, const glm::vec3& wp)
         {
-            return w.z * wp.z > 0;
+            return w.z * wp.z > 0.0f;
         }
     }
 }

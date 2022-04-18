@@ -17,6 +17,10 @@ namespace Core
 
         glm::vec2 uniform_sample_triangle(const glm::vec2& Xi);
 
+        glm::vec3 uniform_sample_hemisphere(const glm::vec2& Xi);
+
+        glm::vec3 uniform_sample_sphere(const glm::vec2& Xi);
+
         template<typename T>
         inline uint32_t choose(const float r, const T probs, const float norm = 1.0f)
         {
