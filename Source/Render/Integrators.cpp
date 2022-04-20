@@ -36,8 +36,6 @@ namespace Render
                 PICO_ASSERT_NORMALISED(V);
                 const glm::mat3x3 world_to_tangent_transform = Core::TangentSpace::construct_world_to_tangent_transform(V, frag.mNormal);
                 const glm::vec3 view_tangent = glm::normalize(world_to_tangent_transform * V);
-                const glm::vec3 view_normal = glm::normalize(world_to_tangent_transform * frag.mNormal);
-                PICO_ASSERT(view_normal.z > 0.9f);
 
                 // calculate aproximate solid angles of all lights above the points hemisphere
                 // and pick one at random weighted by it's solid angle.
@@ -87,7 +85,8 @@ namespace Render
                     const float pdf = frag.m_bsrdf->pdf(view_tangent, H_tangent, R);
                     const glm::vec3 energy = frag.m_bsrdf->energy(frag, view_tangent, H_tangent);
 
-                    return Render::Sample{to_light, (sample_solid_angle[selected_light_index] / total_solid_angle) * pdf * 0.5f, energy};
+                    // TODO what is the correrct way to combine these pdfs here.
+                    return Render::Sample{to_light, ((sample_solid_angle[selected_light_index] / total_solid_angle) + pdf) * 0.5f, energy};
                 }
             }
             else
