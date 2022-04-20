@@ -48,6 +48,10 @@ namespace Render
 
         virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::BVH::InterpolatedVertex& position, Core::Ray& ray) = 0;
 
+        virtual float pdf(const glm::vec3& wo, const glm::vec3& H, const float R) = 0;
+
+        virtual glm::vec3 energy(const Core::BVH::InterpolatedVertex& position, const glm::vec3& wo, const glm::vec3& H) = 0;
+
         virtual BSRDF_Type get_type() const = 0;
 
         Core::MaterialManager::MaterialID get_material_id() const
@@ -73,6 +77,10 @@ namespace Render
 
         virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::BVH::InterpolatedVertex& position, Core::Ray& ray) final;
 
+        virtual float pdf(const glm::vec3& wo, const glm::vec3& H, const float R) final;
+
+        virtual glm::vec3 energy(const Core::BVH::InterpolatedVertex& position, const glm::vec3& wo, const glm::vec3& H) final;
+
         virtual BSRDF_Type get_type() const final
         {
             return BSRDF_Type::kDiffuse_BRDF;
@@ -94,6 +102,10 @@ namespace Render
 
         virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::BVH::InterpolatedVertex &position, Core::Ray& ray) final;
 
+        virtual float pdf(const glm::vec3& wo, const glm::vec3& H, const float R) final;
+
+        virtual glm::vec3 energy(const Core::BVH::InterpolatedVertex& position, const glm::vec3& wo, const glm::vec3& H) final;
+
         virtual BSRDF_Type get_type() const final
         {
             return BSRDF_Type::kSpecular_BRDF;
@@ -113,6 +125,10 @@ namespace Render
 
         virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::BVH::InterpolatedVertex &position, Core::Ray& ray) final;
 
+        virtual float pdf(const glm::vec3& wo, const glm::vec3& H, const float R) final;
+
+        virtual glm::vec3 energy(const Core::BVH::InterpolatedVertex& position, const glm::vec3& wo, const glm::vec3& H) final;
+
         virtual BSRDF_Type get_type() const final
         {
             return BSRDF_Type::kLight;
@@ -127,6 +143,10 @@ namespace Render
             BSRDF(mat_manager, id) {}
 
         virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::BVH::InterpolatedVertex &position, Core::Ray& ray) final;
+
+        virtual float pdf(const glm::vec3& wo, const glm::vec3& H, const float R) final;
+
+        virtual glm::vec3 energy(const Core::BVH::InterpolatedVertex& position, const glm::vec3& wo, const glm::vec3& H) final;
 
         virtual BSRDF_Type get_type() const final
         {
@@ -151,6 +171,10 @@ namespace Render
 
 
         virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::BVH::InterpolatedVertex &position, Core::Ray &ray) final;
+
+        virtual float pdf(const glm::vec3& wo, const glm::vec3& H, const float R) final;
+
+        virtual glm::vec3 energy(const Core::BVH::InterpolatedVertex& position, const glm::vec3& wo, const glm::vec3& H) final;
 
         virtual BSRDF_Type get_type() const final
         {
@@ -187,6 +211,10 @@ namespace Render
 
 
         virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::BVH::InterpolatedVertex &position, Core::Ray& ray) final;
+
+        virtual float pdf(const glm::vec3& wo, const glm::vec3& H, const float R) final;
+
+        virtual glm::vec3 energy(const Core::BVH::InterpolatedVertex& position, const glm::vec3& wo, const glm::vec3& H) final;
 
         virtual BSRDF_Type get_type() const final
         {

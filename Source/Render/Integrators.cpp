@@ -1,5 +1,6 @@
 #include "Integrators.hpp"
 #include "Render/PBR.hpp"
+#include "Core/vectorUtils.hpp"
 #include "Core/Image.hpp"
 #include "Core/Asserts.hpp"
 
@@ -26,11 +27,18 @@ namespace Render
 
     Render::Sample Monte_Carlo_Integrator::generate_next_event(const Core::BVH::InterpolatedVertex& frag, Core::Ray& ray)
     {
-        if(frag.m_bsrdf->get_type() == Render::BSRDF_Type::kDiffuse_BRDF)
+        const auto bsrdf_type = frag.m_bsrdf->get_type();
+        if(bsrdf_type == Render::BSRDF_Type::kDiffuse_BRDF || bsrdf_type == Render::BSRDF_Type::kSpecular_BRDF)
         {
-            if(mDistribution(mGenerator) > 0.25f)
+            if(mDistribution(mGenerator) > 0.5f)
             {
-                const glm::vec3& V = ray.mDirection;
+                const glm::vec3 V = -ray.mDirection;
+                PICO_ASSERT_NORMALISED(V);
+                const glm::mat3x3 world_to_tangent_transform = Core::TangentSpace::construct_world_to_tangent_transform(V, frag.mNormal);
+                const glm::vec3 view_tangent = glm::normalize(world_to_tangent_transform * V);
+                const glm::vec3 view_normal = glm::normalize(world_to_tangent_transform * frag.mNormal);
+                PICO_ASSERT(view_normal.z > 0.9f);
+
                 // calculate aproximate solid angles of all lights above the points hemisphere
                 // and pick one at random weighted by it's solid angle.
                 float total_solid_angle = 0.0f;
@@ -67,21 +75,25 @@ namespace Render
                 {
                     const glm::vec3& sample_pos = sample_positions[selected_light_index];
                     glm::vec3 to_light = glm::normalize(sample_pos - glm::vec3(frag.mPosition));
-                    const float NdotV = std::abs(glm::dot(frag.mNormal, V));
-                    const float NdotL = std::abs(glm::dot(frag.mNormal, to_light));
-                    const glm::vec3 H = glm::normalize(to_light + V);
-                    const float LdotH = std::abs(glm::dot(to_light, H));
+                    glm::vec3 H = glm::normalize(to_light + V);
+                    if(glm::any(glm::isnan(H)))
+                        H = V;
 
                     const auto mat_id = frag.m_bsrdf->get_material_id();
-                    const glm::vec3 diffuse_color = m_material_manager.evaluate_material(mat_id, frag.mUV).diffuse;
+                    const float R = m_material_manager.evaluate_material(mat_id, frag.mUV).roughness;
 
-                    return Render::Sample{to_light, (sample_solid_angle[selected_light_index] / total_solid_angle) * 0.75f, diffuse_color * glm::vec3(Render::disney_diffuse(NdotV, NdotL, LdotH, 1.0f))};
+                    const glm::vec3 H_tangent = glm::normalize(world_to_tangent_transform * H);
+                    PICO_ASSERT_VALID(H_tangent);
+                    const float pdf = frag.m_bsrdf->pdf(view_tangent, H_tangent, R);
+                    const glm::vec3 energy = frag.m_bsrdf->energy(frag, view_tangent, H_tangent);
+
+                    return Render::Sample{to_light, (sample_solid_angle[selected_light_index] / total_solid_angle) * pdf * 0.5f, energy};
                 }
             }
             else
             {
                 Render::Sample samp = frag.m_bsrdf->sample(m_hammersley_generator, frag, ray);
-                samp.P *= 0.25f;
+                samp.P *= 0.5f;
 
                 return samp;
             }
@@ -97,6 +109,7 @@ namespace Render
         Core::BVH::InterpolatedVertex vertex;
         if(m_bvh.get_closest_intersection(ray, &vertex))
         {
+            //return glm::vec4(vertex.mNormal * 0.5f + 0.5f, 1.0f);
             //return m_material_manager.evaluate_material(vertex.mMaterialID, vertex.mUV).diffuse;
 
             glm::vec4 result{0.0f, 0.0f, 0.0f, 0.0f};
@@ -153,6 +166,10 @@ namespace Render
         ray.m_weight += sample.P;
 
         const glm::vec4 energy_factor = glm::vec4(sample.energy, 1.0f);
+
+        //ray.m_payload *= glm::vec4(glm::vec3(sample.P), 1.0f);
+        //ray.m_weight = 1.0f;
+        //return;
 
         ray.mOrigin = frag.mPosition + glm::vec4(0.01f * sample.L, 0.0f);
         ray.mDirection = sample.L;

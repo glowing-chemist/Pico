@@ -21,15 +21,16 @@ namespace Render
         return glm::normalize(glm::vec3(r * cos(phi), r*sin(phi), sqrt(std::max(0.0f,1.0f-u1))));
     }
 
-    float Cos_Weighted_Hemisphere_Distribution::pdf(const glm::vec3& wo, const glm::vec3&, const float)
+    float Cos_Weighted_Hemisphere_Distribution::pdf(const glm::vec3&, const glm::vec3& H, const float)
     {
-        const float cos_theta = Core::TangentSpace::cos_theta(wo);
+        const float cos_theta = Core::TangentSpace::cos_theta(H);
         return std::max(0.0f, cos_theta / float(M_PI));
     }
 
     glm::vec3 Cos_Weighted_Hemisphere_Distribution::energy(const glm::vec3& wo, const glm::vec3& wi, const float R)
     {
         const glm::vec3 H = glm::normalize(wo + wi);
+        PICO_ASSERT_VALID(H);
         const float NdotV = Core::TangentSpace::cos_theta(wo);
         const float NdotL = Core::TangentSpace::cos_theta(wi);
         const float LdotH = glm::dot(wi, H);

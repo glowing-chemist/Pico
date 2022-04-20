@@ -18,7 +18,7 @@ namespace Core
 
                 PICO_ASSERT(!std::isnan(glm::dot(v_vec, N)));
 
-                tangent = glm::normalize(glm::cross(v_vec, N));
+                tangent = glm::normalize(glm::cross(N, v_vec));
 
                 PICO_ASSERT_VALID(tangent);
             }
