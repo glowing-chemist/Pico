@@ -206,11 +206,11 @@ namespace Scene
     // Scene loading functions.
     void Scene::add_mesh(const std::string& name, const Json::Value& entry)
     {
-        const std::string path = m_file_mapper->resolve_path(entry["Path"].asString());
+        const std::filesystem::path path = m_file_mapper->resolve_path(entry["Path"].asString());
 
         Assimp::Importer importer;
 
-        const aiScene* scene = importer.ReadFile(path.c_str(),
+        const aiScene* scene = importer.ReadFile(path.string().c_str(),
                                                  aiProcess_Triangulate |
                                                  aiProcess_JoinIdenticalVertices |
                                                  aiProcess_GenNormals |
@@ -325,28 +325,28 @@ namespace Scene
             std::unique_ptr<Core::Image2D> albedo{};
             if(entry.isMember("Albedo"))
             {
-                const std::string path = m_file_mapper->resolve_path(entry["Albedo"].asString());
+                const std::filesystem::path path = m_file_mapper->resolve_path(entry["Albedo"].asString());
                 albedo = std::make_unique<Core::Image2D>(path);
             }
 
             std::unique_ptr<Core::Image2D> roughness{};
             if(entry.isMember("Roughness"))
             {
-                const std::string path = m_file_mapper->resolve_path(entry["Roughness"].asString());
+                const std::filesystem::path path = m_file_mapper->resolve_path(entry["Roughness"].asString());
                 roughness = std::make_unique<Core::Image2D>(path);
             }
 
             std::unique_ptr<Core::Image2D> metalness{};
             if(entry.isMember("Metalness"))
             {
-                const std::string path = m_file_mapper->resolve_path(entry["Metalness"].asString());
+                const std::filesystem::path path = m_file_mapper->resolve_path(entry["Metalness"].asString());
                 metalness = std::make_unique<Core::Image2D>(path);
             }
 
             std::unique_ptr<Core::Image2D> emmissive{};
             if(entry.isMember("Emissive"))
             {
-                const std::string path = m_file_mapper->resolve_path(entry["Emissive"].asString());
+                const std::filesystem::path path = m_file_mapper->resolve_path(entry["Emissive"].asString());
                 emmissive = std::make_unique<Core::Image2D>(path);
             }
 
@@ -357,28 +357,28 @@ namespace Scene
             std::unique_ptr<Core::Image2D> diffuse{};
             if(entry.isMember("Diffuse"))
             {
-                const std::string path = m_file_mapper->resolve_path(entry["Diffuse"].asString());
+                const std::filesystem::path path = m_file_mapper->resolve_path(entry["Diffuse"].asString());
                 diffuse = std::make_unique<Core::Image2D>(path);
             }
 
             std::unique_ptr<Core::Image2D> specular{};
             if(entry.isMember("Specular"))
             {
-                const std::string path = m_file_mapper->resolve_path(entry["Specular"].asString());
+                const std::filesystem::path path = m_file_mapper->resolve_path(entry["Specular"].asString());
                 specular = std::make_unique<Core::Image2D>(path);
             }
 
             std::unique_ptr<Core::Image2D> gloss{};
             if(entry.isMember("Gloss"))
             {
-                const std::string path = m_file_mapper->resolve_path(entry["Gloss"].asString());
+                const std::filesystem::path path = m_file_mapper->resolve_path(entry["Gloss"].asString());
                 gloss = std::make_unique<Core::Image2D>(path);
             }
 
             std::unique_ptr<Core::Image2D> emmissive{};
             if(entry.isMember("Emissive"))
             {
-                const std::string path = m_file_mapper->resolve_path(entry["Emissive"].asString());
+                const std::filesystem::path path = m_file_mapper->resolve_path(entry["Emissive"].asString());
                 emmissive = std::make_unique<Core::Image2D>(path);
             }
 
@@ -636,7 +636,7 @@ namespace Scene
                 material->GetTexture(aiTextureType_BASE_COLOR, 0, &path);
 
                 std::filesystem::path fsPath(path.C_Str());
-                std::string albedo_path = m_file_mapper->resolve_path(fsPath);
+                const std::filesystem::path albedo_path = m_file_mapper->resolve_path(fsPath);
                 albedo = std::make_unique<Core::Image2D>(albedo_path);
             }
             else if(material->GetTextureCount(aiTextureType_DIFFUSE) > 1)
@@ -645,7 +645,7 @@ namespace Scene
                 material->GetTexture(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_BASE_COLOR_TEXTURE, &path);
 
                 std::filesystem::path fsPath(path.C_Str());
-                std::string albedo_path = m_file_mapper->resolve_path(fsPath);
+                const std::filesystem::path albedo_path = m_file_mapper->resolve_path(fsPath);
                 albedo = std::make_unique<Core::Image2D>(albedo_path);
 
             }
@@ -657,7 +657,7 @@ namespace Scene
                 material->GetTexture(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLICROUGHNESS_TEXTURE, &path);
 
                 std::filesystem::path fsPath(path.C_Str());
-                std::string combined_path = m_file_mapper->resolve_path(fsPath);
+                const std::filesystem::path combined_path = m_file_mapper->resolve_path(fsPath);
                 combined_metalness_roughness = std::make_unique<Core::Image2D>(combined_path);
             }
             else
@@ -669,7 +669,7 @@ namespace Scene
                     material->GetTexture(aiTextureType_DIFFUSE_ROUGHNESS, 0, &path);
 
                     std::filesystem::path fsPath(path.C_Str());
-                    std::string roughness_path = m_file_mapper->resolve_path(fsPath);
+                    const std::filesystem::path roughness_path = m_file_mapper->resolve_path(fsPath);
                     roughness = std::make_unique<Core::Image2D>(roughness_path);
                 }
 
@@ -679,7 +679,7 @@ namespace Scene
                     material->GetTexture(aiTextureType_METALNESS, 0, &path);
 
                     std::filesystem::path fsPath(path.C_Str());
-                    std::string metalness_path = m_file_mapper->resolve_path(fsPath);
+                    const std::filesystem::path metalness_path = m_file_mapper->resolve_path(fsPath);
                     metalness = std::make_unique<Core::Image2D>(metalness_path);
                 }
             }
@@ -690,7 +690,7 @@ namespace Scene
                 material->GetTexture(aiTextureType_EMISSIVE, 0, &path);
 
                 std::filesystem::path fsPath(path.C_Str());
-                std::string emissive_path = m_file_mapper->resolve_path(fsPath);
+                const std::filesystem::path emissive_path = m_file_mapper->resolve_path(fsPath);
                 emissive = std::make_unique<Core::Image2D>(emissive_path);
             }
             else if(material->GetTextureCount(aiTextureType_EMISSION_COLOR) > 0)
@@ -699,7 +699,7 @@ namespace Scene
                 material->GetTexture(aiTextureType_EMISSIVE, 0, &path);
 
                 std::filesystem::path fsPath(path.C_Str());
-                std::string emissive_path = m_file_mapper->resolve_path(fsPath);
+                const std::filesystem::path emissive_path = m_file_mapper->resolve_path(fsPath);
                 emissive = std::make_unique<Core::Image2D>(emissive_path);
             }
 
@@ -722,7 +722,7 @@ namespace Scene
                 material->GetTexture(aiTextureType_DIFFUSE, 0, &path);
 
                 std::filesystem::path fsPath(path.C_Str());
-                std::string diffuse_path = m_file_mapper->resolve_path(fsPath);
+                const std::filesystem::path diffuse_path = m_file_mapper->resolve_path(fsPath);
                 diffuse = std::make_unique<Core::Image2D>(diffuse_path);
             }
 
@@ -732,7 +732,7 @@ namespace Scene
                 material->GetTexture(aiTextureType_SPECULAR, 0, &path);
 
                 std::filesystem::path fsPath(path.C_Str());
-                std::string specular_path = m_file_mapper->resolve_path(fsPath);
+                const std::filesystem::path specular_path = m_file_mapper->resolve_path(fsPath);
                 specular = std::make_unique<Core::Image2D>(specular_path);
             }
 
@@ -742,7 +742,7 @@ namespace Scene
                 material->GetTexture(aiTextureType_SHININESS, 0, &path);
 
                 std::filesystem::path fsPath(path.C_Str());
-                std::string gloss_path = m_file_mapper->resolve_path(fsPath);
+                const std::filesystem::path gloss_path = m_file_mapper->resolve_path(fsPath);
                 gloss = std::make_unique<Core::Image2D>(gloss_path);
             }
 
@@ -752,7 +752,7 @@ namespace Scene
                 material->GetTexture(aiTextureType_EMISSIVE, 0, &path);
 
                 std::filesystem::path fsPath(path.C_Str());
-                std::string emissive_path = m_file_mapper->resolve_path(fsPath);
+                const std::filesystem::path emissive_path = m_file_mapper->resolve_path(fsPath);
                 emissive = std::make_unique<Core::Image2D>(emissive_path);
             }
             else if(material->GetTextureCount(aiTextureType_EMISSION_COLOR) > 0)
@@ -761,7 +761,7 @@ namespace Scene
                 material->GetTexture(aiTextureType_EMISSIVE, 0, &path);
 
                 std::filesystem::path fsPath(path.C_Str());
-                std::string emissive_path = m_file_mapper->resolve_path(fsPath);
+                const std::filesystem::path emissive_path = m_file_mapper->resolve_path(fsPath);
                 emissive = std::make_unique<Core::Image2D>(emissive_path);
             }
 

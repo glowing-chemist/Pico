@@ -45,7 +45,7 @@ namespace Core
         mData(nullptr)
     {
         int x, y, components;
-        const int error = stbi_info(mPath.c_str(), &x, &y, &components);
+        const int error = stbi_info(mPath.string().c_str(), &x, &y, &components);
         //PICO_ASSERT(error == 0);
 
         mExtent = {static_cast<uint32_t>(x), static_cast<uint32_t>(y), 1};
@@ -73,7 +73,7 @@ namespace Core
     void Image::make_resident(void* mem)
     {
         int x, y, c;
-        auto* image = stbi_load(mPath.c_str(), &x, &y, &c, get_format_channels(mFormat));
+        auto* image = stbi_load(mPath.string().c_str(), &x, &y, &c, get_format_channels(mFormat));
         PICO_ASSERT(image);
 
         const size_t size = get_residence_size();

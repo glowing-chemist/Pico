@@ -1,9 +1,11 @@
+#define _USE_MATH_DEFINES
+
 #include "Distributions.hpp"
 #include "Core/vectorUtils.hpp"
 #include "Core/Asserts.hpp"
 #include "Render/PBR.hpp"
 
-#include <math.h>
+#include <cmath>
 
 #include "glm/glm.hpp"
 

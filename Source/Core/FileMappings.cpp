@@ -22,7 +22,7 @@ namespace Core
 
                 // Create the all lower-case mappign entry.
                 std::transform(child_path.begin(), child_path.end(), child_path.begin(),
-                    [](unsigned char c){ return std::tolower(c); });
+                    [](unsigned char c){ return std::tolower(c, std::locale::classic()); });
 
                 m_mappings[std::hash<std::string>{}(child_path)] = relative_path;
             }
@@ -40,7 +40,7 @@ namespace Core
             lower_path = path.lexically_normal().string();
 
         std::transform(lower_path.begin(), lower_path.end(), lower_path.begin(),
-            [](unsigned char c){ return std::tolower(c); });
+            [](unsigned char c){ return std::tolower(c, std::locale::classic()); });
 
         std::replace(lower_path.begin(), lower_path.end(),
              #ifdef _MSC_VER

@@ -7,7 +7,11 @@
 
 #ifndef NDEBUG
 
+#ifdef _WIN32
+#define PICO_DEBUG_BREAK() __debugbreak();
+#else
 #define PICO_DEBUG_BREAK() __asm("int3")
+#endif
 
 #define PICO_ASSERT_VALID(v) if(glm::any(glm::isnan(v)) || glm::any(glm::isinf(v))) \
                                 PICO_DEBUG_BREAK();

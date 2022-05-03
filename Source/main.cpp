@@ -62,7 +62,7 @@ int main(int argc, const char **argv)
         {
             Assimp::Importer importer;
 
-            const aiScene* assimp_scene = importer.ReadFile(scene_file.c_str(),
+            const aiScene* assimp_scene = importer.ReadFile(scene_file.string().c_str(),
                                                      aiProcess_Triangulate |
                                                      aiProcess_JoinIdenticalVertices |
                                                      aiProcess_GenNormals |
