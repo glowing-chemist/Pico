@@ -48,7 +48,7 @@ set(GLFW_BUILD_TESTS 0)
 set(GLFW_BUILD_EXAMPLES 0)
 add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/ThirdParty/GLFW3/glfw-3.2.1")
 add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/ThirdParty/assimp-4.1.0")
-add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/ThirdParty//jsoncpp")
+add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/ThirdParty/jsoncpp")
 
 add_definitions(-DGLM_ENABLE_EXPERIMENTAL)
 

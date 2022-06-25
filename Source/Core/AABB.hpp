@@ -86,7 +86,7 @@ namespace Core
         std::array<glm::vec4, 8> get_cube_as_vertex_array() const;
 
         // std::limits<float>::max() to indicate no intersection
-        std::pair<float, float> intersection_distances(const Ray&) const;
+        float intersection_distance(const Ray&) const;
 
         bool contains(const glm::vec4&) const;
         Intersection contains(const AABB&) const;

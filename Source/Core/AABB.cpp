@@ -96,7 +96,7 @@ namespace Core
     }
 
 
-    std::pair<float, float> AABB::intersection_distances(const Ray& ray) const
+    float AABB::intersection_distance(const Ray& ray) const
     {
         glm::vec3 rayDirection = ray.mDirection;
         glm::vec3 rayOrigin = ray.mOrigin;
@@ -117,10 +117,10 @@ namespace Core
         // or no intersection at all.
         if (tmax < 0 || tmin > tmax)
         {
-            return std::make_pair(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+            std::numeric_limits<float>::max();
         }
 
-        return std::make_pair(tmin, tmax);
+        return tmin;
     }
 
 

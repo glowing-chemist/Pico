@@ -42,12 +42,12 @@ namespace Core
     void    OctTree<T>::get_intersections(const Ray& ray, const typename OctTree<T>::Node& node, std::vector<std::pair<float, T>>& intersections) const
     {
         ++mTests;
-        if(node.mBoundingBox.intersection_distances(ray).first != std::numeric_limits<float>::max())
+        if(node.mBoundingBox.intersection_distance(ray) != std::numeric_limits<float>::max())
         {
             for(auto& value : node.mValues)
             {
                 ++mTests;
-                if(auto minDistance = value.mBounds.intersection_distances(ray).first; minDistance != std::numeric_limits<float>::max())
+                if(auto minDistance = value.mBounds.intersection_distance(ray); minDistance != std::numeric_limits<float>::max())
                     intersections.push_back(std::make_pair(minDistance, value.mValue));
             }
 
@@ -55,7 +55,7 @@ namespace Core
             {
                 if (childIndex != kInvalidNodeIndex)
                 {
-                    const Node childNode = get_node(childIndex);
+                    const Node& childNode = get_node(childIndex);
                     get_intersections(ray, childNode, intersections);
                 }
             }
