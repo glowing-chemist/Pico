@@ -8,50 +8,49 @@
 
 #include "OctTree.hpp"
 
+#include "LowerLevelBVH.hpp"
+
 namespace Core
 {
 
     template<typename T>
-    T OctTree<T>::get_first_intersection(const Ray& ray) const
+    bool OctTree<T>::get_first_intersection(const Ray& ray, BVH::InterpolatedVertex &val) const
     {
-        std::vector<std::pair<float, T>> intersections{};
-        get_intersections(ray, get_node(mRoot), intersections);
+        std::vector<std::pair<float, BVH::InterpolatedVertex>> intersections{};
+        get_intersections(ray, get_node(m_root), intersections);
 
-        auto firstIt = intersections.begin();
-        std::nth_element(firstIt, firstIt, intersections.end(), [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
-
-        return firstIt->second;
-    }
-
-    template<typename T>
-    std::vector<T>  OctTree<T>::get_all_intersections(const Ray& ray) const
-    {
-        std::vector<std::pair<float, T>> intersections{};
-        get_intersections(ray, get_node(mRoot), intersections);
-
-        // Sort nearest to furthest
-        std::sort(intersections.begin(), intersections.end(), [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
-
-        std::vector<T> result{};
-        std::transform(intersections.begin(), intersections.end(), std::back_inserter(result), [](const auto& input) { return input.second; });
-
-        return result;
-    }
-
-    template<typename T>
-    void    OctTree<T>::get_intersections(const Ray& ray, const typename OctTree<T>::Node& node, std::vector<std::pair<float, T>>& intersections) const
-    {
-        ++mTests;
-        if(node.mBoundingBox.intersection_distance(ray) != std::numeric_limits<float>::max())
+        if(!intersections.empty())
         {
-            for(auto& value : node.mValues)
+            auto firstIt = intersections.begin();
+            std::nth_element(firstIt, firstIt, intersections.end(), [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
+
+            val = firstIt->second;
+            return true;
+        }
+        else
+            return false;
+    }
+
+    template<typename T>
+    void    OctTree<T>::get_intersections(const Ray& ray, const typename OctTree<T>::Node& node, std::vector<std::pair<float, BVH::InterpolatedVertex>>& intersections) const
+    {
+        ++m_tests;
+        if(node.m_bounding_box.intersection_distance(ray) != std::numeric_limits<float>::max())
+        {
+            for(auto& value : node.m_values)
             {
-                ++mTests;
-                if(auto minDistance = value.mBounds.intersection_distance(ray); minDistance != std::numeric_limits<float>::max())
-                    intersections.push_back(std::make_pair(minDistance, value.mValue));
+                ++m_tests;
+                // If we intersect the bounds then invoke the intersector to check if the contained entity is also intersected
+                if(auto minDistance = value.m_bounds.intersection_distance(ray); minDistance != std::numeric_limits<float>::max())
+                {
+                    float fine_intersected_distance = INFINITY;
+                    BVH::InterpolatedVertex vertex;
+                    if(m_intersector->intersects(ray, value.m_value, fine_intersected_distance, vertex))
+                        intersections.push_back(std::make_pair(fine_intersected_distance, vertex));
+                }
             }
 
-            for (const auto& childIndex : node.mChildren)
+            for (const auto& childIndex : node.m_children)
             {
                 if (childIndex != kInvalidNodeIndex)
                 {
@@ -65,9 +64,9 @@ namespace Core
     template<typename T>
     OctTree<T> OctTreeFactory<T>::generate_octTree()
     {
-        const NodeIndex root = createSpacialSubdivisions(mRootBoundingBox, mBoundingBoxes);
+        const NodeIndex root = createSpacialSubdivisions(m_root_bounding_box, m_bounding_boxes);
 
-        return OctTree<T>{root, mNodeStorage};
+        return OctTree<T>{root, m_node_storage, std::move(m_intersector)};
     }
 
 
@@ -81,15 +80,15 @@ namespace Core
         }
 
         typename OctTree<T>::Node newNode{};
-        newNode.mBoundingBox = parentBox;
+        newNode.m_bounding_box = parentBox;
 
         const glm::vec3 halfNodeSize = parentBox.get_side_lengths() / 2.0f;
         std::vector<typename OctTree<T>::BoundedValue> unfittedNodes{};
         for (const auto& node : nodes)
         {
-            const glm::vec3 size = node.mBounds.get_side_lengths();
+            const glm::vec3 size = node.m_bounds.get_side_lengths();
             if(size.x > halfNodeSize.x || size.y > halfNodeSize.y || size.z > halfNodeSize.z)
-                newNode.mValues.push_back(node);
+                newNode.m_values.push_back(node);
             else
                 unfittedNodes.push_back(node);
         }
@@ -104,7 +103,7 @@ namespace Core
             for(uint32_t j = 0; j < unfittedNodes.size(); ++j)
             {
                 const auto& node = unfittedNodes[j];
-                if(subSpaces[i].contains(node.mBounds) & Intersection::Contains)
+                if(subSpaces[i].contains(node.m_bounds) & Intersection::Contains)
                 {
                     subSpaceNodes.push_back(node);
                 }
@@ -118,17 +117,17 @@ namespace Core
            const NodeIndex child = createSpacialSubdivisions(subSpaces[i], subSpaceNodes);
            if(child != kInvalidNodeIndex)
                 ++childCount;
-           newNode.mChildren[i] = child;
+           newNode.m_children[i] = child;
         }
-        newNode.mChildCount = childCount;
+        newNode.m_child_count = childCount;
 
         for(const auto&[idx, count] : unclaimedCount)
         {
             if(count == 8)
-                newNode.mValues.push_back(unfittedNodes[idx]);
+                newNode.m_values.push_back(unfittedNodes[idx]);
         }
 
-        if(newNode.mValues.empty() && newNode.mChildCount == 0)
+        if(newNode.m_values.empty() && newNode.m_child_count == 0)
             return kInvalidNodeIndex;
         else
             return add_node(newNode);
@@ -167,10 +166,10 @@ namespace Core
 #include "Core/UpperLevelBVH.hpp"
 
 template
-class Core::OctTreeFactory<const Core::BVH::UpperLevelBVH::Entry*>;
+    class Core::OctTreeFactory<const Core::BVH::UpperLevelBVH::Entry*>;
 
 template
-class Core::OctTree<const Core::BVH::UpperLevelBVH::Entry*>;
+    class Core::OctTree<const Core::BVH::UpperLevelBVH::Entry*>;
 
 
 

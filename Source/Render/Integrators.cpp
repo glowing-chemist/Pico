@@ -30,7 +30,8 @@ namespace Render
         const auto bsrdf_type = frag.m_bsrdf->get_type();
         if(bsrdf_type == Render::BSRDF_Type::kDiffuse_BRDF || bsrdf_type == Render::BSRDF_Type::kSpecular_BRDF)
         {
-            if(mDistribution(mGenerator) > 0.5f)
+            constexpr float random_sample_rate = 0.5f;
+            if(mDistribution(mGenerator) > random_sample_rate)
             {
                 const glm::vec3 V = -ray.mDirection;
                 PICO_ASSERT_NORMALISED(V);
@@ -86,13 +87,13 @@ namespace Render
                     const glm::vec3 energy = frag.m_bsrdf->energy(frag, view_tangent, H_tangent);
 
                     // TODO what is the correrct way to combine these pdfs here.
-                    return Render::Sample{to_light, ((sample_solid_angle[selected_light_index] / total_solid_angle) + pdf) * 0.5f, energy};
+                    return Render::Sample{to_light, ((sample_solid_angle[selected_light_index] / total_solid_angle) + pdf) * random_sample_rate, energy};
                 }
             }
             else
             {
                 Render::Sample samp = frag.m_bsrdf->sample(m_hammersley_generator, frag, ray);
-                samp.P *= 0.5f;
+                samp.P *= random_sample_rate;
 
                 return samp;
             }

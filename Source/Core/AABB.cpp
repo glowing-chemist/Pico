@@ -117,7 +117,7 @@ namespace Core
         // or no intersection at all.
         if (tmax < 0 || tmin > tmax)
         {
-            std::numeric_limits<float>::max();
+            return INFINITY;
         }
 
         return tmin;

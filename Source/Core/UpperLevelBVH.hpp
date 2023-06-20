@@ -41,6 +41,12 @@ namespace Core
 
         private:
 
+            class lower_level_intersector : public Core::Intersector<const Entry*>
+            {
+            public:
+                virtual bool intersects(const Ray& ray, const Entry*, float& intersect_distance, InterpolatedVertex&) override;
+            };
+
             std::vector<Entry> mLowerLevelBVHs;
             OctTree<const Entry*> mOctTree;
 

@@ -13,10 +13,16 @@
 
 namespace Core
 {
-
     constexpr uint32_t kInvalidNodeIndex = ~0u;
     using NodeIndex = uint32_t;
 
+    template<typename T>
+    class Intersector;
+
+    namespace BVH
+    {
+        struct InterpolatedVertex;
+    }
 
     template<typename T>
     class OctTree
@@ -24,20 +30,23 @@ namespace Core
     public:
         struct Node;
 
-        OctTree(const NodeIndex rootIndex, std::vector<Node>& nodeStorage) : mTests{0},  mRoot{rootIndex}, mNodes{nodeStorage} {}
-        OctTree() : mTests{0}, mRoot{kInvalidNodeIndex} , mNodes{} {}
+        OctTree(const NodeIndex rootIndex, std::vector<Node>& nodeStorage, std::unique_ptr<Intersector<T>>&& intersector) :
+            m_tests{0},
+            m_root{rootIndex},
+            m_nodes{nodeStorage},
+            m_intersector{std::move(intersector)} {}
+
+        OctTree() : m_tests{0}, m_root{kInvalidNodeIndex} , m_nodes{}, m_intersector{} {}
 
         OctTree(OctTree&&) = default;
         OctTree& operator=(OctTree&&) = default;
 
-        T               get_first_intersection(const Ray& ray) const;
-
-        std::vector<T>  get_all_intersections(const Ray& ray) const;
+        bool get_first_intersection(const Ray& ray, BVH::InterpolatedVertex&) const;
 
         struct BoundedValue
         {
-            AABB mBounds;
-            T mValue;
+            AABB m_bounds;
+            T m_value;
         };
 
         struct Node
@@ -45,31 +54,33 @@ namespace Core
             Node() = default;
 
             // Use an optional incase T doesn't have a default constructor.
-           AABB mBoundingBox;
-           std::vector<BoundedValue> mValues;
+           AABB m_bounding_box;
+           std::vector<BoundedValue> m_values;
 
-           uint32_t mChildCount;
-           NodeIndex mChildren[8];
+           uint32_t m_child_count;
+           NodeIndex m_children[8];
         };
 
         uint32_t get_tests_performed() const
         {
-            return mTests;
+            return m_tests;
         }
 
     private:
 
         const Node& get_node(const NodeIndex n) const
         {
-            return mNodes[n];
+            return m_nodes[n];
         }
 
-        void    get_intersections(const Ray& ray, const typename OctTree<T>::Node& node, std::vector<std::pair<float, T>>& intersections) const;
+        void    get_intersections(const Ray& ray, const typename OctTree<T>::Node& node, std::vector<std::pair<float, Core::BVH::InterpolatedVertex>>& intersections) const;
 
-        mutable uint32_t mTests;
-        NodeIndex mRoot;
+        mutable uint32_t m_tests;
+        NodeIndex m_root;
 
-        std::vector<Node> mNodes;
+        std::vector<Node> m_nodes;
+
+        std::unique_ptr<Intersector<T>> m_intersector;
     };
 
 
@@ -80,8 +91,10 @@ namespace Core
 
         using BuilderNode = typename OctTree<T>::BoundedValue;
 
-        OctTreeFactory(const AABB& rootBox, std::vector<typename OctTree<T>::BoundedValue>& data) : mRootBoundingBox{rootBox},
-                                                                                mBoundingBoxes{data} {}
+        OctTreeFactory(const AABB& rootBox, std::vector<typename OctTree<T>::BoundedValue>& data, std::unique_ptr<Intersector<T>>&& intersector) :
+                                                                                m_root_bounding_box{rootBox},
+                                                                                m_bounding_boxes{data},
+                                                                                m_intersector{std::move(intersector)} {}
 
 
         OctTree<T> generate_octTree();
@@ -90,8 +103,8 @@ namespace Core
 
         NodeIndex add_node(const typename OctTree<T>::Node& n)
         {
-            const NodeIndex i = mNodeStorage.size();
-            mNodeStorage.push_back(n);
+            const NodeIndex i = m_node_storage.size();
+            m_node_storage.push_back(n);
 
             return i;
         }
@@ -100,12 +113,23 @@ namespace Core
         NodeIndex createSpacialSubdivisions(const AABB& parentBox,
                                             const std::vector<typename OctTree<T>::BoundedValue>& nodes);
 
-        std::vector<typename OctTree<T>::Node> mNodeStorage;
+        std::vector<typename OctTree<T>::Node> m_node_storage;
 
-        AABB mRootBoundingBox; // AABB that all others are contained within.
-        std::vector<typename OctTree<T>::BoundedValue> mBoundingBoxes;
+        AABB m_root_bounding_box; // AABB that all others are contained within.
+        std::vector<typename OctTree<T>::BoundedValue> m_bounding_boxes;
+
+        std::unique_ptr<Intersector<T>> m_intersector;
     };
 
+
+    template<typename T>
+    class Intersector
+    {
+    public:
+
+        virtual bool intersects(const Ray& ray, T, float& intersect_distance, Core::BVH::InterpolatedVertex& intersection_data) = 0;
+
+    };
 }
 
 #endif
