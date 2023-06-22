@@ -46,7 +46,8 @@ namespace Core
     {
         int x, y, components;
         const int error = stbi_info(mPath.string().c_str(), &x, &y, &components);
-        //PICO_ASSERT(error == 0);
+        if(error != 0)
+                PICO_LOG("Texture load error: %s\n", stbi_failure_reason());
 
         mExtent = {static_cast<uint32_t>(x), static_cast<uint32_t>(y), 1};
         if(components == 4)

@@ -34,12 +34,16 @@ namespace Core
     template<typename T>
     void    OctTree<T>::get_intersections(const Ray& ray, const typename OctTree<T>::Node& node, std::vector<std::pair<float, BVH::InterpolatedVertex>>& intersections) const
     {
+#ifdef PICO_PROFILE
         ++m_tests;
+#endif
         if(node.m_bounding_box.intersection_distance(ray) != INFINITY)
         {
             for(auto& value : node.m_values)
             {
+#ifdef PICO_PROFILE
                 ++m_tests;
+#endif
                 // If we intersect the bounds then invoke the intersector to check if the contained entity is also intersected
                 if(auto minDistance = value.m_bounds.intersection_distance(ray); minDistance != INFINITY)
                 {
