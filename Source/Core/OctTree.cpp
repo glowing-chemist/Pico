@@ -35,13 +35,13 @@ namespace Core
     void    OctTree<T>::get_intersections(const Ray& ray, const typename OctTree<T>::Node& node, std::vector<std::pair<float, BVH::InterpolatedVertex>>& intersections) const
     {
         ++m_tests;
-        if(node.m_bounding_box.intersection_distance(ray) != std::numeric_limits<float>::max())
+        if(node.m_bounding_box.intersection_distance(ray) != INFINITY)
         {
             for(auto& value : node.m_values)
             {
                 ++m_tests;
                 // If we intersect the bounds then invoke the intersector to check if the contained entity is also intersected
-                if(auto minDistance = value.m_bounds.intersection_distance(ray); minDistance != std::numeric_limits<float>::max())
+                if(auto minDistance = value.m_bounds.intersection_distance(ray); minDistance != INFINITY)
                 {
                     float fine_intersected_distance = INFINITY;
                     BVH::InterpolatedVertex vertex;
