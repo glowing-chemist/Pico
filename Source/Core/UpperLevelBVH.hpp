@@ -44,7 +44,7 @@ namespace Core
             class lower_level_intersector : public Core::Intersector<const Entry*>
             {
             public:
-                virtual bool intersects(const Ray& ray, const Entry*, float& intersect_distance, InterpolatedVertex&) override;
+                virtual bool intersects(const Ray& ray, const Entry*, float& intersect_distance, InterpolatedVertex&) const override;
             };
 
             std::vector<Entry> mLowerLevelBVHs;

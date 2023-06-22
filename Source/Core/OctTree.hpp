@@ -127,7 +127,7 @@ namespace Core
     {
     public:
 
-        virtual bool intersects(const Ray& ray, T, float& intersect_distance, Core::BVH::InterpolatedVertex& intersection_data) = 0;
+        virtual bool intersects(const Ray& ray, T, float& intersect_distance, Core::BVH::InterpolatedVertex& intersection_data) const = 0;
 
     };
 }

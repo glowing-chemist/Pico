@@ -48,7 +48,7 @@ namespace Core
             mOctTree = factory.generate_octTree();
         }
 
-        bool UpperLevelBVH::lower_level_intersector::intersects(const Ray& ray, const Entry* entry, float& intersect_distance, InterpolatedVertex& vertex)
+        bool UpperLevelBVH::lower_level_intersector::intersects(const Ray& ray, const Entry* entry, float& intersect_distance, InterpolatedVertex& vertex) const
         {
             // Move the ray in to the local space of the lower level bvh.
             const Ray object_space_ray = Core::transform_ray(ray, entry->mInverseTransform);

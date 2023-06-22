@@ -171,6 +171,12 @@ template
 template
     class Core::OctTree<const Core::BVH::UpperLevelBVH::Entry*>;
 
+template
+    class Core::OctTreeFactory<uint32_t>;
+
+template
+    class Core::OctTree<uint32_t>;
+
 
 
 

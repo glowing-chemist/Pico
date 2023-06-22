@@ -2,6 +2,7 @@
 #define LOWER_LEVEL_MESH_BVH_HPP
 
 #include "LowerLevelBVH.hpp"
+#include "Core/OctTree.hpp"
 
 #define NANORT_USE_CPP11_FEATURE 1
 #include "ThirdParty/nanort/nanort.h"
@@ -34,10 +35,6 @@ namespace Core
 
         private:
 
-            bool trace_ray(const nanort::Ray<float>& ray, Core::BVH::InterpolatedVertex* result) const;
-
-            InterpolatedVertex interpolate_fragment(const uint32_t primID, const float u, const float v) const;
-
             std::string m_name;
 
             std::vector<glm::vec3> mPositions;
@@ -54,10 +51,32 @@ namespace Core
             };
             std::vector<TriangleFace> m_triangle_faces;
 
-            std::unique_ptr<nanort::TriangleMesh<float>> mMeshes;
-            std::unique_ptr<nanort::TriangleSAHPred<float>> mPred;
+            class Mesh_Intersector : public Intersector<uint32_t>
+            {
+                public:
 
-            nanort::BVHAccel<float> mAccelerationStructure;
+                Mesh_Intersector(glm::vec3* positions, glm::vec2* uvs, glm::vec3* normals, glm::vec4* colours, uint32_t* indicies) :
+                        m_positions(positions),
+                        m_uvs(uvs),
+                        m_normals(normals),
+                        m_colours(colours),
+                        m_indicies(indicies) {}
+
+                virtual bool intersects(const Ray&, uint32_t, float& distance, InterpolatedVertex&) const override;
+
+            private:
+
+                InterpolatedVertex interpolate_fragment(const uint32_t primID, const float u, const float v) const;
+
+                glm::vec3* m_positions;
+                glm::vec2* m_uvs;
+                glm::vec3* m_normals;
+                glm::vec4* m_colours;
+                uint32_t* m_indicies;
+            };
+
+            // Just store the triangle index in the octtree and let the intersector do the rest.
+            OctTree<uint32_t> m_acceleration_structure;
 
             AABB mAABB;
 
