@@ -4,8 +4,6 @@
 #include "LowerLevelBVH.hpp"
 #include "Core/OctTree.hpp"
 
-#define NANORT_USE_CPP11_FEATURE 1
-#include "ThirdParty/nanort/nanort.h"
 #include "assimp/mesh.h"
 
 #include <vector>

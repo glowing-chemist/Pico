@@ -1,8 +1,6 @@
 #ifndef RAY_TRACING_SCENE_HPP
 #define RAY_TRACING_SCENE_HPP
 
-#define NANORT_USE_CPP11_FEATURE 1
-#include "ThirdParty/nanort/nanort.h"
 #include "json/json.h"
 #include "assimp/Importer.hpp"
 #include "assimp/scene.h"
