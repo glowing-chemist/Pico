@@ -110,7 +110,7 @@ namespace Render
         if(m_bvh.get_closest_intersection(ray, &vertex))
         {
             //return glm::vec4(vertex.mNormal * 0.5f + 0.5f, 1.0f);
-            //return m_material_manager.evaluate_material(vertex.mMaterialID, vertex.mUV).diffuse;
+            //return glm::vec4(m_material_manager.evaluate_material(vertex.m_bsrdf->get_material_id(), vertex.mUV).diffuse, 1.0f);
 
             glm::vec4 result{0.0f, 0.0f, 0.0f, 0.0f};
             for(uint32_t i_ray = 0; i_ray < rayCount; ++i_ray)

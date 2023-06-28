@@ -43,9 +43,10 @@ namespace Core
             }
 
             AABB scene_bounds(min, max);
-            Core::OctTreeFactory<const Entry*> factory(scene_bounds, values, std::make_unique<lower_level_intersector>());
 
-            mOctTree = factory.generate_octTree();
+            mOctTree = OctTreeFactory<const Entry*>(scene_bounds, values)
+                           .set_intersector(std::make_unique<lower_level_intersector>())
+                           .generate_octTree();
         }
 
         bool UpperLevelBVH::lower_level_intersector::intersects(const Ray& ray, const Entry* entry, float& intersect_distance, InterpolatedVertex& vertex) const

@@ -91,13 +91,26 @@ namespace Core
 
         using BuilderNode = typename OctTree<T>::BoundedValue;
 
-        OctTreeFactory(const AABB& rootBox, std::vector<typename OctTree<T>::BoundedValue>& data, std::unique_ptr<Intersector<T>>&& intersector) :
+        OctTreeFactory(const AABB& rootBox, std::vector<typename OctTree<T>::BoundedValue>& data) :
                                                                                 m_root_bounding_box{rootBox},
                                                                                 m_bounding_boxes{data},
-                                                                                m_intersector{std::move(intersector)} {}
+                                                                                m_intersector{},
+                                                                                m_max_depth{32u} {}
 
 
         OctTree<T> generate_octTree();
+
+        OctTreeFactory<T>& set_intersector(std::unique_ptr<Intersector<T>>&& intersector)
+        {
+            m_intersector = std::move(intersector);
+            return *this;
+        }
+
+        OctTreeFactory<T>& set_max_depth(const uint32_t depth)
+        {
+            m_max_depth = depth;
+            return *this;
+        }
 
     private:
 
@@ -111,7 +124,8 @@ namespace Core
 
         std::array<AABB, 8> split_AABB(const AABB&) const;
         NodeIndex createSpacialSubdivisions(const AABB& parentBox,
-                                            const std::vector<typename OctTree<T>::BoundedValue>& nodes);
+                                            const std::vector<typename OctTree<T>::BoundedValue>& nodes,
+                                            uint32_t depth);
 
         std::vector<typename OctTree<T>::Node> m_node_storage;
 
@@ -119,6 +133,9 @@ namespace Core
         std::vector<typename OctTree<T>::BoundedValue> m_bounding_boxes;
 
         std::unique_ptr<Intersector<T>> m_intersector;
+
+        // Build settings
+        uint32_t m_max_depth;
     };
 
 

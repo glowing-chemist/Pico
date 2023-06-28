@@ -68,7 +68,7 @@ namespace Core
     template<typename T>
     OctTree<T> OctTreeFactory<T>::generate_octTree()
     {
-        const NodeIndex root = createSpacialSubdivisions(m_root_bounding_box, m_bounding_boxes);
+        const NodeIndex root = createSpacialSubdivisions(m_root_bounding_box, m_bounding_boxes, m_max_depth);
 
         return OctTree<T>{root, m_node_storage, std::move(m_intersector)};
     }
@@ -76,7 +76,8 @@ namespace Core
 
     template<typename T>
     NodeIndex OctTreeFactory<T>::createSpacialSubdivisions(const AABB& parentBox,
-                                                           const std::vector<typename OctTree<T>::BoundedValue>& nodes)
+                                                           const std::vector<typename OctTree<T>::BoundedValue>& nodes,
+                                                           uint32_t depth)
     {
         if (nodes.empty())
         {
@@ -85,6 +86,18 @@ namespace Core
 
         typename OctTree<T>::Node newNode{};
         newNode.m_bounding_box = parentBox;
+
+        // Max depth reached so don't subdivide any more.
+        if(depth == 0u)
+        {
+            for (const auto& node : nodes)
+            {
+                newNode.m_values.push_back(node);
+                newNode.m_child_count = 0;
+
+                return add_node(newNode);
+            }
+        }
 
         const glm::vec3 halfNodeSize = parentBox.get_side_lengths() / 2.0f;
         std::vector<typename OctTree<T>::BoundedValue> unfittedNodes{};
@@ -99,8 +112,9 @@ namespace Core
 
         const auto subSpaces = split_AABB(parentBox);
 
+        // Check that the values fit entirely within a subspace partition, if not add them to this "parent" partition
         uint32_t childCount = 0;
-        std::map<uint32_t, uint32_t> unclaimedCount{};
+        std::vector<uint32_t> unclaimedCount(unfittedNodes.size(), 0u);
         for (uint32_t i = 0; i < subSpaces.size(); ++i)
         {
             std::vector<typename OctTree<T>::BoundedValue> subSpaceNodes{};
@@ -118,16 +132,16 @@ namespace Core
                 }
             }
 
-           const NodeIndex child = createSpacialSubdivisions(subSpaces[i], subSpaceNodes);
+           const NodeIndex child = createSpacialSubdivisions(subSpaces[i], subSpaceNodes, depth - 1u);
            if(child != kInvalidNodeIndex)
                 ++childCount;
            newNode.m_children[i] = child;
         }
         newNode.m_child_count = childCount;
 
-        for(const auto&[idx, count] : unclaimedCount)
+        for(size_t idx = 0; idx < unclaimedCount.size(); idx++)
         {
-            if(count == 8)
+            if(unclaimedCount[idx] == 8)
                 newNode.m_values.push_back(unfittedNodes[idx]);
         }
 

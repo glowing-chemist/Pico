@@ -61,10 +61,9 @@ namespace Core
             aiAABB aabb = mesh->mAABB;
             mAABB = AABB({aabb.mMin.x, aabb.mMin.y, aabb.mMin.z, 1.0f}, {aabb.mMax.x, aabb.mMax.y, aabb.mMax.z, 1.0f});
 
-            std::unique_ptr<Mesh_Intersector> intersector = std::make_unique<Mesh_Intersector>(mPositions.data(), mUVs.data(), mNormals.data(), mVertexColours.data(), mIndicies.data());
-            OctTreeFactory<uint32_t> oct_tree_builder{mAABB, primitive_bounds, std::move(intersector)};
-
-            m_acceleration_structure = oct_tree_builder.generate_octTree();
+            m_acceleration_structure = OctTreeFactory<uint32_t>(mAABB, primitive_bounds)
+                                           .set_intersector(std::make_unique<Mesh_Intersector>(mPositions.data(), mUVs.data(), mNormals.data(), mVertexColours.data(), mIndicies.data()))
+                                           .generate_octTree();
         }
 
         bool LowerLevelMeshBVH::calculate_intersection(const Ray& ray, InterpolatedVertex* result) const
