@@ -41,7 +41,7 @@ namespace Scene
         Json::Value sceneRoot;
         sceneFile >> sceneRoot;
 
-        std::shared_ptr<Core::BVH::LowerLevelBVH> sphere = std::make_shared<Core::BVH::LowerLevelSphereBVH>(1.0f);
+        std::shared_ptr<Core::Acceleration_Structures::LowerLevelBVH> sphere = std::make_shared<Core::Acceleration_Structures::LowerLevelSphereBVH>(1.0f);
         mInstanceIDs["Sphere"] = m_lowerLevelBVhs.size();
         m_lowerLevelBVhs.push_back(sphere);
 
@@ -220,7 +220,7 @@ namespace Scene
                                                  aiProcess_GenBoundingBoxes);
 
 
-        auto mesh_bvh = std::make_shared<Core::BVH::LowerLevelMeshBVH>(scene->mMeshes[0]);
+        auto mesh_bvh = std::make_shared<Core::Acceleration_Structures::LowerLevelMeshBVH>(scene->mMeshes[0]);
 
         mInstanceIDs[name] = m_lowerLevelBVhs.size();
         m_lowerLevelBVhs.push_back(mesh_bvh);
@@ -580,7 +580,7 @@ namespace Scene
             const aiMesh* current_mesh = scene->mMeshes[node->mMeshes[i]];
             uint32_t material_index = current_mesh->mMaterialIndex;
 
-            std::shared_ptr<Core::BVH::LowerLevelBVH> meshBVH = std::make_shared<Core::BVH::LowerLevelMeshBVH>(current_mesh);
+            std::shared_ptr<Core::Acceleration_Structures::LowerLevelBVH> meshBVH = std::make_shared<Core::Acceleration_Structures::LowerLevelMeshBVH>(current_mesh);
 
             glm::mat4x4 transformationMatrix{};
             transformationMatrix[0][0] = transformation.a1; transformationMatrix[0][1] = transformation.b1;  transformationMatrix[0][2] = transformation.c1; transformationMatrix[0][3] = transformation.d1;

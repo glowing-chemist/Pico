@@ -9,7 +9,7 @@
 namespace Core
 {
 
-    namespace BVH
+    namespace Acceleration_Structures
     {
 
         LowerLevelSphereBVH::LowerLevelSphereBVH(const float radius) :

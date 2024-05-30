@@ -19,14 +19,14 @@ namespace Render
     {
     public:
 
-        Integrator(const Core::BVH::UpperLevelBVH&, Core::MaterialManager&, const std::vector<Scene::Light>& light_bounds);
+        Integrator(const Core::Acceleration_Structures::UpperLevelBVH&, Core::MaterialManager&, const std::vector<Scene::Light>& light_bounds);
 
 
         virtual glm::vec4 integrate_ray(const Core::Ray& ray, const uint32_t maxDepth, const uint32_t rayCount) = 0;
 
     protected:
 
-        const Core::BVH::UpperLevelBVH& m_bvh;
+        const Core::Acceleration_Structures::UpperLevelBVH& m_bvh;
         Core::MaterialManager& m_material_manager;
         std::vector<Scene::Light> m_lights;
     };
@@ -36,15 +36,15 @@ namespace Render
     {
     public:
 
-        Monte_Carlo_Integrator(const Core::BVH::UpperLevelBVH&,  Core::MaterialManager&, const std::vector<Scene::Light> &light_bounds, std::shared_ptr<Core::ImageCube>& skybox,const uint64_t seed);
+        Monte_Carlo_Integrator(const Core::Acceleration_Structures::UpperLevelBVH&,  Core::MaterialManager&, const std::vector<Scene::Light> &light_bounds, std::shared_ptr<Core::ImageCube>& skybox,const uint64_t seed);
 
         virtual glm::vec4 integrate_ray(const Core::Ray& ray, const uint32_t maxDepth, const uint32_t rayCount) final;
 
     private:
 
-        Render::Sample generate_next_event(const Core::BVH::InterpolatedVertex& frag, Core::Ray& ray);
+        Render::Sample generate_next_event(const Core::Acceleration_Structures::InterpolatedVertex& frag, Core::Ray& ray);
 
-        void trace_ray(const Core::BVH::InterpolatedVertex& frag, Core::Ray& ray, const uint32_t depth);
+        void trace_ray(const Core::Acceleration_Structures::InterpolatedVertex& frag, Core::Ray& ray, const uint32_t depth);
 
         bool weighted_random_ray_type(const Core::EvaluatedMaterial& mat);
 

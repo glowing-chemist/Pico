@@ -9,7 +9,7 @@
 namespace Render
 {
 
-    Sample Diffuse_BRDF::sample(Core::Rand::Hammersley_Generator& rand, const Core::BVH::InterpolatedVertex &position, Core::Ray& ray)
+    Sample Diffuse_BRDF::sample(Core::Rand::Hammersley_Generator& rand, const Core::Acceleration_Structures::InterpolatedVertex &position, Core::Ray& ray)
     {
         const glm::vec3 V = -ray.mDirection;
 
@@ -46,7 +46,7 @@ namespace Render
         return m_distribution->pdf(wo, H, R);
     }
 
-    glm::vec3 Diffuse_BRDF::energy(const Core::BVH::InterpolatedVertex& position, const glm::vec3& wo, const glm::vec3& H)
+    glm::vec3 Diffuse_BRDF::energy(const Core::Acceleration_Structures::InterpolatedVertex &position, const glm::vec3& wo, const glm::vec3& H)
     {
         Core::EvaluatedMaterial material = m_material_manager.evaluate_material(m_mat_id, position.mUV);
         const glm::vec3 distribution_energy = m_distribution->energy(wo, H, material.roughness);
@@ -54,7 +54,7 @@ namespace Render
         return distribution_energy * material.diffuse;
     }
 
-    Sample Specular_BRDF::sample(Core::Rand::Hammersley_Generator& rand, const Core::BVH::InterpolatedVertex &position, Core::Ray &ray)
+    Sample Specular_BRDF::sample(Core::Rand::Hammersley_Generator& rand, const Core::Acceleration_Structures::InterpolatedVertex &position, Core::Ray &ray)
     {
         const glm::vec3 V = -ray.mDirection;
 
@@ -93,7 +93,7 @@ namespace Render
         return pdf / (2.0f * glm::dot(wo, H));
     }
 
-    glm::vec3 Specular_BRDF::energy(const Core::BVH::InterpolatedVertex& position, const glm::vec3& wo, const glm::vec3& H)
+    glm::vec3 Specular_BRDF::energy(const Core::Acceleration_Structures::InterpolatedVertex& position, const glm::vec3& wo, const glm::vec3& H)
     {
         Core::EvaluatedMaterial material = m_material_manager.evaluate_material(m_mat_id, position.mUV);
         const glm::vec3 distribution_energy = m_distribution->energy(wo, H, material.roughness);
@@ -101,7 +101,7 @@ namespace Render
         return distribution_energy * material.specular;
     }
 
-    Sample Light_BRDF::sample(Core::Rand::Hammersley_Generator&, const Core::BVH::InterpolatedVertex &position, Core::Ray&)
+    Sample Light_BRDF::sample(Core::Rand::Hammersley_Generator&, const Core::Acceleration_Structures::InterpolatedVertex &position, Core::Ray&)
     {
         Core::EvaluatedMaterial material = m_material_manager.evaluate_material(m_mat_id, position.mUV);
 
@@ -118,14 +118,14 @@ namespace Render
         return 1.0f;
     }
 
-    glm::vec3 Light_BRDF::energy(const Core::BVH::InterpolatedVertex& position, const glm::vec3&, const glm::vec3&)
+    glm::vec3 Light_BRDF::energy(const Core::Acceleration_Structures::InterpolatedVertex& position, const glm::vec3&, const glm::vec3&)
     {
         Core::EvaluatedMaterial material = m_material_manager.evaluate_material(m_mat_id, position.mUV);
 
         return material.emissive;
     }
 
-    Sample Specular_Delta_BRDF::sample(Core::Rand::Hammersley_Generator&, const Core::BVH::InterpolatedVertex& position, Core::Ray &ray)
+    Sample Specular_Delta_BRDF::sample(Core::Rand::Hammersley_Generator&, const Core::Acceleration_Structures::InterpolatedVertex& position, Core::Ray &ray)
     {
         const glm::vec3 V = -ray.mDirection;
 
@@ -144,12 +144,12 @@ namespace Render
         return 0.0f; // Assume that any other vector would not perfectly match.
     }
 
-    glm::vec3 Specular_Delta_BRDF::energy(const Core::BVH::InterpolatedVertex&, const glm::vec3&, const glm::vec3&)
+    glm::vec3 Specular_Delta_BRDF::energy(const Core::Acceleration_Structures::InterpolatedVertex&, const glm::vec3&, const glm::vec3&)
     {
         return glm::vec3(0.0f); // Same as above.
     }
 
-    Sample Transparent_BTDF::sample(Core::Rand::Hammersley_Generator& rand, const Core::BVH::InterpolatedVertex &position, Core::Ray& ray)
+    Sample Transparent_BTDF::sample(Core::Rand::Hammersley_Generator& rand, const Core::Acceleration_Structures::InterpolatedVertex &position, Core::Ray& ray)
     {
         const glm::vec3 V = -ray.mDirection;
 
@@ -249,7 +249,7 @@ namespace Render
         }
     }
 
-    glm::vec3 Transparent_BTDF::energy(const Core::BVH::InterpolatedVertex& position, const glm::vec3&, const glm::vec3&)
+    glm::vec3 Transparent_BTDF::energy(const Core::Acceleration_Structures::InterpolatedVertex& position, const glm::vec3&, const glm::vec3&)
     {
         Core::EvaluatedMaterial material = m_material_manager.evaluate_material(m_mat_id, position.mUV);
         return material.diffuse;
@@ -276,7 +276,7 @@ namespace Render
 #endif
     }
 
-    Sample Fresnel_BTDF::sample(Core::Rand::Hammersley_Generator& rand, const Core::BVH::InterpolatedVertex& position, Core::Ray& ray)
+    Sample Fresnel_BTDF::sample(Core::Rand::Hammersley_Generator& rand, const Core::Acceleration_Structures::InterpolatedVertex& position, Core::Ray& ray)
     {
         const glm::vec3 V = -ray.mDirection;
 
@@ -312,7 +312,7 @@ namespace Render
             return (1.0f - fresnel_term) * m_transparent_bsrdf->pdf(wo, H, R);
     }
 
-    glm::vec3 Fresnel_BTDF::energy(const Core::BVH::InterpolatedVertex& position, const glm::vec3& wo, const glm::vec3& H)
+    glm::vec3 Fresnel_BTDF::energy(const Core::Acceleration_Structures::InterpolatedVertex& position, const glm::vec3& wo, const glm::vec3& H)
     {
         if(Core::TangentSpace::same_hemisphere(wo, H))
             return m_specular_bsrdf->energy(position, wo, H);

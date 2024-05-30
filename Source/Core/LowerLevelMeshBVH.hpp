@@ -11,7 +11,7 @@
 namespace Core
 {
 
-    namespace BVH
+    namespace Acceleration_Structures
     {
 
         class LowerLevelMeshBVH : public LowerLevelBVH
@@ -74,7 +74,7 @@ namespace Core
             };
 
             // Just store the triangle index in the octtree and let the intersector do the rest.
-            OctTree<uint32_t> m_acceleration_structure;
+            BVH<uint32_t> m_acceleration_structure;
 
             AABB mAABB;
 

@@ -7,7 +7,7 @@
 namespace Render
 {
 
-    Integrator::Integrator(const Core::BVH::UpperLevelBVH& bvh, Core::MaterialManager& material_manager, const std::vector<Scene::Light>& lights) :
+    Integrator::Integrator(const Core::Acceleration_Structures::UpperLevelBVH& bvh, Core::MaterialManager& material_manager, const std::vector<Scene::Light>& lights) :
         m_bvh{bvh},
         m_material_manager{material_manager},
         m_lights(lights)
@@ -15,7 +15,7 @@ namespace Render
     }
 
 
-    Monte_Carlo_Integrator::Monte_Carlo_Integrator(const Core::BVH::UpperLevelBVH& bvh,  Core::MaterialManager& material_manager, const std::vector<Scene::Light>& lights,
+    Monte_Carlo_Integrator::Monte_Carlo_Integrator(const Core::Acceleration_Structures::UpperLevelBVH& bvh,  Core::MaterialManager& material_manager, const std::vector<Scene::Light>& lights,
                                                    std::shared_ptr<Core::ImageCube>& skybox, const uint64_t seed) :
         Integrator(bvh, material_manager, lights),
         mGenerator{seed},
@@ -25,7 +25,7 @@ namespace Render
     {
     }
 
-    Render::Sample Monte_Carlo_Integrator::generate_next_event(const Core::BVH::InterpolatedVertex& frag, Core::Ray& ray)
+    Render::Sample Monte_Carlo_Integrator::generate_next_event(const Core::Acceleration_Structures::InterpolatedVertex& frag, Core::Ray& ray)
     {
         const auto bsrdf_type = frag.m_bsrdf->get_type();
         if(bsrdf_type == Render::BSRDF_Type::kDiffuse_BRDF || bsrdf_type == Render::BSRDF_Type::kSpecular_BRDF)
@@ -106,7 +106,7 @@ namespace Render
 
     glm::vec4 Monte_Carlo_Integrator::integrate_ray(const Core::Ray& ray, const uint32_t maxDepth, const uint32_t rayCount)
     {
-        Core::BVH::InterpolatedVertex vertex;
+        Core::Acceleration_Structures::InterpolatedVertex vertex;
         if(m_bvh.get_closest_intersection(ray, &vertex))
         {
             //return glm::vec4(vertex.mNormal * 0.5f + 0.5f, 1.0f);
@@ -137,7 +137,7 @@ namespace Render
 }
 
 
-    void Monte_Carlo_Integrator::trace_ray(const Core::BVH::InterpolatedVertex& frag, Core::Ray& ray, const uint32_t depth)
+    void Monte_Carlo_Integrator::trace_ray(const Core::Acceleration_Structures::InterpolatedVertex& frag, Core::Ray& ray, const uint32_t depth)
     {
         if(depth == 0)
         {
@@ -174,7 +174,7 @@ namespace Render
         ray.mOrigin = frag.mPosition + glm::vec4(0.01f * sample.L, 0.0f);
         ray.mDirection = sample.L;
 
-        Core::BVH::InterpolatedVertex intersection;
+        Core::Acceleration_Structures::InterpolatedVertex intersection;
         if(m_bvh.get_closest_intersection(ray, &intersection))
         {
             ray.m_payload *= energy_factor;

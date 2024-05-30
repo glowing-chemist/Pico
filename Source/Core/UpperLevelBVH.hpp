@@ -14,7 +14,7 @@
 namespace Core
 {
 
-    namespace BVH
+    namespace Acceleration_Structures
     {
 
         class UpperLevelBVH
@@ -23,10 +23,10 @@ namespace Core
 
             struct Entry
             {
-                glm::mat4x4                     mTransform;
-                glm::mat4x4                     mInverseTransform;
-                std::shared_ptr<LowerLevelBVH>  mBVH;
-                std::shared_ptr<Render::BSRDF>  m_material;
+                glm::mat4x4                    mTransform;
+                glm::mat4x4                    mInverseTransform;
+                std::shared_ptr<LowerLevelBVH> mBVH;
+                std::shared_ptr<Render::BSRDF> m_material;
             };
 
             UpperLevelBVH() = default;
@@ -35,20 +35,20 @@ namespace Core
 
             void get_all_intersections(const Ray&, std::vector<InterpolatedVertex>& vertex) const;
 
-            void add_lower_level_bvh(std::shared_ptr<LowerLevelBVH>& bvh, const glm::mat4x4& transform, std::shared_ptr<Render::BSRDF>& bsrdf);
+            void add_lower_level_bvh(std::shared_ptr<Acceleration_Structures::LowerLevelBVH>& bvh, const glm::mat4x4& transform, std::shared_ptr<Render::BSRDF>& bsrdf);
 
             void build();
 
         private:
 
-            class lower_level_intersector : public Core::Intersector<const Entry*>
+            class lower_level_intersector : public Core::Acceleration_Structures::Intersector<const Entry*>
             {
             public:
-                virtual bool intersects(const Ray& ray, const Entry*, float& intersect_distance, InterpolatedVertex&) const override;
+                virtual bool intersects(const Core::Ray& ray, const Entry*, float& intersect_distance, InterpolatedVertex&) const override;
             };
 
             std::vector<Entry> mLowerLevelBVHs;
-            OctTree<const Entry*> mOctTree;
+            BVH<const Entry*> mOctTree;
 
         };
 

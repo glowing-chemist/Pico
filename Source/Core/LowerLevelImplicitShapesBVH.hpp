@@ -6,7 +6,7 @@
 namespace Core
 {
 
-    namespace BVH
+    namespace Acceleration_Structures
     {
 
         class LowerLevelSphereBVH : public LowerLevelBVH

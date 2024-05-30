@@ -41,7 +41,7 @@ namespace Scene
     {
         glm::mat4x4 m_transform;
         glm::mat4x4 m_inverse_transform;
-        std::shared_ptr<Core::BVH::LowerLevelBVH> m_geometry;
+        std::shared_ptr<Core::Acceleration_Structures::LowerLevelBVH> m_geometry;
     };
 
     class Scene
@@ -83,9 +83,9 @@ namespace Scene
         std::unordered_map<std::string, Camera>  mCamera;
         std::unordered_map<std::string, uint32_t> mInstanceIDs;
         std::unordered_map<std::string, uint32_t> mMaterials;
-        std::vector<std::shared_ptr<Core::BVH::LowerLevelBVH>> m_lowerLevelBVhs;
+        std::vector<std::shared_ptr<Core::Acceleration_Structures::LowerLevelBVH>> m_lowerLevelBVhs;
 
-        Core::BVH::UpperLevelBVH m_bvh;
+        Core::Acceleration_Structures::UpperLevelBVH m_bvh;
         Core::MaterialManager m_material_manager;
         std::vector<Light> m_lights;
 

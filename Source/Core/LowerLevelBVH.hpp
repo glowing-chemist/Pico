@@ -11,7 +11,7 @@
 namespace Core
 {
 
-    namespace BVH
+    namespace Acceleration_Structures
     {
 
         struct InterpolatedVertex

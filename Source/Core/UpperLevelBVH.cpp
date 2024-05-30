@@ -7,7 +7,7 @@
 
 namespace Core
 {
-    namespace BVH
+    namespace Acceleration_Structures
     {
         bool UpperLevelBVH::get_closest_intersection(const Ray& ray, InterpolatedVertex* vertex) const
         {
@@ -26,10 +26,10 @@ namespace Core
 
         void UpperLevelBVH::build()
         {
-            std::vector<Core::OctTree<const Entry*>::BoundedValue> values;
+            std::vector<Core::Acceleration_Structures::BVH<const Entry*>::BoundedValue> values;
             values.reserve(mLowerLevelBVHs.size());
 
-            std::transform(mLowerLevelBVHs.begin(), mLowerLevelBVHs.end(), std::back_inserter(values), [](const auto& entry) -> Core::OctTree<const Entry*>::BoundedValue
+            std::transform(mLowerLevelBVHs.begin(), mLowerLevelBVHs.end(), std::back_inserter(values), [](const auto& entry) -> Core::Acceleration_Structures::BVH<const Entry*>::BoundedValue
             {
                 return { entry.mBVH->get_bounds() * entry.mTransform, &entry };
             });
@@ -44,7 +44,7 @@ namespace Core
 
             AABB scene_bounds(min, max);
 
-            mOctTree = OctTreeFactory<const Entry*>(scene_bounds, values)
+            mOctTree = BVHFactory<const Entry*>(scene_bounds, values)
                            .set_intersector(std::make_unique<lower_level_intersector>())
                            .generate_octTree();
         }
