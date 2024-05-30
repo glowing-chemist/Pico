@@ -16,6 +16,7 @@ namespace Util
         kNone = 0,
         kCameraPosition,
         kCameraDirection,
+        kCameraName,
         kSkybox,
         kSceneFile,
         kOutputFile,
@@ -32,6 +33,9 @@ namespace Util
 
     template<>
     struct option_map<Option::kCameraDirection> { using Type = glm::vec3; };
+
+    template<>
+    struct option_map<Option::kCameraName> { using Type = std::string; };
 
     template<>
     struct option_map<Option::kSkybox> { using Type = std::array<std::string, 6>; };
@@ -55,6 +59,17 @@ namespace Util
         Options(const char** cmd, const uint32_t argCount);
 
         using Value = std::variant<std::monostate, glm::ivec2, glm::vec3, std::string, std::array<std::string, 6>>;
+
+        bool has_option(const Option o)
+        {
+            for(uint32_t i = 0; i < m_values.size(); ++i)
+            {
+                if(m_values[i].m_type == o)
+                    return true;
+            }
+
+            return false;
+        }
 
         template<Option O>
         option_type<O> get_option() const

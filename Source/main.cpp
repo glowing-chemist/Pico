@@ -89,6 +89,11 @@ int main(int argc, const char **argv)
 
         Scene::Camera camera(camera_pos, camera_dir, resolution.x / resolution.y, 0.1f, 10000.0f);
 
+        if(options.has_option(Util::Option::kCameraName))
+        {
+            camera = *scene->get_camera(options.get_option<Util::Option::kCameraName>());
+        }
+
         bool should_quit = false;
         auto render_func = [](std::unique_ptr<Scene::Scene>& scene, const Scene::Camera& cam, const Scene::RenderParams& params, bool* quit)
         {

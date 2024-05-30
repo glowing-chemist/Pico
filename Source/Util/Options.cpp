@@ -28,6 +28,10 @@ namespace Util
 
                 m_values.push_back({Option::kCameraDirection, glm::vec3(x, y, z)});
             }
+            else if(strcmp(cmd[i], "-Camera") == 0)
+            {
+                m_values.push_back({Option::kCameraName, cmd[++i]});
+            }
             else if(strcmp(cmd[i], "-Scene") == 0)
             {
                 m_values.push_back({Option::kSceneFile, std::string(cmd[++i])});
