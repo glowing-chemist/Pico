@@ -69,7 +69,12 @@ namespace Render
 
                 // if we fail to find any lights generate a "random" diffuse sample.
                 if(selected_light_index == UINT_MAX)
-                    return frag.m_bsrdf->sample(m_hammersley_generator, frag, ray);
+                {
+                    Render::Sample samp = frag.m_bsrdf->sample(m_hammersley_generator, frag, ray);
+                    samp.P *= random_sample_rate;
+
+                    return samp;
+                }
                 else // Try to find a light.
                 {
                     const glm::vec3& sample_pos = sample_positions[selected_light_index];
