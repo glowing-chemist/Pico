@@ -160,7 +160,7 @@ namespace Render
         const glm::mat3x3 tangent_to_world_transform = glm::inverse(world_to_tangent_transform);
 
         const glm::vec3 view_tangent = glm::normalize(world_to_tangent_transform * V);
-        const bool enter_object = Core::TangentSpace::cos_theta(view_tangent) >= 0.0f;
+        const bool enter_object = Core::TangentSpace::cos_theta(view_tangent) > 0.0f;
 
         PICO_ASSERT(glm::dot(V, position.mNormal) >= 0.0f || !enter_object);
 
@@ -169,8 +169,7 @@ namespace Render
         // Sample microfacet direction
         const glm::vec2 Xi = rand.next();
         glm::vec3 H = m_distribution->sample(Xi, view_tangent, material.roughness);
-        if(!enter_object)
-            H = -H;
+
         PICO_ASSERT_VALID(H);
 
         float eta;
@@ -194,7 +193,7 @@ namespace Render
         }
 
         glm::vec3 L;
-        if(refract(view_tangent, H * (enter_object ? 1.0f : -1.0f), eta, L))
+        if(refract(-view_tangent, H, eta, L))
         {
             PICO_ASSERT_VALID(L);
 
@@ -257,7 +256,7 @@ namespace Render
 
     bool Transparent_BTDF::refract(const glm::vec3& wi, const glm::vec3& n, const float eta, glm::vec3& wt)
     {
-#if 1
+#if 0
         const float cosThetaI = glm::dot(n, wi);
         const float sin2ThetaI = std::max(0.0f, 1.0f - cosThetaI * cosThetaI);
         const float sin2ThetaT = eta * eta * sin2ThetaI;
