@@ -52,7 +52,7 @@ namespace Scene
         Scene(ThreadPool&, const std::filesystem::path& working_dir, const aiScene *scene);
         ~Scene() = default;
 
-        void render_scene_to_memory(const Camera&, const RenderParams&);
+        void render_scene_to_memory(const Camera&, const RenderParams&, const bool* should_quit);
         void render_scene_to_file(const Camera&, RenderParams&, const char*);
 
         Camera* get_camera(const std::string& name)

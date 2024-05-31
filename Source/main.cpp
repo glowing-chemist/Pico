@@ -97,14 +97,7 @@ int main(int argc, const char **argv)
         bool should_quit = false;
         auto render_func = [](std::unique_ptr<Scene::Scene>& scene, const Scene::Camera& cam, const Scene::RenderParams& params, bool* quit)
         {
-            for(uint32_t sample_i = 0; sample_i < params.m_maxSamples; sample_i += params.m_sample)
-            {
-                scene->render_scene_to_memory(cam, params);
-                printf("Rendered frame %d\n", sample_i);
-
-                if(*quit)
-                    return;
-            }
+            scene->render_scene_to_memory(cam, params, quit);
         };
 
         std::thread render_thread(render_func, std::ref(scene), std::ref(camera), std::ref(params), &should_quit);

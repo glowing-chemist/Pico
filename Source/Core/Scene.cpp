@@ -92,7 +92,7 @@ namespace Scene
         m_bvh.build();
     }
 
-    void Scene::render_scene_to_memory(const Camera& camera, const RenderParams& params)
+    void Scene::render_scene_to_memory(const Camera& camera, const RenderParams& params, const bool* should_quit)
     {        
         const glm::vec3 forward = camera.getDirection();
         const glm::vec3 up = camera.getUp();
@@ -118,7 +118,7 @@ namespace Scene
             return integrator.integrate_ray(ray, params.m_maxRayDepth, params.m_sample);
         };
 
-        auto trace_rays = [&](const glm::uvec2 start, const glm::uvec2& tile_size, const size_t random_seed)
+        auto trace_rays_for_tile = [&](const glm::uvec2 start, const glm::uvec2& tile_size, const size_t random_seed) -> bool
         {
             std::mt19937 random_generator(random_seed);
 
@@ -126,6 +126,11 @@ namespace Scene
             glm::uvec2 offset = {0, 0};
             while(offset.x < tile_size.x && offset.y < tile_size.y && location.x < params.m_Width && location.y < params.m_Height)
             {
+                if(*should_quit)
+                {
+                    return true;
+                }
+
                 const uint32_t flat_location = (location.y * params.m_Width) + location.x;
 
                 if(params.m_SampleCount[flat_location] >= params.m_maxSamples)
@@ -167,6 +172,22 @@ namespace Scene
 
                 location = start + offset;
             }
+
+            return false;
+        };
+
+        auto trace_rays = [&](const glm::uvec2 start, const glm::uvec2& tile_size, const size_t random_seed)
+        {
+            std::mt19937 random_generator(random_seed);
+
+            for(uint32_t sample_i = 0; sample_i < params.m_maxSamples; sample_i += params.m_sample)
+            {
+                const bool should_quit = trace_rays_for_tile(start, tile_size, random_generator());
+                if(should_quit)
+                {
+                    return;
+                }
+            }
         };
 
         std::random_device random_device{};
@@ -194,7 +215,8 @@ namespace Scene
 
     void Scene::render_scene_to_file(const Camera& camera, RenderParams& params, const char* path)
     {
-        render_scene_to_memory(camera, params);
+        bool shouldQuit = false;
+        render_scene_to_memory(camera, params, &shouldQuit);
 
         std::vector<uint32_t> buffer{};
         std::transform(params.m_Pixels, params.m_Pixels + params.m_Height * params.m_Width, std::back_inserter(buffer), [](glm::vec4& pixel) { return Core::pack_colour(pixel); });
