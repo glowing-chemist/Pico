@@ -31,7 +31,7 @@ namespace Render
         if(bsrdf_type == Render::BSRDF_Type::kDiffuse_BRDF || bsrdf_type == Render::BSRDF_Type::kSpecular_BRDF)
         {
             constexpr float random_sample_rate = 0.5f;
-            if(mDistribution(mGenerator) > random_sample_rate)
+            if(mDistribution(mGenerator) <= random_sample_rate)
             {
                 const glm::vec3 V = -ray.mDirection;
                 PICO_ASSERT_NORMALISED(V);
