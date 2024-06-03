@@ -135,14 +135,7 @@ namespace Scene
 
                 if(params.m_SampleCount[flat_location] >= params.m_maxSamples)
                 {
-                    if(offset.x ==  (tile_size.x - 1))
-                    {
-                        offset.y += 1;
-                        offset.x = 0;
-                    }
-                    else
-                        offset.x += 1;
-                    continue;
+                    return true;
                 }
 
                 uint32_t prev_sample_count = params.m_SampleCount[flat_location];
@@ -152,12 +145,17 @@ namespace Scene
                 if(prev_sample_count < 1)
                 {
                     params.m_SampleCount[flat_location] = 1;
+                    params.m_variance[flat_location] = glm::vec4(0, 0, 0, 0);
                 }
                 else
                 {
                     const glm::vec4& previous_pixle = params.m_Pixels[flat_location];
-                    pixel_result = previous_pixle + ((pixel_result - previous_pixle) * (1.0f / prev_sample_count));
+                    const glm::vec4& previous_variance = params.m_variance[flat_location];
+                    const glm::vec4 new_pixel_result = previous_pixle + ((pixel_result - previous_pixle) * (1.0f / prev_sample_count));
+
+                    params.m_variance[flat_location] = ((previous_variance * prev_sample_count) + ((pixel_result - previous_pixle) * (pixel_result - new_pixel_result))) / (prev_sample_count + 1);
                     params.m_SampleCount[flat_location] += 1;
+                    pixel_result = new_pixel_result;
                 }
 
                 params.m_Pixels[flat_location] = pixel_result;

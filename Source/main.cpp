@@ -24,6 +24,7 @@ int main(int argc, const char **argv)
 {
     glm::vec4* frame_memory;
     uint32_t* sample_count;
+    glm::vec4* variance;
 
     {
         Util::Options options(argv, argc);
@@ -33,10 +34,13 @@ int main(int argc, const char **argv)
         glm::ivec2 resolution = options.get_option<Util::Option::kResolution>();
 
         frame_memory = new glm::vec4[resolution.x * resolution.y];
-        memset(frame_memory, ~0, resolution.x * resolution.y * 4);
+        memset(frame_memory, ~0, resolution.x * resolution.y * 4 * 4);
 
         sample_count = new uint32_t[resolution.x * resolution.y];
         memset(sample_count, 0, resolution.x * resolution.y * 4);
+
+        variance = new glm::vec4[resolution.x * resolution.y];
+        memset(variance, 0, resolution.x * resolution.y * 4 * 4);
 
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -83,6 +87,7 @@ int main(int argc, const char **argv)
         params.m_sample = 5;
         params.m_Pixels = frame_memory;
         params.m_SampleCount = sample_count;
+        params.m_variance = variance;
 
         const glm::vec3 camera_pos = options.get_option<Util::Option::kCameraPosition>();
         const glm::vec3 camera_dir = options.get_option<Util::Option::kCameraDirection>();
@@ -118,6 +123,7 @@ int main(int argc, const char **argv)
 
     delete[] frame_memory;
     delete[] sample_count;
+    delete[] variance;
 
     glfwTerminate();
 }

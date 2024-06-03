@@ -34,7 +34,7 @@ namespace Scene
 
         glm::vec4* m_Pixels;
         uint32_t*  m_SampleCount;
-        float*     m_variance;
+        glm::vec4*     m_variance;
     };
 
     struct Light
