@@ -98,7 +98,7 @@ namespace Render
             else
             {
                 Render::Sample samp = frag.m_bsrdf->sample(m_hammersley_generator, frag, ray);
-                samp.P *= random_sample_rate;
+                samp.P *= (1.0f - random_sample_rate);
 
                 return samp;
             }
@@ -118,6 +118,7 @@ namespace Render
             //return glm::vec4(m_material_manager.evaluate_material(vertex.m_bsrdf->get_material_id(), vertex.mUV).diffuse, 1.0f);
 
             glm::vec4 result{0.0f, 0.0f, 0.0f, 0.0f};
+            float weight = 0.f;
             for(uint32_t i_ray = 0; i_ray < rayCount; ++i_ray)
             {
                 Core::Ray new_ray = ray;
@@ -125,10 +126,11 @@ namespace Render
                 new_ray.m_weight = 0.0f;
                 trace_ray(vertex, new_ray, maxDepth);
 
-                result += new_ray.m_payload / new_ray.m_weight;
+                result += new_ray.m_payload * new_ray.m_weight;
+                weight += new_ray.m_weight;
             }
 
-            result /= rayCount;
+            result /= weight;
 
             if(glm::any(glm::isinf(result)) || glm::any(glm::isnan(result)))
                 result = glm::vec4(0.0f);
