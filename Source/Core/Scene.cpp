@@ -122,24 +122,30 @@ namespace Scene
         {
             std::mt19937 random_generator(random_seed);
 
-            glm::uvec2 location = start;
-            glm::uvec2 offset = {0, 0};
-            while(offset.x < tile_size.x && offset.y < tile_size.y && location.x < params.m_Width && location.y < params.m_Height)
+            std::vector<uint> pixel_indicies(tile_size.x * tile_size.y);
+            for(uint32_t tile_row = 0; tile_row < tile_size.y; ++tile_row)
+            {
+                auto row_start = std::begin(pixel_indicies) + (tile_row * tile_size.x);
+                std::iota(row_start, row_start + tile_size.x, ((start.y + tile_row) * params.m_Width) + start.x);
+            }
+            std::shuffle(std::begin(pixel_indicies), std::end(pixel_indicies), random_generator);
+
+            for(const uint32_t flat_location : pixel_indicies)
             {
                 if(*should_quit)
                 {
                     return true;
                 }
 
-                const uint32_t flat_location = (location.y * params.m_Width) + location.x;
-
                 if(params.m_SampleCount[flat_location] >= params.m_maxSamples)
                 {
-                    return true;
+                    continue;
                 }
 
+                const glm::uvec2 pixel_location = glm::uvec2(flat_location % params.m_Width, flat_location / params.m_Width);
+
                 uint32_t prev_sample_count = params.m_SampleCount[flat_location];
-                glm::vec4 pixel_result =  trace_ray(location.x, location.y, random_generator());
+                glm::vec4 pixel_result =  trace_ray(pixel_location.x, pixel_location.y, random_generator());
                 pixel_result = glm::clamp(pixel_result, 0.0f, 1.0f);
 
                 if(prev_sample_count < 1)
@@ -159,16 +165,6 @@ namespace Scene
                 }
 
                 params.m_Pixels[flat_location] = pixel_result;
-
-                if(offset.x ==  (tile_size.x - 1))
-                {
-                    offset.y += 1;
-                    offset.x = 0;
-                }
-                else
-                    offset.x += 1;
-
-                location = start + offset;
             }
 
             return false;
@@ -191,20 +187,30 @@ namespace Scene
         std::random_device random_device{};
         std::mt19937 random_generator(random_device());
 
-        const uint32_t processor_count = m_threadPool.get_worker_count(); // use this many threads for tracing rays.
-        const uint32_t xCount = std::sqrt(processor_count);
-        const uint32_t yCount = processor_count / xCount;
-        PICO_ASSERT(xCount * yCount == processor_count);
-
-        glm::uvec2 tile_size{(params.m_Width + (xCount - 1)) / xCount, (params.m_Height + (yCount - 1)) / yCount};
+        const glm::vec2 tile_size = {64, 64};
+        const uint32_t tile_count_x = params.m_Width / tile_size.x;
+        const uint32_t tile_count_y = params.m_Height / tile_size.y;
+        const uint32_t tile_count = tile_count_x * tile_count_y;
 
         std::vector<std::future<void>> handles{};
-        for(uint32_t i = 1; i < processor_count; ++i)
-        {
-            handles.push_back(m_threadPool.add_task(trace_rays, glm::uvec2((i % xCount) * tile_size.x, (i / xCount) * tile_size.y), tile_size, random_generator()));
-        }
+        handles.reserve(tile_count);
 
-        trace_rays(glm::uvec2(0, 0), tile_size, random_generator());
+        for(uint32_t x = 0; x < params.m_Width; x += tile_size.x)
+        {
+            for(uint32_t y = 0; y < params.m_Height; y += tile_size.y)
+            {
+                glm::vec2 clamped_tile_size = tile_size;
+                if((x + tile_size.x) > params.m_Width)
+                {
+                    clamped_tile_size.x -= (x + tile_size.x) - params.m_Width;
+                }
+                if((y + tile_size.y) > params.m_Height)
+                {
+                    clamped_tile_size.y -= (y + tile_size.y) - params.m_Height;
+                }
+                handles.push_back(m_threadPool.add_task(trace_rays, glm::vec2(x, y), clamped_tile_size, random_generator()));
+            }
+        }
 
         for(auto& thread : handles)
             thread.wait();
