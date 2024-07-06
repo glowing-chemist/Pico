@@ -92,7 +92,7 @@ namespace Render
                     const glm::vec3 energy = frag.m_bsrdf->energy(frag, view_tangent, H_tangent);
 
                     // TODO what is the correrct way to combine these pdfs here.
-                    return Render::Sample{to_light, ((sample_solid_angle[selected_light_index] / total_solid_angle) + pdf) * random_sample_rate, energy};
+                    return Render::Sample{to_light, ((sample_solid_angle[selected_light_index] / total_solid_angle) * pdf) * random_sample_rate, energy};
                 }
             }
             else
