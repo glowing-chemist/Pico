@@ -10,6 +10,7 @@
 #include "Render/BasicMaterials.hpp"
 
 #include <algorithm>
+#include <numeric>
 #include <memory>
 #include <thread>
 #include <fstream>
@@ -122,7 +123,7 @@ namespace Scene
         {
             std::mt19937 random_generator(random_seed);
 
-            std::vector<uint> pixel_indicies(tile_size.x * tile_size.y);
+            std::vector<uint32_t> pixel_indicies(tile_size.x * tile_size.y);
             for(uint32_t tile_row = 0; tile_row < tile_size.y; ++tile_row)
             {
                 auto row_start = std::begin(pixel_indicies) + (tile_row * tile_size.x);
