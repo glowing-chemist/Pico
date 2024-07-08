@@ -28,13 +28,12 @@ namespace Scene
         uint32_t m_maxRayDepth;
         uint32_t m_maxSamples;
         float    m_maxVariance;
-        uint32_t m_sample;
         uint32_t m_Height;
         uint32_t m_Width;
 
         glm::vec4* m_Pixels;
         uint32_t*  m_SampleCount;
-        glm::vec4*     m_variance;
+        glm::vec4* m_variance;
     };
 
     struct Light

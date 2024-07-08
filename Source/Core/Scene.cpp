@@ -116,7 +116,7 @@ namespace Scene
 
             Render::Monte_Carlo_Integrator integrator(m_bvh, m_material_manager, m_lights, mSkybox, seed);
 
-            return integrator.integrate_ray(ray, params.m_maxRayDepth, params.m_sample);
+            return integrator.integrate_ray(ray, params.m_maxRayDepth, params.m_maxSamples);
         };
 
         auto trace_rays_for_tile = [&](const glm::uvec2 start, const glm::uvec2& tile_size, const size_t random_seed) -> bool
@@ -175,14 +175,7 @@ namespace Scene
         {
             std::mt19937 random_generator(random_seed);
 
-            for(uint32_t sample_i = 0; sample_i < params.m_maxSamples; sample_i += params.m_sample)
-            {
-                const bool should_quit = trace_rays_for_tile(start, tile_size, random_generator());
-                if(should_quit)
-                {
-                    return;
-                }
-            }
+            trace_rays_for_tile(start, tile_size, random_generator());
         };
 
         std::random_device random_device{};
