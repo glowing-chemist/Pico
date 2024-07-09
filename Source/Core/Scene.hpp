@@ -15,6 +15,7 @@
 
 #include <filesystem>
 #include <memory>
+#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -75,10 +76,12 @@ namespace Scene
 
         void parse_node(const aiScene* scene,
                               const aiNode* node,
-                              const aiMatrix4x4& parentTransofrmation);
+                              const aiMatrix4x4& parentTransofrmation,
+                              std::vector<std::future<void>>& tasks);
         void add_material(const aiMaterial*);
 
         std::filesystem::path mWorkingDir;
+        std::shared_mutex m_SceneLoadingMutex;
         std::unordered_map<std::string, Camera>  mCamera;
         std::unordered_map<std::string, uint32_t> mInstanceIDs;
         std::unordered_map<std::string, uint32_t> mMaterials;

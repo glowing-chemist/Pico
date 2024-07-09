@@ -12,7 +12,6 @@
 #include <algorithm>
 #include <numeric>
 #include <memory>
-#include <thread>
 #include <fstream>
 
 #include "stbi_image_write.h"
@@ -58,8 +57,15 @@ namespace Scene
         {
             if(sceneRoot.isMember(sections[i]))
             {
+                std::vector<std::future<void>> loading_task_handles{};
+
                 for(std::string& entityName : sceneRoot[sections[i]].getMemberNames())
-                    std::invoke(sectionFunctions[i], this, entityName, sceneRoot[sections[i]][entityName]);
+                {
+                    auto f = [&](void(Scene::* f)(const std::string&, const Json::Value&), Scene* s, const std::string& n, const Json::Value& j){ std::invoke(f, s, n, j); };
+                    loading_task_handles.emplace_back(m_threadPool.add_task(f, sectionFunctions[i], this, entityName, sceneRoot[sections[i]][entityName]));
+                }
+
+                m_threadPool.wait_for_work_to_finish(loading_task_handles);
             }
 
         }
@@ -81,14 +87,21 @@ namespace Scene
         Core::ImageExtent extent{1, 1, 1};
         mSkybox = std::make_shared<Core::ImageCube>(black_cube_map, extent, Core::Format::kRBGA_8UNorm);
 
+        std::vector<std::future<void>> material_loading_task_handles{};
         for(uint32_t i_mat = 0; i_mat < scene->mNumMaterials; ++i_mat)
         {
-            aiMaterial* mat = scene->mMaterials[i_mat];
+            const aiMaterial* mat = scene->mMaterials[i_mat];
 
-            add_material(mat);
+            auto mat_load = [](Scene* s, const aiMaterial* mat) { s->add_material(mat); };
+            material_loading_task_handles.push_back(m_threadPool.add_task(mat_load, this, mat));
         }
 
-        parse_node(scene, scene->mRootNode, aiMatrix4x4{});
+        m_threadPool.wait_for_work_to_finish(material_loading_task_handles);
+
+        std::vector<std::future<void>> handles{};
+        parse_node(scene, scene->mRootNode, aiMatrix4x4{}, handles);
+
+        m_threadPool.wait_for_work_to_finish(handles);
 
         m_bvh.build();
     }
@@ -242,6 +255,7 @@ namespace Scene
 
         auto mesh_bvh = std::make_shared<Core::Acceleration_Structures::LowerLevelMeshBVH>(scene->mMeshes[0]);
 
+        std::unique_lock l(m_SceneLoadingMutex);
         mInstanceIDs[name] = m_lowerLevelBVhs.size();
         m_lowerLevelBVhs.push_back(mesh_bvh);
     }
@@ -249,8 +263,10 @@ namespace Scene
 
     void Scene::add_mesh_instance(const std::string&, const Json::Value& entry)
     {
+        std::shared_lock l(m_SceneLoadingMutex);
         const std::string assetName = entry["Asset"].asString();
         const uint32_t assetID = mInstanceIDs[assetName];
+        l.unlock();
 
         glm::vec3 position{0.0f, 0.0f, 0.0f};
         glm::vec3 scale{1.0f, 1.0f, 1.0f};
@@ -286,6 +302,7 @@ namespace Scene
         if(entry.isMember("Material"))
         {
             const std::string materialName = entry["Material"].asString();
+            std::shared_lock ml(m_SceneLoadingMutex);
             material = mMaterials[materialName];
         }
 
@@ -310,11 +327,14 @@ namespace Scene
             }
             else if(bsrdf_type == "Transparent")
             {
+                // Transparent BSRDF access the material manager on creation so needs a lock around it. same for fresnel
+                std::shared_lock ml(m_SceneLoadingMutex);
                 std::unique_ptr<Render::Distribution> distribution = std::make_unique<Render::Beckmann_All_Microfacet_Distribution>();
                 bsrdf = std::make_shared<Render::Transparent_BTDF>(distribution, m_material_manager, material);
             }
             else if(bsrdf_type == "Fresnel")
             {
+                std::shared_lock ml(m_SceneLoadingMutex);
                 std::unique_ptr<Render::Distribution> specular_distribution = std::make_unique<Render::Beckmann_All_Microfacet_Distribution>();
                 std::unique_ptr<Render::Distribution> transmission_distribution = std::make_unique<Render::Beckmann_All_Microfacet_Distribution>();
                 bsrdf = std::make_shared<Render::Fresnel_BTDF>(specular_distribution, transmission_distribution, m_material_manager, material);
@@ -333,6 +353,7 @@ namespace Scene
         }
         PICO_ASSERT(bsrdf);
 
+        std::unique_lock ul(m_SceneLoadingMutex);
         m_bvh.add_lower_level_bvh(m_lowerLevelBVhs[assetID], transform, bsrdf);
     }
 
@@ -491,6 +512,7 @@ namespace Scene
             }
         }
 
+        std::unique_lock l(m_SceneLoadingMutex);
         mMaterials[name] = m_material_manager.add_material(material);
 
     }
@@ -545,6 +567,7 @@ namespace Scene
             newCamera.setFOVDegrees(fov);
         }
 
+        std::unique_lock l(m_SceneLoadingMutex);
         mCamera.insert({name, newCamera});
     }
 
@@ -591,16 +614,14 @@ namespace Scene
 
     void Scene::parse_node(const aiScene* scene,
                           const aiNode* node,
-                          const aiMatrix4x4& parentTransofrmation)
+                          const aiMatrix4x4& parentTransofrmation,
+                          std::vector<std::future<void>>& tasks)
     {
         aiMatrix4x4 transformation = parentTransofrmation * node->mTransformation;
 
-        for(uint32_t i = 0; i < node->mNumMeshes; ++i)
+        auto add_mesh = [this](const aiMesh* mesh, uint32_t material_index, aiMatrix4x4 transformation)
         {
-            const aiMesh* current_mesh = scene->mMeshes[node->mMeshes[i]];
-            uint32_t material_index = current_mesh->mMaterialIndex;
-
-            std::shared_ptr<Core::Acceleration_Structures::LowerLevelBVH> meshBVH = std::make_shared<Core::Acceleration_Structures::LowerLevelMeshBVH>(current_mesh);
+            std::shared_ptr<Core::Acceleration_Structures::LowerLevelBVH> meshBVH = std::make_shared<Core::Acceleration_Structures::LowerLevelMeshBVH>(mesh);
 
             glm::mat4x4 transformationMatrix{};
             transformationMatrix[0][0] = transformation.a1; transformationMatrix[0][1] = transformation.b1;  transformationMatrix[0][2] = transformation.c1; transformationMatrix[0][3] = transformation.d1;
@@ -609,20 +630,27 @@ namespace Scene
             transformationMatrix[3][0] = transformation.a4; transformationMatrix[3][1] = transformation.b4;  transformationMatrix[3][2] = transformation.c4; transformationMatrix[3][3] = transformation.d4;
 
             std::shared_ptr<Render::BSRDF> brdf;
-            if(m_material_manager.get_material(material_index)->is_light())
+            if(this->m_material_manager.get_material(material_index)->is_light())
             {
-                brdf = std::make_shared<Render::Light_BRDF>(m_material_manager, material_index);
+                brdf = std::make_shared<Render::Light_BRDF>(this->m_material_manager, material_index);
 
                 meshBVH->generate_sampling_data();
+                std::unique_lock l(this->m_SceneLoadingMutex);
                 m_lights.push_back({ transformationMatrix, glm::inverse(transformationMatrix), meshBVH });
             }
             else
             {
                 std::unique_ptr<Render::Distribution> distribution = std::make_unique<Render::Cos_Weighted_Hemisphere_Distribution>();
-                brdf = std::make_shared<Render::Diffuse_BRDF>(distribution, m_material_manager, material_index);
+                brdf = std::make_shared<Render::Diffuse_BRDF>(distribution, this->m_material_manager, material_index);
             }
 
+            std::unique_lock l(this->m_SceneLoadingMutex);
             m_bvh.add_lower_level_bvh(meshBVH, transformationMatrix, brdf);
+        };
+
+        for(uint32_t i = 0; i < node->mNumMeshes; ++i)
+        {
+            tasks.push_back(m_threadPool.add_task(add_mesh, scene->mMeshes[node->mMeshes[i]], scene->mMeshes[node->mMeshes[i]]->mMaterialIndex, transformation));
         }
 
         // Recurse through all child nodes
@@ -630,7 +658,8 @@ namespace Scene
         {
             parse_node(scene,
                        node->mChildren[i],
-                       transformation);
+                       transformation,
+                       tasks);
         }
     }
 
@@ -819,6 +848,7 @@ namespace Scene
                                                                                              glm::vec3(emissive.r, emissive.g, emissive.b));
        }
 
+        std::unique_lock l(m_SceneLoadingMutex);
         m_material_manager.add_material(pico_material);
     }
 }
