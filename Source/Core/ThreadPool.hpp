@@ -1,11 +1,9 @@
 #ifndef THREAD_POOL_HPP
 #define THREAD_POOL_HPP
 
-#include <deque>
 #include <functional>
 #include <future>
 #include <thread>
-#include <type_traits>
 #include <mutex>
 #include <condition_variable>
 #include <vector>
@@ -41,7 +39,7 @@ public:
             auto workerFunc = [this, i]()
             {
                 const uint32_t queueIndex = i;
-                while(!mExit)
+                while(!this->mExit)
                 {
                     Queue& queue = mQueues[queueIndex];
                     {
@@ -105,6 +103,15 @@ public:
         queue.mCondVar.notify_one();
 
         return future;
+    }
+
+    template<typename T>
+    void wait_for_work_to_finish(const std::vector<std::future<T>>& handles)
+    {
+        for(const auto& handle : handles)
+        {
+            handle.wait();
+        }
     }
 
 private:
