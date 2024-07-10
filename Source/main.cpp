@@ -29,8 +29,6 @@ int main(int argc, const char **argv)
     {
         Util::Options options(argv, argc);
 
-        glfwInit();
-
         glm::ivec2 resolution = options.get_option<Util::Option::kResolution>();
 
         frame_memory = new glm::vec4[resolution.x * resolution.y];
@@ -41,19 +39,6 @@ int main(int argc, const char **argv)
 
         variance = new glm::vec4[resolution.x * resolution.y];
         memset(variance, 0, resolution.x * resolution.y * 4 * 4);
-
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-        auto* window = glfwCreateWindow(1920, 1080, "Pico", nullptr, nullptr);
-
-        glfwSetErrorCallback(error_callback);
-        glfwMakeContextCurrent(window);
-        glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-
-        gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
-
-        Util::FrameBuffer frame_buffer(resolution.x, resolution.y);
 
         std::filesystem::path scene_file = options.get_option<Util::Option::kSceneFile>();
         ThreadPool threadPool{};
@@ -83,8 +68,7 @@ int main(int argc, const char **argv)
         params.m_Height = resolution.y;
         params.m_Width = resolution.x;
         params.m_maxRayDepth = 10;
-        params.m_maxSamples = 512;
-        params.m_sample = 5;
+        params.m_maxSamples = 25;
         params.m_Pixels = frame_memory;
         params.m_SampleCount = sample_count;
         params.m_variance = variance;
@@ -99,31 +83,57 @@ int main(int argc, const char **argv)
             camera = *scene->get_camera(options.get_option<Util::Option::kCameraName>());
         }
 
-        bool should_quit = false;
-        auto render_func = [](std::unique_ptr<Scene::Scene>& scene, const Scene::Camera& cam, const Scene::RenderParams& params, bool* quit)
+        if(options.has_option(Util::Option::kOutputFile))
         {
-            scene->render_scene_to_memory(cam, params, quit);
-        };
+            const std::string output_file_path = options.get_option<Util::Option::kOutputFile>();
 
-        std::thread render_thread(render_func, std::ref(scene), std::ref(camera), std::ref(params), &should_quit);
-
-        while(!glfwWindowShouldClose(window))
-        {
-            frame_buffer.set_image(frame_memory);
-
-            glfwSwapBuffers(window);
-            glfwPollEvents();
+            scene->render_scene_to_file(camera, params, output_file_path.c_str());
         }
+        else
+        {
+            glfwInit();
 
-        should_quit = true;
-        render_thread.join();
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+            auto* window = glfwCreateWindow(1920, 1080, "Pico", nullptr, nullptr);
 
-        glfwDestroyWindow(window);
+            glfwSetErrorCallback(error_callback);
+            glfwMakeContextCurrent(window);
+            glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
+            gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+
+            {
+                Util::FrameBuffer frame_buffer(resolution.x, resolution.y);
+
+                bool should_quit = false;
+                auto render_func = [](std::unique_ptr<Scene::Scene>& scene, const Scene::Camera& cam, const Scene::RenderParams& params, bool* quit)
+                {
+                    scene->render_scene_to_memory(cam, params, quit);
+                };
+
+                std::thread render_thread(render_func, std::ref(scene), std::ref(camera), std::ref(params), &should_quit);
+
+                while(!glfwWindowShouldClose(window))
+                {
+                    frame_buffer.set_image(frame_memory);
+
+                    glfwSwapBuffers(window);
+                    glfwPollEvents();
+                }
+
+                should_quit = true;
+                render_thread.join();
+            }
+
+            glfwDestroyWindow(window);
+
+            glfwTerminate();
+        }
     }
 
     delete[] frame_memory;
     delete[] sample_count;
     delete[] variance;
-
-    glfwTerminate();
 }
