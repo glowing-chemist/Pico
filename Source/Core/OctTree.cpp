@@ -19,28 +19,23 @@ namespace Core
         template<typename T>
         bool BVH<T>::get_first_intersection(const Ray& ray, Acceleration_Structures::InterpolatedVertex &val) const
         {
-            std::vector<std::pair<float, Acceleration_Structures::InterpolatedVertex>> intersections{};
-            get_intersections(ray, get_node(m_root), intersections);
+            #ifdef PICO_PROFILE
+            m_test = 0;
+            #endif
 
-            if(!intersections.empty())
-            {
-                auto firstIt = intersections.begin();
-                std::nth_element(firstIt, firstIt, intersections.end(), [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
+            float intersection_distance = INFINITY;
+            get_closest_intersections(ray, get_node(m_root), val, intersection_distance);
 
-                val = firstIt->second;
-                return true;
-            }
-            else
-                return false;
+            return intersection_distance != INFINITY;
         }
 
         template<typename T>
-        void    BVH<T>::get_intersections(const Ray& ray, const typename BVH<T>::Node& node, std::vector<std::pair<float, Acceleration_Structures::InterpolatedVertex>>& intersections) const
+        void    BVH<T>::get_closest_intersections(const Ray& ray, const typename BVH<T>::Node& node, Core::Acceleration_Structures::InterpolatedVertex& intersection, float& intersection_distance) const
         {
     #ifdef PICO_PROFILE
             ++m_tests;
     #endif
-            if(node.m_bounding_box.intersection_distance(ray) != INFINITY)
+            if(node.m_bounding_box.intersection_distance(ray) < intersection_distance)
             {
                 for(auto& value : node.m_values)
                 {
@@ -48,12 +43,15 @@ namespace Core
                     ++m_tests;
     #endif
                     // If we intersect the bounds then invoke the intersector to check if the contained entity is also intersected
-                    if(auto minDistance = value.m_bounds.intersection_distance(ray); minDistance != INFINITY)
+                    if(auto minDistance = value.m_bounds.intersection_distance(ray); minDistance < intersection_distance)
                     {
                         float fine_intersected_distance = INFINITY;
                         Acceleration_Structures::InterpolatedVertex vertex;
-                        if(m_intersector->intersects(ray, value.m_value, fine_intersected_distance, vertex))
-                            intersections.push_back(std::make_pair(fine_intersected_distance, vertex));
+                        if(m_intersector->intersects(ray, value.m_value, fine_intersected_distance, vertex) && fine_intersected_distance < intersection_distance)
+                        {
+                            intersection = vertex;
+                            intersection_distance = fine_intersected_distance;
+                        }
                     }
                 }
 
@@ -62,10 +60,16 @@ namespace Core
                     if (childIndex != kInvalidNodeIndex)
                     {
                         const Node& childNode = get_node(childIndex);
-                        get_intersections(ray, childNode, intersections);
+                        get_closest_intersections(ray, childNode, intersection, intersection_distance);
                     }
                 }
             }
+        }
+
+        template<typename T>
+        void BVH<T>::print_debug_info() const
+        {
+
         }
 
         template<typename T>

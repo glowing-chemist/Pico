@@ -65,6 +65,8 @@ namespace Core
                 return m_tests;
             }
 
+            void print_debug_info() const;
+
         private:
 
             const Node& get_node(const NodeIndex n) const
@@ -72,7 +74,7 @@ namespace Core
                 return m_nodes[n];
             }
 
-            void    get_intersections(const Ray& ray, const typename BVH<T>::Node& node, std::vector<std::pair<float, Core::Acceleration_Structures::InterpolatedVertex>>& intersections) const;
+            void    get_closest_intersections(const Ray& ray, const typename BVH<T>::Node& node, Core::Acceleration_Structures::InterpolatedVertex& intersection, float& intersection_distance) const;
 
             mutable uint32_t m_tests;
             NodeIndex m_root;
