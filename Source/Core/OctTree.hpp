@@ -124,9 +124,11 @@ namespace Core
             }
 
             std::array<AABB, 8> split_AABB(const AABB&) const;
-            NodeIndex createSpacialSubdivisions(const AABB& parentBox,
+            NodeIndex create_spacial_subdivisions(const AABB& parentBox,
                                                 const std::vector<typename BVH<T>::BoundedValue>& nodes,
                                                 uint32_t depth);
+
+            AABB minimise_bounds(const uint32_t node_index);
 
             std::vector<typename BVH<T>::Node> m_node_storage;
 

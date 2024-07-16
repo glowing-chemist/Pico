@@ -75,14 +75,16 @@ namespace Core
         template<typename T>
         BVH<T> BVHFactory<T>::generate_octTree()
         {
-            const NodeIndex root = createSpacialSubdivisions(m_root_bounding_box, m_bounding_boxes, m_max_depth);
+            const NodeIndex root = create_spacial_subdivisions(m_root_bounding_box, m_bounding_boxes, m_max_depth);
+
+            minimise_bounds(root);
 
             return BVH<T>{root, m_node_storage, std::move(m_intersector)};
         }
 
 
         template<typename T>
-        NodeIndex BVHFactory<T>::createSpacialSubdivisions(const AABB& parentBox,
+        NodeIndex BVHFactory<T>::create_spacial_subdivisions(const AABB& parentBox,
                                                                const std::vector<typename BVH<T>::BoundedValue>& nodes,
                                                                uint32_t depth)
         {
@@ -139,7 +141,7 @@ namespace Core
                     }
                 }
 
-               const NodeIndex child = createSpacialSubdivisions(subSpaces[i], subSpaceNodes, depth - 1u);
+               const NodeIndex child = create_spacial_subdivisions(subSpaces[i], subSpaceNodes, depth - 1u);
                if(child != kInvalidNodeIndex)
                     ++childCount;
                newNode.m_children[i] = child;
@@ -183,6 +185,37 @@ namespace Core
 
             return std::array<AABB, 8>{ first, second, third, fourth,
                                         fith, sixth, seventh, eighth };
+        }
+
+        template<typename T>
+        AABB BVHFactory<T>::minimise_bounds(const uint32_t node_index)
+        {
+            typename BVH<T>::Node& node = m_node_storage[node_index];
+
+            glm::vec4 min(INFINITY, INFINITY, INFINITY, INFINITY);
+            glm::vec4 max(-INFINITY, -INFINITY, -INFINITY, -INFINITY);
+            for(uint32_t i = 0; i < node.m_values.size(); ++i)
+            {
+                min = Core::component_wise_min(min, node.m_values[i].m_bounds.get_min());
+                max = Core::component_wise_max(max, node.m_values[i].m_bounds.get_max());
+            }
+
+            for(uint32_t i = 0; i < 8; ++i)
+            {
+                if(node.m_children[i] != kInvalidNodeIndex)
+                {
+                    const AABB child_bounds = minimise_bounds(node.m_children[i]);
+
+                    min = Core::component_wise_min(min, child_bounds.get_min());
+                    max = Core::component_wise_max(max, child_bounds.get_max());
+                }
+            }
+
+            AABB new_bounds = AABB{min, max};
+            node.m_bounding_box = new_bounds;
+
+            return new_bounds;
+
         }
 
     }
