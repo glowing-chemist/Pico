@@ -28,7 +28,7 @@ namespace Render
 
         const Core::Acceleration_Structures::UpperLevelBVH& m_bvh;
         Core::MaterialManager& m_material_manager;
-        std::vector<Scene::Light> m_lights;
+        const std::vector<Scene::Light>& m_lights;
     };
 
 
@@ -36,7 +36,7 @@ namespace Render
     {
     public:
 
-        Monte_Carlo_Integrator(const Core::Acceleration_Structures::UpperLevelBVH&,  Core::MaterialManager&, const std::vector<Scene::Light> &light_bounds, std::shared_ptr<Core::ImageCube>& skybox,const uint64_t seed);
+        Monte_Carlo_Integrator(const Core::Acceleration_Structures::UpperLevelBVH&,  Core::MaterialManager&, const std::vector<Scene::Light> &light_bounds, Core::ImageCube* skybox,const uint64_t seed);
 
         virtual glm::vec4 integrate_ray(const Core::Ray& ray, const uint32_t maxDepth, const uint32_t rayCount) final;
 
@@ -53,7 +53,7 @@ namespace Render
 
         Core::Rand::Hammersley_Generator m_hammersley_generator;
 
-        std::shared_ptr<Core::ImageCube> m_skybox;
+        Core::ImageCube* m_skybox;
     };
 }
 

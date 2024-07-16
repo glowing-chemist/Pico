@@ -16,7 +16,7 @@ namespace Render
 
 
     Monte_Carlo_Integrator::Monte_Carlo_Integrator(const Core::Acceleration_Structures::UpperLevelBVH& bvh,  Core::MaterialManager& material_manager, const std::vector<Scene::Light>& lights,
-                                                   std::shared_ptr<Core::ImageCube>& skybox, const uint64_t seed) :
+                                                   Core::ImageCube *skybox, const uint64_t seed) :
         Integrator(bvh, material_manager, lights),
         mGenerator{seed},
         mDistribution(0.0f, 1.0f),

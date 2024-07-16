@@ -1,12 +1,9 @@
 #ifndef LOWER_LEVEL_BVH_HPP
 #define LOWER_LEVEL_BVH_HPP
 
-#include "glm/common.hpp"
 #include "AABB.hpp"
 #include "Core/RandUtils.hpp"
 #include "Render/BSRDF.hpp"
-
-#include <memory>
 
 namespace Core
 {
@@ -20,7 +17,7 @@ namespace Core
             glm::vec2 mUV;
             glm::vec3 mNormal;
             glm::vec4 mVertexColour;
-            std::shared_ptr<Render::BSRDF> m_bsrdf;
+            Render::BSRDF* m_bsrdf;
         };
 
         class LowerLevelBVH

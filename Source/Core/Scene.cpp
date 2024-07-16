@@ -41,9 +41,9 @@ namespace Scene
         Json::Value sceneRoot;
         sceneFile >> sceneRoot;
 
-        std::shared_ptr<Core::Acceleration_Structures::LowerLevelBVH> sphere = std::make_shared<Core::Acceleration_Structures::LowerLevelSphereBVH>(1.0f);
+        std::unique_ptr<Core::Acceleration_Structures::LowerLevelBVH> sphere = std::make_unique<Core::Acceleration_Structures::LowerLevelSphereBVH>(1.0f);
         mInstanceIDs["Sphere"] = m_lowerLevelBVhs.size();
-        m_lowerLevelBVhs.push_back(sphere);
+        m_lowerLevelBVhs.push_back(std::move(sphere));
 
         std::array<std::string, 5> sections{"GLOBALS", "MESH", "MATERIALS", "INSTANCE",
                                             "CAMERA"};
@@ -85,7 +85,7 @@ namespace Scene
         unsigned char* black_cube_map = static_cast<unsigned char*>(malloc(sizeof(unsigned char) * 24));
         memset(black_cube_map, 0, 24);
         Core::ImageExtent extent{1, 1, 1};
-        mSkybox = std::make_shared<Core::ImageCube>(black_cube_map, extent, Core::Format::kRBGA_8UNorm);
+        mSkybox = std::make_unique<Core::ImageCube>(black_cube_map, extent, Core::Format::kRBGA_8UNorm);
 
         std::vector<std::future<void>> material_loading_task_handles{};
         for(uint32_t i_mat = 0; i_mat < scene->mNumMaterials; ++i_mat)
@@ -127,7 +127,7 @@ namespace Scene
             ray.mLenght = farPlane;
             ray.push_index_of_refraction(1.0f);
 
-            Render::Monte_Carlo_Integrator integrator(m_bvh, m_material_manager, m_lights, mSkybox, seed);
+            Render::Monte_Carlo_Integrator integrator(m_bvh, m_material_manager, m_lights, mSkybox.get(), seed);
 
             return integrator.integrate_ray(ray, params.m_maxRayDepth, params.m_maxSamples);
         };
@@ -253,11 +253,11 @@ namespace Scene
                                                  aiProcess_GenBoundingBoxes);
 
 
-        auto mesh_bvh = std::make_shared<Core::Acceleration_Structures::LowerLevelMeshBVH>(scene->mMeshes[0]);
+        auto mesh_bvh = std::make_unique<Core::Acceleration_Structures::LowerLevelMeshBVH>(scene->mMeshes[0]);
 
         std::unique_lock l(m_SceneLoadingMutex);
         mInstanceIDs[name] = m_lowerLevelBVhs.size();
-        m_lowerLevelBVhs.push_back(mesh_bvh);
+        m_lowerLevelBVhs.push_back(std::move(mesh_bvh));
     }
 
 
@@ -311,50 +311,50 @@ namespace Scene
                                     glm::scale(glm::mat4x4(1.0f), scale);
 
 
-        std::shared_ptr<Render::BSRDF> bsrdf;
+        std::unique_ptr<Render::BSRDF> bsrdf;
         if(entry.isMember("BSRDF"))
         {
             const std::string bsrdf_type = entry["BSRDF"].asString();
             if(bsrdf_type == "Diffuse")
             {
                 std::unique_ptr<Render::Distribution> distribution = std::make_unique<Render::Cos_Weighted_Hemisphere_Distribution>();
-                bsrdf = std::make_shared<Render::Diffuse_BRDF>(distribution, m_material_manager, material);
+                bsrdf = std::make_unique<Render::Diffuse_BRDF>(distribution, m_material_manager, material);
             }
             else if(bsrdf_type == "Specular")
             {
                 std::unique_ptr<Render::Distribution> distribution = std::make_unique<Render::Beckmann_All_Microfacet_Distribution>();
-                bsrdf = std::make_shared<Render::Specular_BRDF>(distribution, m_material_manager, material);
+                bsrdf = std::make_unique<Render::Specular_BRDF>(distribution, m_material_manager, material);
             }
             else if(bsrdf_type == "Transparent")
             {
                 // Transparent BSRDF access the material manager on creation so needs a lock around it. same for fresnel
                 std::shared_lock ml(m_SceneLoadingMutex);
                 std::unique_ptr<Render::Distribution> distribution = std::make_unique<Render::Beckmann_All_Microfacet_Distribution>();
-                bsrdf = std::make_shared<Render::Transparent_BTDF>(distribution, m_material_manager, material);
+                bsrdf = std::make_unique<Render::Transparent_BTDF>(distribution, m_material_manager, material);
             }
             else if(bsrdf_type == "Fresnel")
             {
                 std::shared_lock ml(m_SceneLoadingMutex);
                 std::unique_ptr<Render::Distribution> specular_distribution = std::make_unique<Render::Beckmann_All_Microfacet_Distribution>();
                 std::unique_ptr<Render::Distribution> transmission_distribution = std::make_unique<Render::Beckmann_All_Microfacet_Distribution>();
-                bsrdf = std::make_shared<Render::Fresnel_BTDF>(specular_distribution, transmission_distribution, m_material_manager, material);
+                bsrdf = std::make_unique<Render::Fresnel_BTDF>(specular_distribution, transmission_distribution, m_material_manager, material);
             }
             else if(bsrdf_type == "Light")
             {
-                bsrdf = std::make_shared<Render::Light_BRDF>(m_material_manager, material);
+                bsrdf = std::make_unique<Render::Light_BRDF>(m_material_manager, material);
 
                 m_lowerLevelBVhs[assetID]->generate_sampling_data();
-                m_lights.push_back({ transform, glm::inverse(transform), m_lowerLevelBVhs[assetID] });
+                m_lights.push_back({ transform, glm::inverse(transform), m_lowerLevelBVhs[assetID].get() });
             }
             else if(bsrdf_type == "Delta")
             {
-                bsrdf = std::make_shared<Render::Specular_Delta_BRDF>(m_material_manager, material);
+                bsrdf = std::make_unique<Render::Specular_Delta_BRDF>(m_material_manager, material);
             }
         }
         PICO_ASSERT(bsrdf);
 
         std::unique_lock ul(m_SceneLoadingMutex);
-        m_bvh.add_lower_level_bvh(m_lowerLevelBVhs[assetID], transform, bsrdf);
+        m_bvh.add_lower_level_bvh(m_lowerLevelBVhs[assetID].get(), transform, bsrdf);
     }
 
     void Scene::add_material(const std::string& name, const Json::Value& entry)
@@ -600,7 +600,7 @@ namespace Scene
             Core::ImageExtent extent = {width, height, 6};
             unsigned char* data = new unsigned char[skyboxData.size()];
             std::memcpy(data, skyboxData.data(), skyboxData.size());
-            mSkybox = std::make_shared<Core::ImageCube>(data, extent, Core::Format::kRBGA_8UNorm);
+            mSkybox = std::make_unique<Core::ImageCube>(data, extent, Core::Format::kRBGA_8UNorm);
         }
         else
         {
@@ -608,7 +608,7 @@ namespace Scene
             unsigned char* black_cube_map = static_cast<unsigned char*>(malloc(sizeof(unsigned char) * 24));
             memset(black_cube_map, 0, 24);
             Core::ImageExtent extent{1, 1, 1};
-            mSkybox = std::make_shared<Core::ImageCube>(black_cube_map, extent, Core::Format::kRBGA_8UNorm);
+            mSkybox = std::make_unique<Core::ImageCube>(black_cube_map, extent, Core::Format::kRBGA_8UNorm);
         }
     }
 
@@ -621,7 +621,7 @@ namespace Scene
 
         auto add_mesh = [this](const aiMesh* mesh, uint32_t material_index, aiMatrix4x4 transformation)
         {
-            std::shared_ptr<Core::Acceleration_Structures::LowerLevelBVH> meshBVH = std::make_shared<Core::Acceleration_Structures::LowerLevelMeshBVH>(mesh);
+            std::unique_ptr<Core::Acceleration_Structures::LowerLevelBVH> meshBVH = std::make_unique<Core::Acceleration_Structures::LowerLevelMeshBVH>(mesh);
 
             glm::mat4x4 transformationMatrix{};
             transformationMatrix[0][0] = transformation.a1; transformationMatrix[0][1] = transformation.b1;  transformationMatrix[0][2] = transformation.c1; transformationMatrix[0][3] = transformation.d1;
@@ -629,23 +629,25 @@ namespace Scene
             transformationMatrix[2][0] = transformation.a3; transformationMatrix[2][1] = transformation.b3;  transformationMatrix[2][2] = transformation.c3; transformationMatrix[2][3] = transformation.d3;
             transformationMatrix[3][0] = transformation.a4; transformationMatrix[3][1] = transformation.b4;  transformationMatrix[3][2] = transformation.c4; transformationMatrix[3][3] = transformation.d4;
 
-            std::shared_ptr<Render::BSRDF> brdf;
+            std::unique_ptr<Render::BSRDF> brdf;
             if(this->m_material_manager.get_material(material_index)->is_light())
             {
-                brdf = std::make_shared<Render::Light_BRDF>(this->m_material_manager, material_index);
+                brdf = std::make_unique<Render::Light_BRDF>(this->m_material_manager, material_index);
 
                 meshBVH->generate_sampling_data();
                 std::unique_lock l(this->m_SceneLoadingMutex);
-                m_lights.push_back({ transformationMatrix, glm::inverse(transformationMatrix), meshBVH });
+                m_lights.push_back({ transformationMatrix, glm::inverse(transformationMatrix), meshBVH.get() });
             }
             else
             {
                 std::unique_ptr<Render::Distribution> distribution = std::make_unique<Render::Cos_Weighted_Hemisphere_Distribution>();
-                brdf = std::make_shared<Render::Diffuse_BRDF>(distribution, this->m_material_manager, material_index);
+                brdf = std::make_unique<Render::Diffuse_BRDF>(distribution, this->m_material_manager, material_index);
             }
 
             std::unique_lock l(this->m_SceneLoadingMutex);
-            m_bvh.add_lower_level_bvh(meshBVH, transformationMatrix, brdf);
+            m_bvh.add_lower_level_bvh(meshBVH.get(), transformationMatrix, brdf);
+
+            m_lowerLevelBVhs.push_back(std::move(meshBVH));
         };
 
         for(uint32_t i = 0; i < node->mNumMeshes; ++i)

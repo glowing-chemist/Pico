@@ -25,8 +25,8 @@ namespace Core
             {
                 glm::mat4x4                    mTransform;
                 glm::mat4x4                    mInverseTransform;
-                std::shared_ptr<LowerLevelBVH> mBVH;
-                std::shared_ptr<Render::BSRDF> m_material;
+                LowerLevelBVH*                 mBVH;
+                std::unique_ptr<Render::BSRDF> m_material;
             };
 
             UpperLevelBVH() = default;
@@ -35,7 +35,7 @@ namespace Core
 
             void get_all_intersections(const Ray&, std::vector<InterpolatedVertex>& vertex) const;
 
-            void add_lower_level_bvh(std::shared_ptr<Acceleration_Structures::LowerLevelBVH>& bvh, const glm::mat4x4& transform, std::shared_ptr<Render::BSRDF>& bsrdf);
+            void add_lower_level_bvh(Acceleration_Structures::LowerLevelBVH* bvh, const glm::mat4x4& transform, std::unique_ptr<Render::BSRDF>& bsrdf);
 
             void build();
 
