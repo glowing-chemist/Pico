@@ -46,9 +46,12 @@ namespace Render
         if(Core::TangentSpace::cos_theta(wi) > 0.0f && glm::dot(wi, H) > 0.0f)
         {
 
-            float dotWiWm = glm::dot(wi, H);
+            const float dotWiWm = glm::dot(wi, H);
 
-            const glm::vec3 F = F_Schlick(F0, 1.0f, dotWiWm);
+            float  energyBias = std::lerp(0.0f, 0.5f,  roughness);
+            float  fd90 = energyBias + 2.0f * dotWiWm*dotWiWm * roughness;
+
+            const glm::vec3 F = F_Schlick(F0, fd90, dotWiWm);
             float G = smith_GGX_masking_shadowing(wi, wo, a2);
             float weight = std::abs(glm::dot(wo, H))
                          / (Core::TangentSpace::cos_theta(wo) * Core::TangentSpace::cos_theta(H));
