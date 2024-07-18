@@ -38,10 +38,10 @@ namespace Core
             memcpy(mNormals.data(), mesh->mNormals, sizeof(glm::vec3) * mesh->mNumVertices);
 
             static_assert (sizeof(glm::vec4) == sizeof(aiColor4D), "colour size mismatch");
-            if (mesh->mColors)
+            if (mesh->mColors[0])
             {
                 mVertexColours.resize(mesh->mNumVertices);
-                memcpy(mVertexColours.data(), mesh->mColors, sizeof(glm::vec4) * mesh->mNumVertices);
+                memcpy(mVertexColours.data(), mesh->mColors[0], sizeof(glm::vec4) * mesh->mNumVertices);
             }
 
             std::vector<BVH<uint32_t>::BoundedValue> primitive_bounds;
