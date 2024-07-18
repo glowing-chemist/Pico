@@ -13,7 +13,7 @@ namespace Core
     {
 
         template<typename T>
-        bool BVH<T>::get_first_intersection(const Ray& ray, Acceleration_Structures::InterpolatedVertex &val) const
+        bool OctTree<T>::get_first_intersection(const Ray& ray, Acceleration_Structures::InterpolatedVertex &val) const
         {
             float intersection_distance = INFINITY;
             get_closest_intersections(ray, get_node(m_root), val, intersection_distance);
@@ -22,7 +22,7 @@ namespace Core
         }
 
         template<typename T>
-        void    BVH<T>::get_closest_intersections(const Ray& ray, const typename BVH<T>::Node& node, Core::Acceleration_Structures::InterpolatedVertex& intersection, float& intersection_distance) const
+        void    OctTree<T>::get_closest_intersections(const Ray& ray, const typename OctTree<T>::Node& node, Core::Acceleration_Structures::InterpolatedVertex& intersection, float& intersection_distance) const
         {
             if(node.m_bounding_box.intersection_distance(ray) < intersection_distance)
             {
@@ -53,25 +53,25 @@ namespace Core
         }
 
         template<typename T>
-        void BVH<T>::print_debug_info() const
+        void OctTree<T>::print_debug_info() const
         {
 
         }
 
         template<typename T>
-        BVH<T> BVHFactory<T>::generate_octTree()
+        OctTree<T> OctTreeFactory<T>::generate_octTree()
         {
             const NodeIndex root = create_spacial_subdivisions(m_root_bounding_box, m_bounding_boxes, m_max_depth);
 
             minimise_bounds(root);
 
-            return BVH<T>{root, m_node_storage, std::move(m_intersector)};
+            return OctTree<T>{root, m_node_storage, std::move(m_intersector)};
         }
 
 
         template<typename T>
-        NodeIndex BVHFactory<T>::create_spacial_subdivisions(const AABB& parentBox,
-                                                               const std::vector<typename BVH<T>::BoundedValue>& nodes,
+        NodeIndex OctTreeFactory<T>::create_spacial_subdivisions(const AABB& parentBox,
+                                                               const std::vector<typename OctTree<T>::BoundedValue>& nodes,
                                                                uint32_t depth)
         {
             if (nodes.empty())
@@ -79,7 +79,7 @@ namespace Core
                 return kInvalidNodeIndex;
             }
 
-            typename BVH<T>::Node newNode{};
+            typename OctTree<T>::Node newNode{};
             newNode.m_bounding_box = parentBox;
 
             // Max depth reached so don't subdivide any more.
@@ -95,7 +95,7 @@ namespace Core
             }
 
             const glm::vec3 halfNodeSize = parentBox.get_side_lengths() / 2.0f;
-            std::vector<typename BVH<T>::BoundedValue> unfittedNodes{};
+            std::vector<typename OctTree<T>::BoundedValue> unfittedNodes{};
             for (const auto& node : nodes)
             {
                 const glm::vec3 size = node.m_bounds.get_side_lengths();
@@ -112,7 +112,7 @@ namespace Core
             std::vector<uint32_t> unclaimedCount(unfittedNodes.size(), 0u);
             for (uint32_t i = 0; i < subSpaces.size(); ++i)
             {
-                std::vector<typename BVH<T>::BoundedValue> subSpaceNodes{};
+                std::vector<typename OctTree<T>::BoundedValue> subSpaceNodes{};
                 for(uint32_t j = 0; j < unfittedNodes.size(); ++j)
                 {
                     const auto& node = unfittedNodes[j];
@@ -150,7 +150,7 @@ namespace Core
 
 
         template<typename T>
-        std::array<AABB, 8> BVHFactory<T>::split_AABB(const AABB& aabb) const
+        std::array<AABB, 8> OctTreeFactory<T>::split_AABB(const AABB& aabb) const
         {
             Cube cube = aabb.get_cube();
 
@@ -174,9 +174,9 @@ namespace Core
         }
 
         template<typename T>
-        AABB BVHFactory<T>::minimise_bounds(const uint32_t node_index)
+        AABB OctTreeFactory<T>::minimise_bounds(const uint32_t node_index)
         {
-            typename BVH<T>::Node& node = m_node_storage[node_index];
+            typename OctTree<T>::Node& node = m_node_storage[node_index];
 
             glm::vec4 min(INFINITY, INFINITY, INFINITY, INFINITY);
             glm::vec4 max(-INFINITY, -INFINITY, -INFINITY, -INFINITY);
@@ -212,16 +212,16 @@ namespace Core
 #include "Core/UpperLevelBVH.hpp"
 
 template
-    class Core::Acceleration_Structures::BVHFactory<const Core::Acceleration_Structures::UpperLevelBVH::Entry*>;
+    class Core::Acceleration_Structures::OctTreeFactory<const Core::Acceleration_Structures::UpperLevelBVH::Entry*>;
 
 template
-    class Core::Acceleration_Structures::BVH<const Core::Acceleration_Structures::UpperLevelBVH::Entry*>;
+    class Core::Acceleration_Structures::OctTree<const Core::Acceleration_Structures::UpperLevelBVH::Entry*>;
 
 template
-    class Core::Acceleration_Structures::BVHFactory<uint32_t>;
+    class Core::Acceleration_Structures::OctTreeFactory<uint32_t>;
 
 template
-    class Core::Acceleration_Structures::BVH<uint32_t>;
+    class Core::Acceleration_Structures::OctTree<uint32_t>;
 
 
 

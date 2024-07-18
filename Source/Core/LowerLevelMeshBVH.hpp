@@ -74,7 +74,7 @@ namespace Core
             };
 
             // Just store the triangle index in the octtree and let the intersector do the rest.
-            BVH<uint32_t> m_acceleration_structure;
+            OctTree<uint32_t> m_acceleration_structure;
 
             AABB mAABB;
 
