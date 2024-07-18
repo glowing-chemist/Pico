@@ -62,16 +62,14 @@ namespace Core
 
             const glm::vec3 to_point = glm::normalize(sphere_point - point);
             if(glm::dot(to_point, N) >= 0.0f)
-            {
                 sample_point = sphere_point;
-
-                const float surface_area = (M_PI * mRadius * mRadius) / 2.0f;
-                solid_angle = Render::solid_angle(point, sphere_point, -to_point, surface_area);
-
-                return true;
-            }
             else
-                return false;
+                sample_point = -sphere_point;
+
+            const float surface_area = (M_PI * mRadius * mRadius) / 2.0f;
+            solid_angle = Render::solid_angle(point, sample_point, -to_point, surface_area);
+
+            return true;
         }
 
 
