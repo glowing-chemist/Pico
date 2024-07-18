@@ -30,12 +30,11 @@ namespace Core
             struct Node;
 
             BVH(const NodeIndex rootIndex, std::vector<Node>& nodeStorage, std::unique_ptr<Intersector<T>>&& intersector) :
-                m_tests{0},
                 m_root{rootIndex},
                 m_nodes{nodeStorage},
                 m_intersector{std::move(intersector)} {}
 
-            BVH() : m_tests{0}, m_root{kInvalidNodeIndex} , m_nodes{}, m_intersector{} {}
+            BVH() : m_root{kInvalidNodeIndex} , m_nodes{}, m_intersector{} {}
 
             BVH(BVH&&) = default;
             BVH& operator=(BVH&&) = default;
@@ -60,11 +59,6 @@ namespace Core
                NodeIndex m_children[8];
             };
 
-            uint32_t get_tests_performed() const
-            {
-                return m_tests;
-            }
-
             void print_debug_info() const;
 
         private:
@@ -76,7 +70,6 @@ namespace Core
 
             void    get_closest_intersections(const Ray& ray, const typename BVH<T>::Node& node, Core::Acceleration_Structures::InterpolatedVertex& intersection, float& intersection_distance) const;
 
-            mutable uint32_t m_tests;
             NodeIndex m_root;
 
             std::vector<Node> m_nodes;

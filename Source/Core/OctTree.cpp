@@ -1,10 +1,6 @@
 #include <limits>
 #include <algorithm>
 #include <array>
-#include <iterator>
-#include <numeric>
-#include <map>
-#include <set>
 
 #include "OctTree.hpp"
 
@@ -19,10 +15,6 @@ namespace Core
         template<typename T>
         bool BVH<T>::get_first_intersection(const Ray& ray, Acceleration_Structures::InterpolatedVertex &val) const
         {
-            #ifdef PICO_PROFILE
-            m_test = 0;
-            #endif
-
             float intersection_distance = INFINITY;
             get_closest_intersections(ray, get_node(m_root), val, intersection_distance);
 
@@ -32,16 +24,10 @@ namespace Core
         template<typename T>
         void    BVH<T>::get_closest_intersections(const Ray& ray, const typename BVH<T>::Node& node, Core::Acceleration_Structures::InterpolatedVertex& intersection, float& intersection_distance) const
         {
-    #ifdef PICO_PROFILE
-            ++m_tests;
-    #endif
             if(node.m_bounding_box.intersection_distance(ray) < intersection_distance)
             {
                 for(auto& value : node.m_values)
                 {
-    #ifdef PICO_PROFILE
-                    ++m_tests;
-    #endif
                     // If we intersect the bounds then invoke the intersector to check if the contained entity is also intersected
                     if(auto minDistance = value.m_bounds.intersection_distance(ray); minDistance < intersection_distance)
                     {
