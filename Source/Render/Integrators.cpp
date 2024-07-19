@@ -53,6 +53,7 @@ namespace Render
                 const float rand = mDistribution(mGenerator) * total_solid_angle;
 
                 float accumilated_solid_angle = 0.0f;
+                bool found_light = false;
                 for(uint32_t i_light = 0; i_light < m_lights.size(); ++i_light)
                 {
                     accumilated_solid_angle += Render::solid_angle_from_bounds(m_lights[i_light].m_geometry->get_bounds(), frag.mPosition);
@@ -63,15 +64,17 @@ namespace Render
                         const glm::vec3 light_space_normal = glm::normalize(glm::mat3x3(m_lights[i_light].m_inverse_transform) * frag.mNormal);
                         auto& geometrty = m_lights[i_light].m_geometry;
                         const bool found_sample = geometrty->sample_geometry(m_hammersley_generator, light_space_pos, light_space_normal, sample_position, selected_solid_angle);
-                        PICO_ASSERT(found_sample);
-                        sample_position = m_lights[i_light].m_transform * glm::vec4(sample_position, 1.0f);
-
-                        break;
+                        if(found_sample)
+                        {
+                            sample_position = m_lights[i_light].m_transform * glm::vec4(sample_position, 1.0f);
+                            found_light = true;
+                            break;
+                        }
                     }
                 }
 
                 // if we fail to find any lights generate a "random" diffuse sample.
-                if(m_lights.empty())
+                if(!found_light)
                 {
                     Render::Sample samp = frag.m_bsrdf->sample(m_hammersley_generator, frag, ray);
                     samp.P *= random_sample_rate;
