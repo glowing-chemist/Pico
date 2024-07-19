@@ -91,8 +91,7 @@ namespace Scene
         {
             const aiMaterial* mat = scene->mMaterials[i_mat];
 
-            auto mat_load = [](Scene* s, const aiMaterial* mat) { s->add_material(mat); };
-            material_loading_task_handles.push_back(m_threadPool.add_task(mat_load, this, mat));
+            add_material(mat);
         }
 
         m_threadPool.wait_for_work_to_finish(material_loading_task_handles);
@@ -628,8 +627,14 @@ namespace Scene
             transformationMatrix[2][0] = transformation.a3; transformationMatrix[2][1] = transformation.b3;  transformationMatrix[2][2] = transformation.c3; transformationMatrix[2][3] = transformation.d3;
             transformationMatrix[3][0] = transformation.a4; transformationMatrix[3][1] = transformation.b4;  transformationMatrix[3][2] = transformation.c4; transformationMatrix[3][3] = transformation.d4;
 
+        bool is_light;
+        {
+            std::shared_lock l(this->m_SceneLoadingMutex);
+            is_light = this->m_material_manager.get_material(material_index)->is_light();
+        }
+
             std::unique_ptr<Render::BSRDF> brdf;
-            if(this->m_material_manager.get_material(material_index)->is_light())
+            if(is_light)
             {
                 brdf = std::make_unique<Render::Light_BRDF>(this->m_material_manager, material_index);
 
@@ -645,13 +650,15 @@ namespace Scene
 
             std::unique_lock l(this->m_SceneLoadingMutex);
             m_bvh.add_lower_level_bvh(meshBVH.get(), transformationMatrix, brdf);
-
             m_lowerLevelBVhs.push_back(std::move(meshBVH));
         };
 
-        for(uint32_t i = 0; i < node->mNumMeshes; ++i)
         {
-            tasks.push_back(m_threadPool.add_task(add_mesh, scene->mMeshes[node->mMeshes[i]], scene->mMeshes[node->mMeshes[i]]->mMaterialIndex, transformation));
+            std::shared_lock l(this->m_SceneLoadingMutex);
+            for(uint32_t i = 0; i < node->mNumMeshes; ++i)
+            {
+                tasks.push_back(m_threadPool.add_task(add_mesh, scene->mMeshes[node->mMeshes[i]], scene->mMeshes[node->mMeshes[i]]->mMaterialIndex, transformation));
+            }
         }
 
         // Recurse through all child nodes
@@ -849,7 +856,6 @@ namespace Scene
                                                                                              glm::vec3(emissive.r, emissive.g, emissive.b));
        }
 
-        std::unique_lock l(m_SceneLoadingMutex);
         m_material_manager.add_material(pico_material);
     }
 }
