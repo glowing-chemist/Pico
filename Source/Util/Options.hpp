@@ -21,6 +21,7 @@ namespace Util
         kSceneFile,
         kOutputFile,
         kResolution,
+        kSampleCount,
 
         kCount
     };
@@ -49,6 +50,9 @@ namespace Util
     template<>
     struct option_map<Option::kResolution> { using Type = glm::ivec2; };
 
+    template<>
+    struct option_map<Option::kSampleCount> { using Type = uint32_t; };
+
     template<Option O>
     using option_type = typename option_map<O>::Type;
 
@@ -58,7 +62,7 @@ namespace Util
 
         Options(const char** cmd, const uint32_t argCount);
 
-        using Value = std::variant<std::monostate, glm::ivec2, glm::vec3, std::string, std::array<std::string, 6>>;
+        using Value = std::variant<std::monostate, glm::ivec2, glm::vec3, std::string, std::array<std::string, 6>, uint32_t>;
 
         bool has_option(const Option o)
         {

@@ -23,7 +23,7 @@ void error_callback(int, const char* description)
 int main(int argc, const char **argv)
 {
     glm::vec4* frame_memory;
-    uint32_t* sample_count;
+    uint32_t* sample_count_buffer;
     glm::vec4* variance;
 
     {
@@ -34,8 +34,8 @@ int main(int argc, const char **argv)
         frame_memory = new glm::vec4[resolution.x * resolution.y];
         memset(frame_memory, ~0, resolution.x * resolution.y * 4 * 4);
 
-        sample_count = new uint32_t[resolution.x * resolution.y];
-        memset(sample_count, 0, resolution.x * resolution.y * 4);
+        sample_count_buffer = new uint32_t[resolution.x * resolution.y];
+        memset(sample_count_buffer, 0, resolution.x * resolution.y * 4);
 
         variance = new glm::vec4[resolution.x * resolution.y];
         memset(variance, 0, resolution.x * resolution.y * 4 * 4);
@@ -63,14 +63,19 @@ int main(int argc, const char **argv)
             scene = std::make_unique<Scene::Scene>(threadPool, scene_file.parent_path(),  assimp_scene);
         }
 
+        uint32_t sample_count = 256;
+        if(options.has_option(Util::Option::kSampleCount))
+        {
+            sample_count = options.get_option<Util::Option::kSampleCount>();
+        }
 
         Scene::RenderParams params{};
         params.m_Height = resolution.y;
         params.m_Width = resolution.x;
         params.m_maxRayDepth = 10;
-        params.m_maxSamples = 25;
+        params.m_maxSamples = sample_count;
         params.m_Pixels = frame_memory;
-        params.m_SampleCount = sample_count;
+        params.m_SampleCount = sample_count_buffer;
         params.m_variance = variance;
 
         const glm::vec3 camera_pos = options.get_option<Util::Option::kCameraPosition>();
@@ -134,6 +139,6 @@ int main(int argc, const char **argv)
     }
 
     delete[] frame_memory;
-    delete[] sample_count;
+    delete[] sample_count_buffer;
     delete[] variance;
 }

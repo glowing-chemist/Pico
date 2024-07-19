@@ -47,6 +47,11 @@ namespace Util
 
                m_values.push_back({Option::kResolution, glm::ivec2(resX, resY)});
             }
+            else if(strcmp(cmd[i], "-SampleCount") == 0)
+            {
+                const uint32_t sample_count = std::atoi(cmd[++i]);
+                m_values.push_back({Option::kSampleCount, sample_count});
+            }
             else
             {
                 printf("Unrecognised command %s \n", cmd[i]);
