@@ -1,5 +1,5 @@
 #include "Integrators.hpp"
-#include "Render/PBR.hpp"
+#include "Render/SolidAngle.hpp"
 #include "Core/vectorUtils.hpp"
 #include "Core/Image.hpp"
 #include "Core/Asserts.hpp"
@@ -42,33 +42,36 @@ namespace Render
                 // and pick one at random weighted by it's solid angle.
                 float total_solid_angle = 0.0f;
 
-                std::vector<float> sample_solid_angle{};
-                sample_solid_angle.reserve(m_lights.size());
-                std::vector<glm::vec3> sample_positions{};
-                sample_positions.reserve(m_lights.size());
-
                 for(uint32_t i_light = 0; i_light < m_lights.size(); ++i_light)
                 {
-                    float solid_angle;
-                    glm::vec3 sample_pos;
-                    const glm::vec3 light_space_pos = m_lights[i_light].m_inverse_transform * frag.mPosition;
-                    const glm::vec3 light_space_normal = glm::normalize(glm::mat3x3(m_lights[i_light].m_inverse_transform) * frag.mNormal);
-                    auto& geometrty = m_lights[i_light].m_geometry;
-                    const bool found_sample = geometrty->sample_geometry(m_hammersley_generator, light_space_pos, light_space_normal, sample_pos, solid_angle);
-                    sample_pos = m_lights[i_light].m_transform * glm::vec4(sample_pos, 1.0f);
+                    total_solid_angle += Render::solid_angle_from_bounds(m_lights[i_light].m_geometry->get_bounds(), frag.mPosition);
+                }
 
-                    if(found_sample)
+                glm::vec3 sample_position;
+                float selected_solid_angle;
+
+                const float rand = mDistribution(mGenerator) * total_solid_angle;
+
+                float accumilated_solid_angle = 0.0f;
+                for(uint32_t i_light = 0; i_light < m_lights.size(); ++i_light)
+                {
+                    accumilated_solid_angle += Render::solid_angle_from_bounds(m_lights[i_light].m_geometry->get_bounds(), frag.mPosition);
+
+                    if(rand <= accumilated_solid_angle)
                     {
-                        total_solid_angle += solid_angle;
-                        sample_solid_angle.push_back(solid_angle);
-                        sample_positions.push_back(sample_pos);
+                        const glm::vec3 light_space_pos = m_lights[i_light].m_inverse_transform * frag.mPosition;
+                        const glm::vec3 light_space_normal = glm::normalize(glm::mat3x3(m_lights[i_light].m_inverse_transform) * frag.mNormal);
+                        auto& geometrty = m_lights[i_light].m_geometry;
+                        const bool found_sample = geometrty->sample_geometry(m_hammersley_generator, light_space_pos, light_space_normal, sample_position, selected_solid_angle);
+                        PICO_ASSERT(found_sample);
+                        sample_position = m_lights[i_light].m_transform * glm::vec4(sample_position, 1.0f);
+
+                        break;
                     }
                 }
 
-                const uint32_t selected_light_index = Core::Rand::choose(mDistribution(mGenerator), sample_solid_angle, total_solid_angle);
-
                 // if we fail to find any lights generate a "random" diffuse sample.
-                if(selected_light_index == UINT_MAX)
+                if(m_lights.empty())
                 {
                     Render::Sample samp = frag.m_bsrdf->sample(m_hammersley_generator, frag, ray);
                     samp.P *= random_sample_rate;
@@ -77,8 +80,7 @@ namespace Render
                 }
                 else // Try to find a light.
                 {
-                    const glm::vec3& sample_pos = sample_positions[selected_light_index];
-                    glm::vec3 to_light = glm::normalize(sample_pos - glm::vec3(frag.mPosition));
+                    glm::vec3 to_light = glm::normalize(sample_position - glm::vec3(frag.mPosition));
                     glm::vec3 H = glm::normalize(to_light + V);
                     if(glm::any(glm::isnan(H)))
                         H = V;
@@ -92,7 +94,7 @@ namespace Render
                     const glm::vec3 energy = frag.m_bsrdf->energy(frag, view_tangent, H_tangent);
 
                     // TODO what is the correrct way to combine these pdfs here.
-                    return Render::Sample{to_light, ((sample_solid_angle[selected_light_index] / total_solid_angle) * pdf) * random_sample_rate, energy};
+                    return Render::Sample{to_light, ((selected_solid_angle / total_solid_angle) * pdf) * random_sample_rate, energy};
                 }
             }
             else
