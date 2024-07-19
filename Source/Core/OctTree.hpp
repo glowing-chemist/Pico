@@ -11,6 +11,8 @@
 
 #include "AABB.hpp"
 
+//#define BVH_PROFILE
+
 namespace Core
 {
     constexpr uint32_t kInvalidNodeIndex = ~0u;
@@ -68,7 +70,11 @@ namespace Core
                 return m_nodes[n];
             }
 
-            void    get_closest_intersections(const Ray& ray, const typename OctTree<T>::Node& node, Core::Acceleration_Structures::InterpolatedVertex& intersection, float& intersection_distance) const;
+            void    get_closest_intersections(const Ray& ray, const typename OctTree<T>::Node& node, Core::Acceleration_Structures::InterpolatedVertex& intersection, float& intersection_distance
+                                           #ifdef BVH_PROFILE
+                                           , uint32_t& tests_performed
+                                           #endif
+                                           ) const;
 
             NodeIndex m_root;
 

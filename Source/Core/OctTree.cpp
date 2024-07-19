@@ -4,6 +4,7 @@
 
 #include "OctTree.hpp"
 
+#include "Core/Asserts.hpp"
 #include "LowerLevelBVH.hpp"
 
 namespace Core
@@ -16,23 +17,43 @@ namespace Core
         bool OctTree<T>::get_first_intersection(const Ray& ray, Acceleration_Structures::InterpolatedVertex &val) const
         {
             float intersection_distance = INFINITY;
+
+            #ifdef BVH_PROFILE
+            uint32_t tests_performed = 0;
+            get_closest_intersections(ray, get_node(m_root), val, intersection_distance, tests_performed);
+            PICO_LOG("intersection tests performed %d\n", tests_performed);
+            #else
             get_closest_intersections(ray, get_node(m_root), val, intersection_distance);
+            #endif
 
             return intersection_distance != INFINITY;
         }
 
         template<typename T>
-        void    OctTree<T>::get_closest_intersections(const Ray& ray, const typename OctTree<T>::Node& node, Core::Acceleration_Structures::InterpolatedVertex& intersection, float& intersection_distance) const
+        void    OctTree<T>::get_closest_intersections(const Ray& ray, const typename OctTree<T>::Node& node, Core::Acceleration_Structures::InterpolatedVertex& intersection, float& intersection_distance
+                                                                                                                                                                               #ifdef BVH_PROFILE
+                                                                                                                                                                               ,uint32_t &tests_performed
+                                                                                                                                                                               #endif
+                                                                                                                                                                               ) const
         {
+            #ifdef BVH_PROFILE
+            ++tests_performed;
+            #endif
             if(node.m_bounding_box.intersection_distance(ray) < intersection_distance)
             {
                 for(auto& value : node.m_values)
                 {
                     // If we intersect the bounds then invoke the intersector to check if the contained entity is also intersected
-                    if(auto minDistance = value.m_bounds.intersection_distance(ray); minDistance < intersection_distance)
+                    #ifdef BVH_PROFILE
+                    ++tests_performed;
+                    #endif
+                    if(value.m_bounds.intersection_distance(ray) < intersection_distance)
                     {
                         float fine_intersected_distance = INFINITY;
                         Acceleration_Structures::InterpolatedVertex vertex;
+                        #ifdef BVH_PROFILE
+                        ++tests_performed;
+                        #endif
                         if(m_intersector->intersects(ray, value.m_value, fine_intersected_distance, vertex) && fine_intersected_distance < intersection_distance)
                         {
                             intersection = vertex;
@@ -46,7 +67,11 @@ namespace Core
                     if (childIndex != kInvalidNodeIndex)
                     {
                         const Node& childNode = get_node(childIndex);
+                        #ifdef BVH_PROFILE
+                        get_closest_intersections(ray, childNode, intersection, intersection_distance, tests_performed);
+                        #else
                         get_closest_intersections(ray, childNode, intersection, intersection_distance);
+                        #endif
                     }
                 }
             }
@@ -55,7 +80,10 @@ namespace Core
         template<typename T>
         void OctTree<T>::print_debug_info() const
         {
-
+            for(const auto& node : m_nodes)
+            {
+                PICO_LOG("Node contains %zu values\n", node.m_values.size());
+            }
         }
 
         template<typename T>
@@ -85,6 +113,9 @@ namespace Core
             // Max depth reached so don't subdivide any more.
             if(depth == 0u)
             {
+                for(auto& child_slot : newNode.m_children)
+                    child_slot = kInvalidNodeIndex;
+
                 for (const auto& node : nodes)
                 {
                     newNode.m_values.push_back(node);
