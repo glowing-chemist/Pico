@@ -35,8 +35,7 @@ namespace Render
         Sample samp{};
         samp.L = world_space_L;
         samp.P = pdf;
-        const glm::vec3 distribution_energy = m_distribution->energy(view_tangent, H, material.roughness);
-        samp.energy = distribution_energy * material.diffuse;
+        samp.energy = material.diffuse;
 
         return samp;
     }
@@ -46,12 +45,11 @@ namespace Render
         return m_distribution->pdf(wo, H, R);
     }
 
-    glm::vec3 Diffuse_BRDF::energy(const Core::Acceleration_Structures::InterpolatedVertex &position, const glm::vec3& wo, const glm::vec3& H)
+    glm::vec3 Diffuse_BRDF::energy(const Core::Acceleration_Structures::InterpolatedVertex &position, const glm::vec3&, const glm::vec3&)
     {
         Core::EvaluatedMaterial material = m_material_manager.evaluate_material(m_mat_id, position.mUV);
-        const glm::vec3 distribution_energy = m_distribution->energy(wo, H, material.roughness);
 
-        return distribution_energy * material.diffuse;
+        return material.diffuse;
     }
 
     Sample Specular_BRDF::sample(Core::Rand::Hammersley_Generator& rand, const Core::Acceleration_Structures::InterpolatedVertex &position, Core::Ray &ray)
@@ -82,7 +80,7 @@ namespace Render
         Sample samp{};
         samp.L = world_space_L;
         samp.P = pdf(view_tangent, H, material.roughness);
-        samp.energy = m_distribution->energy(view_tangent, H, material.roughness) * material.specular;
+        samp.energy = material.specular;
 
         return samp;
     }
@@ -96,9 +94,8 @@ namespace Render
     glm::vec3 Specular_BRDF::energy(const Core::Acceleration_Structures::InterpolatedVertex& position, const glm::vec3& wo, const glm::vec3& H)
     {
         Core::EvaluatedMaterial material = m_material_manager.evaluate_material(m_mat_id, position.mUV);
-        const glm::vec3 distribution_energy = m_distribution->energy(wo, H, material.roughness);
 
-        return distribution_energy * material.specular;
+        return material.specular;
     }
 
     Sample Light_BRDF::sample(Core::Rand::Hammersley_Generator&, const Core::Acceleration_Structures::InterpolatedVertex &position, Core::Ray&)

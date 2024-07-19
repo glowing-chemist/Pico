@@ -18,8 +18,6 @@ namespace Render
 
         virtual float pdf(const glm::vec3& wo, const glm::vec3& H, const float R) = 0;
 
-        virtual glm::vec3 energy(const glm::vec3& wo, const glm::vec3& wi, const float R) = 0;
-
     };
 
 
@@ -32,8 +30,6 @@ namespace Render
         virtual glm::vec3 sample(const glm::vec2& Xi, const glm::vec3& V, const float R) final;
 
         virtual float pdf(const glm::vec3& wo, const glm::vec3& H, const float R) final;
-
-        virtual glm::vec3 energy(const glm::vec3& wo, const glm::vec3& wi, const float R) final;
     };
 
     class Beckmann_All_Microfacet_Distribution : public Distribution
@@ -45,8 +41,6 @@ namespace Render
         virtual glm::vec3 sample(const glm::vec2& Xi, const glm::vec3& V, const float R) final;
 
         virtual float pdf(const glm::vec3&, const glm::vec3& H, const float R) final;
-
-        virtual glm::vec3 energy(const glm::vec3& wo, const glm::vec3& wi, const float R) final;
 
     private:
 

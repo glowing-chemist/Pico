@@ -2,7 +2,6 @@
 #include "Core/Camera.hpp"
 #include "Core/vectorUtils.hpp"
 #include "Core/Asserts.hpp"
-#include "Render/PBR.hpp"
 #include "Render/Integrators.hpp"
 #include "Render/BasicMaterials.hpp"
 #include "Core/LowerLevelImplicitShapesBVH.hpp"

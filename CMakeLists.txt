@@ -25,7 +25,6 @@ set(SOURCE
 	Source/Core/RandUtils.cpp
 	Source/Core/FileMappings.cpp
 
-	Source/Render/PBR.cpp
 	Source/Render/Integrators.cpp
 	Source/Render/BasicMaterials.cpp
 	Source/Render/SolidAngle.cpp

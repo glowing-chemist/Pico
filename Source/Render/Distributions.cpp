@@ -3,7 +3,6 @@
 #include "Distributions.hpp"
 #include "Core/vectorUtils.hpp"
 #include "Core/Asserts.hpp"
-#include "Render/PBR.hpp"
 
 #include <cmath>
 
@@ -28,18 +27,6 @@ namespace Render
         const float cos_theta = Core::TangentSpace::cos_theta(H);
         return std::max(0.0f, cos_theta / float(M_PI));
     }
-
-    glm::vec3 Cos_Weighted_Hemisphere_Distribution::energy(const glm::vec3& wo, const glm::vec3& wi, const float R)
-    {
-        const glm::vec3 H = glm::normalize(wo + wi);
-        PICO_ASSERT_VALID(H);
-        const float NdotV = Core::TangentSpace::cos_theta(wo);
-        const float NdotL = Core::TangentSpace::cos_theta(wi);
-        const float LdotH = glm::dot(wi, H);
-
-        return glm::vec3(Render::disney_diffuse(NdotV, NdotL, LdotH, R));
-    }
-
 
     glm::vec3 Beckmann_All_Microfacet_Distribution::sample(const glm::vec2& Xi, const glm::vec3& V, const float R)
     {
@@ -66,11 +53,6 @@ namespace Render
         float d = D(H, R);
         d = std::clamp(d, 0.0f, 1.0f);
         return d * Core::TangentSpace::abs_cos_theta(H);
-    }
-
-    glm::vec3 Beckmann_All_Microfacet_Distribution::energy(const glm::vec3& wo, const glm::vec3& wi, const float R)
-    {
-        return Render::specular_GGX(wi, wo, R, glm::vec3(1.0f));
     }
 
     float Beckmann_All_Microfacet_Distribution::roughness_to_alpha(float roughness) const
