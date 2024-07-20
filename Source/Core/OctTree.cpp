@@ -140,21 +140,15 @@ namespace Core
 
             // Check that the values fit entirely within a subspace partition, if not add them to this "parent" partition
             uint32_t childCount = 0;
-            std::vector<uint32_t> unclaimedCount(unfittedNodes.size(), 0u);
             for (uint32_t i = 0; i < subSpaces.size(); ++i)
             {
                 std::vector<typename OctTree<T>::BoundedValue> subSpaceNodes{};
                 for(uint32_t j = 0; j < unfittedNodes.size(); ++j)
                 {
                     const auto& node = unfittedNodes[j];
-                    if(subSpaces[i].contains(node.m_bounds) & Intersection::Contains)
+                    if(auto intersection_flags = subSpaces[i].contains(node.m_bounds); (intersection_flags & Intersection::Contains) || (intersection_flags & Intersection::Partial))
                     {
                         subSpaceNodes.push_back(node);
-                    }
-                    else
-                    {
-                        uint32_t& counter = unclaimedCount[j];
-                        ++counter;
                     }
                 }
 
@@ -164,12 +158,6 @@ namespace Core
                newNode.m_children[i] = child;
             }
             newNode.m_child_count = childCount;
-
-            for(size_t idx = 0; idx < unclaimedCount.size(); idx++)
-            {
-                if(unclaimedCount[idx] == 8)
-                    newNode.m_values.push_back(unfittedNodes[idx]);
-            }
 
             if(newNode.m_values.empty() && newNode.m_child_count == 0)
                 return kInvalidNodeIndex;
