@@ -8,6 +8,23 @@
 namespace Scene
 {
 
+    Core::Ray Camera::generate_ray(const glm::vec2&, const glm::uvec2& pix) const
+    {
+        const glm::vec2 offset = glm::vec2(0.5f, 0.5f);
+
+        glm::vec3 dir = {((float(pix.x) / float(mResolution.x)) - offset.x) * mAspect, (float(pix.y) / float(mResolution.y)) - offset.y, 1.0f};
+        dir = glm::normalize((dir.z * getDirection()) + (dir.y * getUp()) + (dir.x * getRight()));
+
+        Core::Ray ray;
+        ray.mDirection = dir;
+        ray.mOrigin = glm::vec4(getPosition(), 1.0f);
+        ray.mLenght = getFarPlane();
+        ray.push_index_of_refraction(1.0f);
+        ray.m_payload = glm::vec4(1.0f);
+        ray.m_weight = 0.0f;
+
+        return ray;
+    }
 
     void Camera::moveForward(const float distance)
     {

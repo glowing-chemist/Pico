@@ -1,6 +1,8 @@
 #ifndef CAMERA_HPP
 #define CAMERA_HPP
 
+#include "Core/AABB.hpp"
+
 #include "glm/common.hpp"
 #include "glm/mat4x4.hpp"
 
@@ -20,6 +22,7 @@ namespace Scene
             :   mPosition{ position },
                 mDirection{ direction },
                 mUp{ 0.0f, 1.0f, 0.0f },
+                mResolution{1902, 1080},
                 mAspect{ aspect },
                 mNearPlaneDistance{nearPlaneDistance},
                 mFarPlaneDistance{farPlaneDistance},
@@ -36,6 +39,8 @@ namespace Scene
         void rotatePitch(const float);
         void rotateYaw(const float);
         void rotateWorldUp(const float);
+
+        Core::Ray generate_ray(const glm::vec2& Xi, const glm::uvec2& pix) const;
 
         const glm::vec3& getPosition() const
             { return mPosition; }
@@ -74,6 +79,9 @@ namespace Scene
         float getAspect() const
         { return mAspect; }
 
+        void set_resolution(const glm::uvec2& res)
+        { mResolution = res; }
+
         glm::mat4x4 getViewMatrix() const;
         glm::mat4x4 getProjectionMatrix() const;
 
@@ -92,6 +100,7 @@ namespace Scene
         glm::vec3 mPosition;
         glm::vec3 mDirection;
         glm::vec3 mUp;
+        glm::uvec2 mResolution;
         float mAspect;
         float mNearPlaneDistance;
         float mFarPlaneDistance;

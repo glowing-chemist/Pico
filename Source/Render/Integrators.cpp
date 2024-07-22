@@ -114,8 +114,10 @@ namespace Render
         }
     }
 
-    glm::vec4 Monte_Carlo_Integrator::integrate_ray(const Core::Ray& ray, const uint32_t maxDepth, const uint32_t rayCount)
+    glm::vec4 Monte_Carlo_Integrator::integrate_ray(const Scene::Camera& camera, const glm::uvec2& pixel, const uint32_t maxDepth, const uint32_t rayCount)
     {
+        Core::Ray ray = camera.generate_ray(glm::vec2(0.5f, 0.5f), pixel);
+
         Core::Acceleration_Structures::InterpolatedVertex vertex;
         if(m_bvh.get_closest_intersection(ray, &vertex))
         {
@@ -126,13 +128,11 @@ namespace Render
             float weight = 0.f;
             for(uint32_t i_ray = 0; i_ray < rayCount; ++i_ray)
             {
-                Core::Ray new_ray = ray;
-                new_ray.m_payload = glm::vec4(1.0f);
-                new_ray.m_weight = 0.0f;
-                trace_ray(vertex, new_ray, maxDepth);
+                ray = camera.generate_ray(m_hammersley_generator.next(), pixel);
+                trace_ray(vertex, ray, maxDepth);
 
-                result += new_ray.m_payload * new_ray.m_weight;
-                weight += new_ray.m_weight;
+                result += ray.m_payload * ray.m_weight;
+                weight += ray.m_weight;
             }
 
             result /= weight;

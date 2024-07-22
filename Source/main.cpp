@@ -87,6 +87,7 @@ int main(int argc, const char **argv)
         {
             camera = *scene->get_camera(options.get_option<Util::Option::kCameraName>());
         }
+        camera.set_resolution(glm::uvec2(resolution));
 
         if(options.has_option(Util::Option::kOutputFile))
         {
