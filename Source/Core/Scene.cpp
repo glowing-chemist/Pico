@@ -323,6 +323,13 @@ namespace Scene
                 std::unique_ptr<Render::Distribution> distribution = std::make_unique<Render::Beckmann_All_Microfacet_Distribution>();
                 bsrdf = std::make_unique<Render::Specular_BRDF>(distribution, m_material_manager, material);
             }
+            else if(bsrdf_type == "Dielectric")
+            {
+                std::unique_ptr<Render::Distribution> diffuse_distribution = std::make_unique<Render::Cos_Weighted_Hemisphere_Distribution>();
+                std::unique_ptr<Render::Distribution> specular_distribution = std::make_unique<Render::Beckmann_All_Microfacet_Distribution>();
+
+                bsrdf = std::make_unique<Render::Dielectric_BRDF>(diffuse_distribution, specular_distribution, m_material_manager, material);
+            }
             else if(bsrdf_type == "Transparent")
             {
                 // Transparent BSRDF access the material manager on creation so needs a lock around it. same for fresnel
@@ -644,8 +651,10 @@ namespace Scene
             }
             else
             {
-                std::unique_ptr<Render::Distribution> distribution = std::make_unique<Render::Cos_Weighted_Hemisphere_Distribution>();
-                brdf = std::make_unique<Render::Diffuse_BRDF>(distribution, this->m_material_manager, material_index);
+                std::unique_ptr<Render::Distribution> diffuse_distribution = std::make_unique<Render::Cos_Weighted_Hemisphere_Distribution>();
+                std::unique_ptr<Render::Distribution> specular_distribution = std::make_unique<Render::Beckmann_All_Microfacet_Distribution>();
+
+                brdf = std::make_unique<Render::Dielectric_BRDF>(diffuse_distribution, specular_distribution, this->m_material_manager, material_index);
             }
 
             std::unique_lock l(this->m_SceneLoadingMutex);

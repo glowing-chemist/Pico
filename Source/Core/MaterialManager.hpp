@@ -36,6 +36,13 @@ namespace Core
         {
             return glm::length(specular);
         }
+
+        float get_reflectance() const
+        {
+            const float specular = specular_magnitude();
+
+            return specular / (specular + diffuse_magnitude());
+        }
     };
 
 

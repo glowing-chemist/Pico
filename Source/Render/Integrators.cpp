@@ -28,7 +28,7 @@ namespace Render
     Render::Sample Monte_Carlo_Integrator::generate_next_event(const Core::Acceleration_Structures::InterpolatedVertex& frag, Core::Ray& ray)
     {
         const auto bsrdf_type = frag.m_bsrdf->get_type();
-        if(bsrdf_type == Render::BSRDF_Type::kDiffuse_BRDF || bsrdf_type == Render::BSRDF_Type::kSpecular_BRDF)
+        if(bsrdf_type == Render::BSRDF_Type::kDiffuse_BRDF || bsrdf_type == Render::BSRDF_Type::kSpecular_BRDF || bsrdf_type == Render::BSRDF_Type::kDielectric_BRDF)
         {
             constexpr float random_sample_rate = 0.5f;
             if(mDistribution(mGenerator) <= random_sample_rate)
@@ -89,11 +89,11 @@ namespace Render
                         H = V;
 
                     const auto mat_id = frag.m_bsrdf->get_material_id();
-                    const float R = m_material_manager.evaluate_material(mat_id, frag.mUV).roughness;
+                    const Core::EvaluatedMaterial material = m_material_manager.evaluate_material(mat_id, frag.mUV);
 
                     const glm::vec3 H_tangent = glm::normalize(world_to_tangent_transform * H);
                     PICO_ASSERT_VALID(H_tangent);
-                    const float pdf = frag.m_bsrdf->pdf(view_tangent, H_tangent, R);
+                    const float pdf = frag.m_bsrdf->pdf(view_tangent, H_tangent, material.roughness, material.get_reflectance());
                     const glm::vec3 energy = frag.m_bsrdf->energy(frag, view_tangent, H_tangent);
 
                     // TODO what is the correrct way to combine these pdfs here.

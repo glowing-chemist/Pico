@@ -40,9 +40,9 @@ namespace Render
         return samp;
     }
 
-    float Diffuse_BRDF::pdf(const glm::vec3& wo, const glm::vec3& H, const float R)
+    float Diffuse_BRDF::pdf(const glm::vec3& wo, const glm::vec3& H, const float roughness, const float)
     {
-        return m_distribution->pdf(wo, H, R);
+        return m_distribution->pdf(wo, H, roughness);
     }
 
     glm::vec3 Diffuse_BRDF::energy(const Core::Acceleration_Structures::InterpolatedVertex &position, const glm::vec3&, const glm::vec3&)
@@ -79,23 +79,91 @@ namespace Render
 
         Sample samp{};
         samp.L = world_space_L;
-        samp.P = pdf(view_tangent, H, material.roughness);
+        samp.P = pdf(view_tangent, H, material.roughness, material.get_reflectance());
         samp.energy = material.specular;
 
         return samp;
     }
 
-    float Specular_BRDF::pdf(const glm::vec3& wo, const glm::vec3& H, const float R)
+    float Specular_BRDF::pdf(const glm::vec3& wo, const glm::vec3& H, const float roughness, const float)
     {
-        const float pdf = m_distribution->pdf(wo, H, R);
+        const float pdf = m_distribution->pdf(wo, H, roughness);
         return pdf / (2.0f * glm::dot(wo, H));
     }
 
-    glm::vec3 Specular_BRDF::energy(const Core::Acceleration_Structures::InterpolatedVertex& position, const glm::vec3& wo, const glm::vec3& H)
+    glm::vec3 Specular_BRDF::energy(const Core::Acceleration_Structures::InterpolatedVertex& position, const glm::vec3&, const glm::vec3&)
     {
         Core::EvaluatedMaterial material = m_material_manager.evaluate_material(m_mat_id, position.mUV);
 
         return material.specular;
+    }
+
+    Sample Dielectric_BRDF::sample(Core::Rand::Hammersley_Generator& rand, const Core::Acceleration_Structures::InterpolatedVertex &position, Core::Ray& ray)
+    {
+        const glm::vec3 V = -ray.mDirection;
+
+        PICO_ASSERT_VALID(position.mNormal);
+        PICO_ASSERT_VALID(V);
+
+        const glm::mat3x3 world_to_tangent_transform = Core::TangentSpace::construct_world_to_tangent_transform(V, position.mNormal);
+        const glm::mat3x3 tangent_to_world_transform = glm::inverse(world_to_tangent_transform);
+
+        const glm::vec3 view_tangent = glm::normalize(world_to_tangent_transform * V);
+
+        Core::EvaluatedMaterial material = m_material_manager.evaluate_material(m_mat_id, position.mUV);
+
+        const float specular_proportion = material.get_reflectance();
+
+        glm::vec2 Xi =  rand.next();
+        Sample samp;
+        if(Xi.y >= specular_proportion)
+        {
+            const glm::vec2 xi = rand.next();
+            const glm::vec3 H = m_diffuse_distribution->sample(xi, view_tangent, material.roughness);
+            PICO_ASSERT_VALID(H);
+
+            const glm::vec3 world_space_L = glm::normalize(tangent_to_world_transform * H);
+            PICO_ASSERT_VALID(world_space_L);
+
+            samp.L = world_space_L;
+            samp.P = m_diffuse_distribution->pdf(view_tangent, H, material.roughness);
+            samp.energy = material.diffuse;
+        }
+        else
+        {
+            Xi = rand.next();
+            const glm::vec3 H = m_specular_distribution->sample(Xi, view_tangent, material.roughness);
+            PICO_ASSERT_VALID(H);
+            const glm::vec3 L = glm::normalize(glm::reflect(-view_tangent, H));
+            PICO_ASSERT_VALID(L);
+
+            // Bring the sample vector back in to world space from tangent.
+            const glm::vec3 world_space_L = glm::normalize(tangent_to_world_transform * L);
+            PICO_ASSERT_VALID(world_space_L);
+
+            samp.L = world_space_L;
+            samp.P = m_specular_distribution->pdf(view_tangent, H, material.roughness) / (2.0f * glm::dot(view_tangent, H));
+            samp.energy = material.specular;
+        }
+
+        return samp;
+    }
+
+    float Dielectric_BRDF::pdf(const glm::vec3& wo, const glm::vec3& H, const float roughness, const float reflectance)
+    {
+        return (m_diffuse_distribution->pdf(wo, H, roughness) * (1 - reflectance)) +
+               ((m_specular_distribution->pdf(wo, H, roughness) / (2.0f * glm::dot(wo, H))) * reflectance);
+    }
+
+    glm::vec3 Dielectric_BRDF::energy(const Core::Acceleration_Structures::InterpolatedVertex& position, const glm::vec3&, const glm::vec3&)
+    {
+        Core::EvaluatedMaterial material = m_material_manager.evaluate_material(m_mat_id, position.mUV);
+
+        const float specular_proportion = material.specular_magnitude();
+        const float diffuse_proportion = 1.0f - specular_proportion;
+
+        return (material.diffuse * diffuse_proportion) + (material.specular * specular_proportion);
+
     }
 
     Sample Light_BRDF::sample(Core::Rand::Hammersley_Generator&, const Core::Acceleration_Structures::InterpolatedVertex &position, Core::Ray&)
@@ -110,7 +178,7 @@ namespace Render
         return samp;
     }
 
-    float Light_BRDF::pdf(const glm::vec3&, const glm::vec3&, const float)
+    float Light_BRDF::pdf(const glm::vec3&, const glm::vec3&, const float, const float)
     {
         return 1.0f;
     }
@@ -136,7 +204,7 @@ namespace Render
         return samp;
     }
 
-    float Specular_Delta_BRDF::pdf(const glm::vec3&, const glm::vec3&, const float)
+    float Specular_Delta_BRDF::pdf(const glm::vec3&, const glm::vec3&, const float, const float)
     {
         return 0.0f; // Assume that any other vector would not perfectly match.
     }
@@ -225,13 +293,13 @@ namespace Render
         }
     }
 
-    float Transparent_BTDF::pdf(const glm::vec3& wo, const glm::vec3& H, const float R)
+    float Transparent_BTDF::pdf(const glm::vec3& wo, const glm::vec3& H, const float roughness, const float)
     {
         glm::vec3 L;
         const float eta = 1.0f / m_index_of_refraction; // TODO
         if(refract(wo, H, eta, L))
         {
-            const float pdf = m_distribution->pdf(wo, H, R);
+            const float pdf = m_distribution->pdf(wo, H, roughness);
             PICO_ASSERT(!std::isinf(pdf) && !std::isnan(pdf));
             glm::vec3 wh = glm::normalize(wo + L * eta);
             float sqrtDenom = glm::dot(wo, wh) + eta * glm::dot(L, wh);
@@ -299,13 +367,13 @@ namespace Render
         return samp;
     }
 
-    float Fresnel_BTDF::pdf(const glm::vec3& wo, const glm::vec3& H, const float R)
+    float Fresnel_BTDF::pdf(const glm::vec3& wo, const glm::vec3& H, const float roughness, const float reflectance)
     {
         const float fresnel_term = fresnel_factor(Core::TangentSpace::cos_theta(wo), m_transparent_bsrdf->get_index_of_refraction(), 1.0f);
         if(Core::TangentSpace::same_hemisphere(wo, H))
-            return fresnel_term * m_specular_bsrdf->pdf(wo, H, R);
+            return fresnel_term * m_specular_bsrdf->pdf(wo, H, roughness, reflectance);
         else
-            return (1.0f - fresnel_term) * m_transparent_bsrdf->pdf(wo, H, R);
+            return (1.0f - fresnel_term) * m_transparent_bsrdf->pdf(wo, H, roughness, reflectance);
     }
 
     glm::vec3 Fresnel_BTDF::energy(const Core::Acceleration_Structures::InterpolatedVertex& position, const glm::vec3& wo, const glm::vec3& H)

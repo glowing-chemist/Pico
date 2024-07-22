@@ -33,6 +33,7 @@ namespace Render
     {
         kDiffuse_BRDF,
         kSpecular_BRDF,
+        kDielectric_BRDF,
         kBTDF,
         kLight
     };
@@ -48,7 +49,7 @@ namespace Render
 
         virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::Acceleration_Structures::InterpolatedVertex& position, Core::Ray& ray) = 0;
 
-        virtual float pdf(const glm::vec3& wo, const glm::vec3& H, const float R) = 0;
+        virtual float pdf(const glm::vec3& wo, const glm::vec3& H, const float roughness, const float reflectance) = 0;
 
         virtual glm::vec3 energy(const Core::Acceleration_Structures::InterpolatedVertex& position, const glm::vec3& wo, const glm::vec3& H) = 0;
 
@@ -77,7 +78,7 @@ namespace Render
 
         virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::Acceleration_Structures::InterpolatedVertex& position, Core::Ray& ray) final;
 
-        virtual float pdf(const glm::vec3& wo, const glm::vec3& H, const float R) final;
+        virtual float pdf(const glm::vec3& wo, const glm::vec3& H, const float roughness, const float reflectance) final;
 
         virtual glm::vec3 energy(const Core::Acceleration_Structures::InterpolatedVertex& position, const glm::vec3& wo, const glm::vec3& H) final;
 
@@ -102,7 +103,7 @@ namespace Render
 
         virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::Acceleration_Structures::InterpolatedVertex &position, Core::Ray& ray) final;
 
-        virtual float pdf(const glm::vec3& wo, const glm::vec3& H, const float R) final;
+        virtual float pdf(const glm::vec3& wo, const glm::vec3& H, const float roughness, const float reflectance) final;
 
         virtual glm::vec3 energy(const Core::Acceleration_Structures::InterpolatedVertex& position, const glm::vec3& wo, const glm::vec3& H) final;
 
@@ -116,6 +117,32 @@ namespace Render
         std::unique_ptr<Render::Distribution> m_distribution;
     };
 
+    class Dielectric_BRDF : public BSRDF
+    {
+    public:
+
+        Dielectric_BRDF(std::unique_ptr<Render::Distribution>& diffuse_dist, std::unique_ptr<Render::Distribution>& specular_dist, Core::MaterialManager& mat_manager, Core::MaterialManager::MaterialID id) :
+            BSRDF(mat_manager, id),
+            m_diffuse_distribution(std::move(diffuse_dist)),
+            m_specular_distribution(std::move(specular_dist)) {}
+
+        virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::Acceleration_Structures::InterpolatedVertex &position, Core::Ray& ray) final;
+
+        virtual float pdf(const glm::vec3& wo, const glm::vec3& H, const float roughness, const float reflectance) final;
+
+        virtual glm::vec3 energy(const Core::Acceleration_Structures::InterpolatedVertex& position, const glm::vec3& wo, const glm::vec3& H) final;
+
+        virtual BSRDF_Type get_type() const final
+        {
+            return BSRDF_Type::kDielectric_BRDF;
+        }
+
+    private:
+
+        std::unique_ptr<Render::Distribution> m_diffuse_distribution;
+        std::unique_ptr<Render::Distribution> m_specular_distribution;
+    };
+
     class Light_BRDF : public BSRDF
     {
     public:
@@ -125,7 +152,7 @@ namespace Render
 
         virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::Acceleration_Structures::InterpolatedVertex &position, Core::Ray& ray) final;
 
-        virtual float pdf(const glm::vec3& wo, const glm::vec3& H, const float R) final;
+        virtual float pdf(const glm::vec3& wo, const glm::vec3& H, const float roughness, const float reflectance) final;
 
         virtual glm::vec3 energy(const Core::Acceleration_Structures::InterpolatedVertex& position, const glm::vec3& wo, const glm::vec3& H) final;
 
@@ -144,7 +171,7 @@ namespace Render
 
         virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::Acceleration_Structures::InterpolatedVertex &position, Core::Ray& ray) final;
 
-        virtual float pdf(const glm::vec3& wo, const glm::vec3& H, const float R) final;
+        virtual float pdf(const glm::vec3& wo, const glm::vec3& H, const float roughness, const float reflectance) final;
 
         virtual glm::vec3 energy(const Core::Acceleration_Structures::InterpolatedVertex& position, const glm::vec3& wo, const glm::vec3& H) final;
 
@@ -172,7 +199,7 @@ namespace Render
 
         virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::Acceleration_Structures::InterpolatedVertex &position, Core::Ray &ray) final;
 
-        virtual float pdf(const glm::vec3& wo, const glm::vec3& H, const float R) final;
+        virtual float pdf(const glm::vec3& wo, const glm::vec3& H, const float roughness, const float reflectance) final;
 
         virtual glm::vec3 energy(const Core::Acceleration_Structures::InterpolatedVertex& position, const glm::vec3& wo, const glm::vec3& H) final;
 
@@ -212,7 +239,7 @@ namespace Render
 
         virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::Acceleration_Structures::InterpolatedVertex &position, Core::Ray& ray) final;
 
-        virtual float pdf(const glm::vec3& wo, const glm::vec3& H, const float R) final;
+        virtual float pdf(const glm::vec3& wo, const glm::vec3& H, const float roughness, const float reflectance) final;
 
         virtual glm::vec3 energy(const Core::Acceleration_Structures::InterpolatedVertex& position, const glm::vec3& wo, const glm::vec3& H) final;
 
