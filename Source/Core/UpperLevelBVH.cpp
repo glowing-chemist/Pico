@@ -12,7 +12,7 @@ namespace Core
         bool UpperLevelBVH::get_closest_intersection(const Ray& ray, InterpolatedVertex* vertex) const
         {
             InterpolatedVertex intersected_vertex{};
-            const bool found = mOctTree.get_first_intersection(ray, intersected_vertex);
+            const bool found = mOctTree->get_first_intersection(ray, intersected_vertex);
             if(found)
                 *vertex = intersected_vertex;
 

@@ -12,94 +12,20 @@ namespace Core
 
     namespace Acceleration_Structures
     {
-
         template<typename T>
-        bool OctTree<T>::get_first_intersection(const Ray& ray, Acceleration_Structures::InterpolatedVertex &val) const
-        {
-            float intersection_distance = INFINITY;
-
-            #ifdef BVH_PROFILE
-            uint32_t tests_performed = 0;
-            get_closest_intersections(ray, get_node(m_root), val, intersection_distance, tests_performed);
-            PICO_LOG("intersection tests performed %d\n", tests_performed);
-            #else
-            get_closest_intersections(ray, get_node(m_root), val, intersection_distance);
-            #endif
-
-            return intersection_distance != INFINITY;
-        }
-
-        template<typename T>
-        void    OctTree<T>::get_closest_intersections(const Ray& ray, const typename OctTree<T>::Node& node, Core::Acceleration_Structures::InterpolatedVertex& intersection, float& intersection_distance
-                                                                                                                                                                               #ifdef BVH_PROFILE
-                                                                                                                                                                               ,uint32_t &tests_performed
-                                                                                                                                                                               #endif
-                                                                                                                                                                               ) const
-        {
-            #ifdef BVH_PROFILE
-            ++tests_performed;
-            #endif
-            if(node.m_bounding_box.intersection_distance(ray) < intersection_distance)
-            {
-                for(auto& value : node.m_values)
-                {
-                    // If we intersect the bounds then invoke the intersector to check if the contained entity is also intersected
-                    #ifdef BVH_PROFILE
-                    ++tests_performed;
-                    #endif
-                    if(value.m_bounds.intersection_distance(ray) < intersection_distance)
-                    {
-                        float fine_intersected_distance = INFINITY;
-                        Acceleration_Structures::InterpolatedVertex vertex;
-                        #ifdef BVH_PROFILE
-                        ++tests_performed;
-                        #endif
-                        if(m_intersector->intersects(ray, value.m_value, fine_intersected_distance, vertex) && fine_intersected_distance < intersection_distance)
-                        {
-                            intersection = vertex;
-                            intersection_distance = fine_intersected_distance;
-                        }
-                    }
-                }
-
-                for (const auto& childIndex : node.m_children)
-                {
-                    if (childIndex != kInvalidNodeIndex)
-                    {
-                        const Node& childNode = get_node(childIndex);
-                        #ifdef BVH_PROFILE
-                        get_closest_intersections(ray, childNode, intersection, intersection_distance, tests_performed);
-                        #else
-                        get_closest_intersections(ray, childNode, intersection, intersection_distance);
-                        #endif
-                    }
-                }
-            }
-        }
-
-        template<typename T>
-        void OctTree<T>::print_debug_info() const
-        {
-            for(const auto& node : m_nodes)
-            {
-                PICO_LOG("Node contains %zu values\n", node.m_values.size());
-            }
-        }
-
-        template<typename T>
-        OctTree<T> OctTreeFactory<T>::generate_octTree()
+        OctTree<T>* OctTreeFactory<T>::generate_octTree()
         {
             const NodeIndex root = create_spacial_subdivisions(m_root_bounding_box, m_bounding_boxes, m_max_depth);
 
             minimise_bounds(root);
 
-            return OctTree<T>{root, m_node_storage, std::move(m_intersector)};
+            return new OctTree<T>{root, m_node_storage, std::move(m_intersector)};
         }
 
 
         template<typename T>
         NodeIndex OctTreeFactory<T>::create_spacial_subdivisions(const AABB& parentBox,
-                                                               const std::vector<typename OctTree<T>::BoundedValue>& nodes,
+                                                               const std::vector<BuilderNode>& nodes,
                                                                uint32_t depth)
         {
             if (nodes.empty())
@@ -126,7 +52,7 @@ namespace Core
             }
 
             const glm::vec3 halfNodeSize = parentBox.get_side_lengths() / 2.0f;
-            std::vector<typename OctTree<T>::BoundedValue> unfittedNodes{};
+            std::vector<typename BVH<T, 8>::BoundedValue> unfittedNodes{};
             for (const auto& node : nodes)
             {
                 const glm::vec3 size = node.m_bounds.get_side_lengths();
@@ -142,7 +68,7 @@ namespace Core
             uint32_t childCount = 0;
             for (uint32_t i = 0; i < subSpaces.size(); ++i)
             {
-                std::vector<typename OctTree<T>::BoundedValue> subSpaceNodes{};
+                std::vector<typename BVH<T, 8>::BoundedValue> subSpaceNodes{};
                 for(uint32_t j = 0; j < unfittedNodes.size(); ++j)
                 {
                     const auto& node = unfittedNodes[j];
@@ -195,7 +121,7 @@ namespace Core
         template<typename T>
         AABB OctTreeFactory<T>::minimise_bounds(const uint32_t node_index)
         {
-            typename OctTree<T>::Node& node = m_node_storage[node_index];
+            typename BVH<T, 8>::Node& node = m_node_storage[node_index];
 
             glm::vec4 min(INFINITY, INFINITY, INFINITY, INFINITY);
             glm::vec4 max(-INFINITY, -INFINITY, -INFINITY, -INFINITY);

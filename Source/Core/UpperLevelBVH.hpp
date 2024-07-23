@@ -48,7 +48,7 @@ namespace Core
             };
 
             std::vector<Entry> mLowerLevelBVHs;
-            OctTree<const Entry*> mOctTree;
+            OctTree<const Entry*>* mOctTree;
 
         };
 
