@@ -12,7 +12,7 @@ namespace Core
         bool UpperLevelBVH::get_closest_intersection(const Ray& ray, InterpolatedVertex* vertex) const
         {
             InterpolatedVertex intersected_vertex{};
-            const bool found = mOctTree->get_first_intersection(ray, intersected_vertex);
+            const bool found = m_acceleration_structure->get_first_intersection(ray, intersected_vertex);
             if(found)
                 *vertex = intersected_vertex;
 
@@ -26,10 +26,10 @@ namespace Core
 
         void UpperLevelBVH::build()
         {
-            std::vector<Core::Acceleration_Structures::OctTree<const Entry*>::BoundedValue> values;
+            std::vector<UPPER_ACCELERATION_STRUCTURE::BoundedValue> values;
             values.reserve(mLowerLevelBVHs.size());
 
-            std::transform(mLowerLevelBVHs.begin(), mLowerLevelBVHs.end(), std::back_inserter(values), [](const auto& entry) -> Core::Acceleration_Structures::OctTree<const Entry*>::BoundedValue
+            std::transform(mLowerLevelBVHs.begin(), mLowerLevelBVHs.end(), std::back_inserter(values), [](const auto& entry) -> UPPER_ACCELERATION_STRUCTURE::BoundedValue
             {
                 return { entry.mBVH->get_bounds() * entry.mTransform, &entry };
             });
@@ -44,9 +44,16 @@ namespace Core
 
             AABB scene_bounds(min, max);
 
-            mOctTree = OctTreeFactory<const Entry*>(scene_bounds, values)
+#ifdef USE_OCTTREE
+            m_acceleration_structure = OctTreeFactory<const Entry*>(scene_bounds, values)
                            .set_intersector(std::make_unique<lower_level_intersector>())
                            .generate_octTree();
+#else
+            m_acceleration_structure = BVHFactory<const Entry*>(scene_bounds, values)
+                                           .set_intersector(std::make_unique<lower_level_intersector>())
+                                           .set_parition_scheme(std::make_unique<SAH_parition_Scheme<const Entry*>>())
+                                           .generate_BVH();
+#endif
         }
 
         bool UpperLevelBVH::lower_level_intersector::intersects(const Ray& ray, const Entry* entry, float& intersect_distance, InterpolatedVertex& vertex) const

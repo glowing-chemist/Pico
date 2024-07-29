@@ -37,6 +37,16 @@ namespace Core
                       std::max(lhs.w, rhs.w)};
     }
 
+    uint32_t maximum_component_index(const glm::vec3& v)
+    {
+        if(v.x <= v.y && v.x <= v.z)
+            return 0;
+        else if(v.y <= v.x && v.y <= v.z)
+            return 1;
+        else
+            return 2;
+    }
+
     Ray transform_ray(const Ray& ray, const glm::mat4x4& transform)
     {
         Ray newRay{};
@@ -148,6 +158,34 @@ namespace Core
         return static_cast<Intersection>(inside | (all ? Intersection::Contains : Intersection::None));
     }
 
+    void AABB::add_point(const glm::vec4& p)
+    {
+        mMinimum = component_wise_min(mMinimum, p);
+        mMaximum = component_wise_max(mMaximum, p);
+    }
+
+    void AABB::union_of(const AABB& aabb)
+    {
+        mMinimum = component_wise_min(mMinimum, aabb.get_min());
+        mMaximum = component_wise_max(mMaximum, aabb.get_max());
+    }
+
+    AABB AABB::union_of(const AABB& lhs, const AABB& rhs)
+    {
+        AABB aabb = lhs;
+
+        aabb.union_of(rhs);
+        return aabb;
+    }
+
+    glm::vec3 AABB::get_offset(const glm::vec4& p)
+    {
+        glm::vec3 o = p - mMinimum;
+        if (mMaximum.x > mMinimum.x) o.x /= mMaximum.x - mMinimum.x;
+        if (mMaximum.y > mMinimum.y) o.y /= mMaximum.y - mMinimum.y;
+        if (mMaximum.z > mMinimum.z) o.z /= mMaximum.z - mMinimum.z;
+        return o;
+    }
 
     AABB& AABB::operator*=(const glm::mat4x4& mat)
     {

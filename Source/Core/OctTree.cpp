@@ -45,7 +45,6 @@ namespace Core
                 for (const auto& node : nodes)
                 {
                     newNode.m_values.push_back(node);
-                    newNode.m_child_count = 0;
 
                     return add_node(newNode);
                 }
@@ -83,9 +82,8 @@ namespace Core
                     ++childCount;
                newNode.m_children[i] = child;
             }
-            newNode.m_child_count = childCount;
 
-            if(newNode.m_values.empty() && newNode.m_child_count == 0)
+            if(newNode.m_values.empty() && childCount == 0)
                 return kInvalidNodeIndex;
             else
                 return add_node(newNode);

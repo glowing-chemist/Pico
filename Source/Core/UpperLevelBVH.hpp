@@ -11,6 +11,12 @@
 #include <memory>
 #include <vector>
 
+#ifdef USE_OCTTREE
+#define UPPER_ACCELERATION_STRUCTURE OctTree<const Entry*>
+#else
+#define UPPER_ACCELERATION_STRUCTURE BVH<const Entry*, 2>
+#endif
+
 namespace Core
 {
 
@@ -48,7 +54,7 @@ namespace Core
             };
 
             std::vector<Entry> mLowerLevelBVHs;
-            OctTree<const Entry*>* mOctTree;
+            UPPER_ACCELERATION_STRUCTURE* m_acceleration_structure;
 
         };
 

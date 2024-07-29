@@ -50,6 +50,8 @@ namespace Core
 
     glm::vec4 component_wise_max(const glm::vec4& lhs, const glm::vec4& rhs);
 
+    uint32_t maximum_component_index(const glm::vec3& lhs);
+
 
     // 8 float4 representing the 8 verticies of a cude
     struct Cube
@@ -91,6 +93,12 @@ namespace Core
         bool contains(const glm::vec4&) const;
         Intersection contains(const AABB&) const;
 
+        void add_point(const glm::vec4& p);
+
+        void union_of(const AABB& aabb);
+
+        static AABB union_of(const AABB& lhs, const AABB& rhs);
+
         AABB& operator*=(const glm::mat4x4&);
 
         AABB& operator*=(const glm::vec4&);
@@ -116,6 +124,15 @@ namespace Core
         {
             return glm::abs(mMaximum - mMinimum);
         }
+
+        float get_surface_area() const
+        {
+            const glm::vec3 side_lenghts = get_side_lengths();
+
+            return 2.0f * ((side_lenghts.x * side_lenghts.y) + (side_lenghts.x * side_lenghts.z) + (side_lenghts.y * side_lenghts.z));
+        }
+
+        glm::vec3 get_offset(const glm::vec4& p);
 
     private:
 

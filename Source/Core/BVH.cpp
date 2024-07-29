@@ -64,11 +64,11 @@ namespace Core
                     }
                 }
 
-                for (const auto& childIndex : node.m_children)
+                for (NodeIndex child_index : node.m_children)
                 {
-                    if (childIndex != kInvalidNodeIndex)
+                    if (child_index != kInvalidNodeIndex)
                     {
-                        const Node& childNode = get_node(childIndex);
+                        const Node& childNode = get_node(child_index);
         #ifdef BVH_PROFILE
                         get_closest_intersections(ray, childNode, intersection, intersection_distance, tests_performed);
         #else
@@ -76,6 +76,147 @@ namespace Core
         #endif
                     }
                 }
+            }
+        }
+
+        template<typename T>
+        BVH<T, 2>* BVHFactory<T>::generate_BVH()
+        {
+            const NodeIndex root_node = split_primitives(m_bounding_boxes.begin(), m_bounding_boxes.end(), m_max_depth);
+
+            return new BVH<T, 2>(root_node, m_node_storage, std::move(m_intersector));
+        }
+
+        template<typename T>
+        NodeIndex BVHFactory<T>::split_primitives(BVHPartitionScheme<T>::ITERATOR start, BVHPartitionScheme<T>::ITERATOR end, uint32_t depth)
+        {
+            if(start == end)
+                return kInvalidNodeIndex;
+
+            AABB bounds(glm::vec4(INFINITY, INFINITY, INFINITY, INFINITY), -glm::vec4(INFINITY, INFINITY, INFINITY, INFINITY));
+            for(auto bounds_it = start; bounds_it != end; ++bounds_it)
+            {
+                bounds.union_of(bounds_it->m_bounds);
+            }
+
+            typename BVH<T, 2>::Node newNode{};
+            newNode.m_bounding_box = bounds;
+
+            const auto pivot = m_partition_scheme->partition(start, end);
+
+            if(depth == 0 || pivot == end || std::distance(start, end) == 2 )
+            {
+                for(auto primitives_it = start; primitives_it != end; ++primitives_it)
+                {
+                    newNode.m_values.push_back(*primitives_it);
+                }
+
+                newNode.m_children[0] = kInvalidNodeIndex;
+                newNode.m_children[1] = kInvalidNodeIndex;
+
+                return add_node(newNode);
+            }
+
+            newNode.m_children[0] = split_primitives(start, pivot, depth - 1);
+            newNode.m_children[1] = split_primitives(pivot, end, depth - 1);
+
+            return add_node(newNode);
+        }
+
+        template<typename T>
+        Centroid_parition_Scheme<T>::ITERATOR Centroid_parition_Scheme<T>::partition(ITERATOR start, ITERATOR end)
+        {
+            // compute the bounds to find the longest edge.
+            AABB bounds(glm::vec4(INFINITY, INFINITY, INFINITY, INFINITY), -glm::vec4(INFINITY, INFINITY, INFINITY, INFINITY));
+            for(auto bounds_it = start; bounds_it != end; ++bounds_it)
+            {
+                bounds.add_point(bounds_it->m_bounds.get_central_point());
+            }
+
+            const glm::vec3 side_lengths = bounds.get_side_lengths();
+            const uint32_t max_component = maximum_component_index(side_lengths);
+            const float central_point =  bounds.get_central_point()[max_component];
+
+            return std::partition(start, end, [&](const auto& it){ return it.m_bounds.get_central_point()[max_component] < central_point; });
+        }
+
+        template<typename T>
+        SAH_parition_Scheme<T>::ITERATOR SAH_parition_Scheme<T>::partition(ITERATOR start, ITERATOR end)
+        {
+            if(start == end)
+                return end;
+
+            AABB bounds(glm::vec4(INFINITY, INFINITY, INFINITY, INFINITY), -glm::vec4(INFINITY, INFINITY, INFINITY, INFINITY));
+            for(auto bounds_it = start; bounds_it != end; ++bounds_it)
+            {
+                bounds.add_point(bounds_it->m_bounds.get_central_point());
+            }
+
+            const glm::vec3 side_lengths = bounds.get_side_lengths();
+            const uint32_t max_component = maximum_component_index(side_lengths);
+
+            constexpr uint32_t bucket_count = 12;
+            Bucket buckets[bucket_count];
+            // Init the buckets.
+            for(uint32_t i = 0; i < bucket_count; ++i)
+            {
+                buckets[i] = {0, AABB{glm::vec4(INFINITY, INFINITY, INFINITY, INFINITY), -glm::vec4(INFINITY, INFINITY, INFINITY, INFINITY)}};
+            }
+
+            for(auto i = start; i < end; ++i)
+            {
+                uint32_t b = bucket_count * bounds.get_offset(i->m_bounds.get_central_point())[max_component];
+                if (b == bucket_count) b = bucket_count - 1;
+                buckets[b].mCount++;
+                buckets[b].mBounds.union_of(i->m_bounds);
+            }
+
+            const float leaf_cost = std::distance(start, end);
+            float cost[bucket_count - 1];
+            for (uint32_t i = 0; i < bucket_count - 1; ++i)
+            {
+                AABB b0{glm::vec4(INFINITY, INFINITY, INFINITY, INFINITY), -glm::vec4(INFINITY, INFINITY, INFINITY, INFINITY)};
+                AABB b1{glm::vec4(INFINITY, INFINITY, INFINITY, INFINITY), -glm::vec4(INFINITY, INFINITY, INFINITY, INFINITY)};
+                uint32_t count0 = 0, count1 = 0;
+                for (uint32_t j = 0; j <= i; ++j)
+                {
+                    b0.union_of(buckets[j].mBounds);
+                    count0 += buckets[j].mCount;
+                }
+                for (uint32_t j = i+1; j < bucket_count; ++j)
+                {
+                    b1.union_of(buckets[j].mBounds);
+                    count1 += buckets[j].mCount;
+                }
+                cost[i] = .125f + (count0 * b0.get_surface_area() +
+                                   count1 * b1.get_surface_area()) / (leaf_cost * bounds.get_surface_area());
+            }
+
+            float minCost = cost[0];
+            uint32_t minCostSplitBucket = 0;
+            for (uint32_t i = 1; i < bucket_count - 1; ++i)
+            {
+                if (cost[i] < minCost)
+                {
+                    minCost = cost[i];
+                    minCostSplitBucket = i;
+                }
+            }
+
+            if (leaf_cost > 2 || minCost < leaf_cost)
+            {
+                return std::partition(start,
+                                      end,
+                                      [&](const auto pi)
+                                      {
+                                        uint32_t b = bucket_count * bounds.get_offset(pi.m_bounds.get_central_point())[max_component];
+                                        if (b == bucket_count) b = bucket_count - 1;
+                                        return b <= minCostSplitBucket;
+                                      });
+            }
+            else
+            {
+                return end;
             }
         }
 
@@ -93,10 +234,31 @@ template
     class Core::Acceleration_Structures::BVH<const Core::Acceleration_Structures::UpperLevelBVH::Entry*, 8>;
 
 template
+    class Core::Acceleration_Structures::BVH<const Core::Acceleration_Structures::UpperLevelBVH::Entry*, 2>;
+
+template
     class Core::Acceleration_Structures::OctTreeFactory<uint32_t>;
 
 template
     class Core::Acceleration_Structures::BVH<uint32_t, 8>;
+
+template
+    class Core::Acceleration_Structures::BVH<uint32_t, 2>;
+
+template
+    class Core::Acceleration_Structures::BVHFactory<uint32_t>;
+
+template
+    class Core::Acceleration_Structures::BVHFactory<const Core::Acceleration_Structures::UpperLevelBVH::Entry*>;
+
+template
+    class Core::Acceleration_Structures::Centroid_parition_Scheme<uint32_t>;
+
+template
+    class Core::Acceleration_Structures::SAH_parition_Scheme<uint32_t>;
+
+template
+    class Core::Acceleration_Structures::SAH_parition_Scheme<const Core::Acceleration_Structures::UpperLevelBVH::Entry*>;
 
 
 

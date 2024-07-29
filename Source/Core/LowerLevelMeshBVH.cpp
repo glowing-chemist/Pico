@@ -45,7 +45,7 @@ namespace Core
                 memcpy(mVertexColours.data(), mesh->mColors[0], sizeof(glm::vec4) * mesh->mNumVertices);
             }
 
-            std::vector<OctTree<uint32_t>::BoundedValue> primitive_bounds;
+            std::vector<LOWER_ACCELERATION_STRUCTURE::BoundedValue> primitive_bounds;
             primitive_bounds.reserve(mIndicies.size());
             for(uint32_t i = 0; i < mIndicies.size(); i += 3)
             {
@@ -66,9 +66,16 @@ namespace Core
             aiAABB aabb = mesh->mAABB;
             mAABB = AABB({aabb.mMin.x, aabb.mMin.y, aabb.mMin.z, 1.0f}, {aabb.mMax.x, aabb.mMax.y, aabb.mMax.z, 1.0f});
 
+#ifdef USE_OCTTREE
             m_acceleration_structure = OctTreeFactory<uint32_t>(mAABB, primitive_bounds)
                                            .set_intersector(std::make_unique<Mesh_Intersector>(mPositions.data(), mUVs.data(), mNormals.data(), mVertexColours.data(), mIndicies.data()))
                                            .generate_octTree();
+#else
+            m_acceleration_structure = BVHFactory<uint32_t>(mAABB, primitive_bounds)
+                                           .set_intersector(std::make_unique<Mesh_Intersector>(mPositions.data(), mUVs.data(), mNormals.data(), mVertexColours.data(), mIndicies.data()))
+                                           .set_parition_scheme(std::make_unique<SAH_parition_Scheme<uint32_t>>())
+                                           .generate_BVH();
+#endif
         }
 
         bool LowerLevelMeshBVH::calculate_intersection(const Ray& ray, InterpolatedVertex* result) const
