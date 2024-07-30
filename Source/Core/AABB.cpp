@@ -39,9 +39,9 @@ namespace Core
 
     uint32_t maximum_component_index(const glm::vec3& v)
     {
-        if(v.x <= v.y && v.x <= v.z)
+        if((v.x >= v.y) && (v.x >= v.z))
             return 0;
-        else if(v.y <= v.x && v.y <= v.z)
+        else if((v.y >= v.x) && (v.y >= v.z))
             return 1;
         else
             return 2;
