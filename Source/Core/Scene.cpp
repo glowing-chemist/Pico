@@ -80,11 +80,14 @@ namespace Scene
 
         m_file_mapper = std::make_unique<Core::File_System_Mappings>(working_dir);
 
-        // Create a black cubemap.
-        unsigned char* black_cube_map = static_cast<unsigned char*>(malloc(sizeof(unsigned char) * 24));
-        memset(black_cube_map, 0, 24);
+        // Create a white cubemap.
+        float* white_cube_map = static_cast<float*>(malloc(sizeof(float) * 24));
+        for(uint32_t i = 0; i < 24; ++i)
+        {
+            white_cube_map[i] = 10;
+        }
         Core::ImageExtent extent{1, 1, 1};
-        mSkybox = std::make_unique<Core::ImageCube>(black_cube_map, extent, Core::Format::kRBGA_8UNorm);
+        mSkybox = std::make_unique<Core::ImageCube>(reinterpret_cast<unsigned char*>(white_cube_map), extent, Core::Format::kRGBA_F);
 
         std::vector<std::future<void>> material_loading_task_handles{};
         for(uint32_t i_mat = 0; i_mat < scene->mNumMaterials; ++i_mat)
@@ -210,10 +213,9 @@ namespace Scene
         bool shouldQuit = false;
         render_scene_to_memory(camera, params, &shouldQuit);
 
-        std::vector<uint32_t> buffer{};
-        std::transform(params.m_Pixels, params.m_Pixels + params.m_Height * params.m_Width, std::back_inserter(buffer), [](glm::vec4& pixel) { return Core::pack_colour(pixel); });
-
-        stbi_write_jpg(path, params.m_Width, params.m_Height, 4, buffer.data(), 100);
+        // Flip the image right side up.
+        std::reverse(params.m_Pixels, params.m_Pixels + (params.m_Width * params.m_Height));
+        stbi_write_hdr(path, params.m_Width, params.m_Height, 4, reinterpret_cast<const float*>(params.m_Pixels));
     }
 
 
