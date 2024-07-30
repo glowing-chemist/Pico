@@ -18,6 +18,9 @@ namespace Core
 
             case Format::kR_8UNorm:
                 return 1;
+
+            case Format::kRGBA_F:
+                return 16;
         }
 
         return 4;
@@ -35,6 +38,9 @@ namespace Core
 
             case Format::kR_8UNorm:
                 return 1;
+
+            case Format::kRGBA_F:
+                return 4;
         }
 
         return 4;

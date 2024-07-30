@@ -21,7 +21,8 @@ namespace Core
     {
         kRBGA_8UNorm,
         kRGB_8UNorm,
-        kR_8UNorm
+        kR_8UNorm,
+        kRGBA_F
     };
 
     size_t get_pixel_size(const Format);
