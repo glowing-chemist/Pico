@@ -192,16 +192,9 @@ namespace Core
                                    count1 * b1.get_surface_area()) / (leaf_cost * bounds.get_surface_area());
             }
 
-            float minCost = cost[0];
-            uint32_t minCostSplitBucket = 0;
-            for (uint32_t i = 1; i < bucket_count - 1; ++i)
-            {
-                if (cost[i] < minCost)
-                {
-                    minCost = cost[i];
-                    minCostSplitBucket = i;
-                }
-            }
+            auto min_element = std::min_element(&cost[0], &cost[bucket_count - 1]);
+            const float minCost = *min_element;
+            const uint32_t minCostSplitBucket = std::distance(&cost[0], min_element);
 
             if (leaf_cost > 2 || minCost < leaf_cost)
             {
