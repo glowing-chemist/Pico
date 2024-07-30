@@ -6,7 +6,7 @@
 
 #include "AABB.hpp"
 
-#define USE_OCTTREE
+//#define USE_OCTTREE
 
 namespace Core
 {
