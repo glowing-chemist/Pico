@@ -107,6 +107,7 @@ int main(int argc, const char **argv)
             glfwSetErrorCallback(error_callback);
             glfwMakeContextCurrent(window);
             glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+            glfwSwapInterval(1);
 
             gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
