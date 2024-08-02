@@ -153,7 +153,7 @@ namespace Core
 
             NodeIndex split_primitives(BVHPartitionScheme<T>::ITERATOR start, BVHPartitionScheme<T>::ITERATOR end,uint32_t depth);
 
-            NodeIndex add_node(const BVH<T, 2>::Node& n)
+            NodeIndex add_node(const typename BVH<T, 2>::Node& n)
             {
                 const NodeIndex i = m_node_storage.size();
                 m_node_storage.push_back(n);

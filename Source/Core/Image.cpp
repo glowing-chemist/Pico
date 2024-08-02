@@ -3,6 +3,8 @@
 
 #include "stb_image.h"
 
+#include <numbers>
+
 namespace Core
 {
 
@@ -458,7 +460,7 @@ namespace Core
     void ImageCube::resolve_cubemap_UV(const glm::vec3& v, glm::vec2& uvOut) const
     {
         uvOut = glm::vec2(glm::atan(v.z, v.x), asin(v.y));
-        uvOut *= glm::vec2(1.0 / (M_PI * 2.0f), 1.0 / M_PI);
+        uvOut *= glm::vec2(1.0 / (std::numbers::pi * 2.0f), 1.0 / std::numbers::pi);
         uvOut += 0.5;
         uvOut.y = 1.0f - uvOut.y;
     }

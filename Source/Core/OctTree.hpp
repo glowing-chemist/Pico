@@ -71,7 +71,7 @@ namespace Core
 
         private:
 
-            NodeIndex add_node(const OctTree<T>::Node& n)
+            NodeIndex add_node(const typename OctTree<T>::Node& n)
             {
                 const NodeIndex i = m_node_storage.size();
                 m_node_storage.push_back(n);

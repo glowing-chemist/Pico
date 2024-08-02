@@ -82,7 +82,7 @@ namespace Scene
 
         if(options.has_option(Util::Option::kSkybox))
         {
-            const std::string sky_box_path = m_file_mapper->resolve_path(options.get_option<Util::Option::kSkybox>());
+            const std::string sky_box_path = m_file_mapper->resolve_path(options.get_option<Util::Option::kSkybox>()).string();
 
             int width, height, comp;
             auto* data = stbi_loadf(sky_box_path.c_str(), &width, &height, &comp, 4);
@@ -610,7 +610,7 @@ namespace Scene
             // using a hdri
             else if(skyboxes.isString())
             {
-                const std::string sky_box_path = m_file_mapper->resolve_path(skyboxes.asString());
+                const std::string sky_box_path = m_file_mapper->resolve_path(skyboxes.asString()).string();
 
                 int width, height, comp;
                 auto* data = stbi_loadf(sky_box_path.c_str(), &width, &height, &comp, 4);
