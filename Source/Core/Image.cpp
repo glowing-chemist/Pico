@@ -232,11 +232,23 @@ namespace Core
 
     float ImageCube::sample(const glm::vec3& d) const
     {
-        uint32_t faceIndex;
-        glm::vec2 uv;
-        resolve_cubemap_UV(d, faceIndex, uv);
+        const unsigned char* data;
 
-        const unsigned char* data = get_data_ptr(uv, faceIndex);
+        if(mExtent.depth == 6)
+        {
+            uint32_t faceIndex;
+            glm::vec2 uv;
+            resolve_cubemap_UV(d, faceIndex, uv);
+
+            data = get_data_ptr(uv, faceIndex);
+        }
+        else // for hdri style cubemaps
+        {
+            glm::vec2 uv;
+            resolve_cubemap_UV(d, uv);
+
+            data = get_data_ptr(uv);
+        }
 
         if(mPixelSize == 4)
         {
@@ -258,11 +270,23 @@ namespace Core
 
     glm::vec2 ImageCube::sample2(const glm::vec3& d) const
     {
-        uint32_t faceIndex;
-        glm::vec2 uv;
-        resolve_cubemap_UV(d, faceIndex, uv);
+        const unsigned char* data;
 
-        const unsigned char* data = get_data_ptr(uv, faceIndex);
+        if(mExtent.depth == 6)
+        {
+            uint32_t faceIndex;
+            glm::vec2 uv;
+            resolve_cubemap_UV(d, faceIndex, uv);
+
+            data = get_data_ptr(uv, faceIndex);
+        }
+        else // for hdri style cubemaps
+        {
+            glm::vec2 uv;
+            resolve_cubemap_UV(d, uv);
+
+            data = get_data_ptr(uv);
+        }
 
         if(mPixelSize == 8)
         {
@@ -289,11 +313,23 @@ namespace Core
 
     glm::vec3 ImageCube::sample3(const glm::vec3& d) const
     {
-        uint32_t faceIndex;
-        glm::vec2 uv;
-        resolve_cubemap_UV(d, faceIndex, uv);
+        const unsigned char* data;
 
-        const unsigned char* data = get_data_ptr(uv, faceIndex);
+        if(mExtent.depth == 6)
+        {
+            uint32_t faceIndex;
+            glm::vec2 uv;
+            resolve_cubemap_UV(d, faceIndex, uv);
+
+            data = get_data_ptr(uv, faceIndex);
+        }
+        else // for hdri style cubemaps
+        {
+            glm::vec2 uv;
+            resolve_cubemap_UV(d, uv);
+
+            data = get_data_ptr(uv);
+        }
 
         if(mPixelSize == 12)
         {
@@ -322,11 +358,23 @@ namespace Core
 
     glm::vec4 ImageCube::sample4(const glm::vec3& d) const
     {
-        uint32_t faceIndex;
-        glm::vec2 uv;
-        resolve_cubemap_UV(d, faceIndex, uv);
+        const unsigned char* data;
 
-        const unsigned char* data = get_data_ptr(uv, faceIndex);
+        if(mExtent.depth == 6)
+        {
+            uint32_t faceIndex;
+            glm::vec2 uv;
+            resolve_cubemap_UV(d, faceIndex, uv);
+
+            data = get_data_ptr(uv, faceIndex);
+        }
+        else // for hdri style cubemaps
+        {
+            glm::vec2 uv;
+            resolve_cubemap_UV(d, uv);
+
+            data = get_data_ptr(uv);
+        }
 
         if(mPixelSize == 16)
         {
@@ -368,7 +416,7 @@ namespace Core
     }
 
 
-    const unsigned char* Image::get_data_ptr(const glm::vec2& uv, const uint32_t face) const
+    const unsigned char* Image::get_data_ptr(const glm::vec2 &uv, const uint32_t face) const
     {
         const uint32_t x = uint32_t(uv.x * mExtent.width) % mExtent.width;
         const uint32_t y = uint32_t(uv.y * mExtent.height) % mExtent.height;
@@ -405,6 +453,14 @@ namespace Core
             uv = glm::vec2(v.x < 0.0f ? v.z : -v.z, -v.y);
         }
         uvOut = uv * ma + 0.5f;
+    }
+
+    void ImageCube::resolve_cubemap_UV(const glm::vec3& v, glm::vec2& uvOut) const
+    {
+        uvOut = glm::vec2(glm::atan(v.z, v.x), asin(v.y));
+        uvOut *= glm::vec2(1.0 / (M_PI * 2.0f), 1.0 / M_PI);
+        uvOut += 0.5;
+        uvOut.y = 1.0f - uvOut.y;
     }
 
 }

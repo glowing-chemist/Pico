@@ -84,7 +84,7 @@ namespace Scene
         float* white_cube_map = static_cast<float*>(malloc(sizeof(float) * 24));
         for(uint32_t i = 0; i < 24; ++i)
         {
-            white_cube_map[i] = 10;
+            white_cube_map[i] = 1;
         }
         Core::ImageExtent extent{1, 1, 1};
         mSkybox = std::make_unique<Core::ImageCube>(reinterpret_cast<unsigned char*>(white_cube_map), extent, Core::Format::kRGBA_F);
@@ -567,30 +567,44 @@ namespace Scene
         if(entry.isMember("Skybox"))
         {
             const Json::Value skyboxes = entry["Skybox"];
-            std::array<std::string, 6> skyboxPaths{};
-            for(uint32_t i = 0; i < 6; ++i)
+            if(skyboxes.isArray())
             {
-                skyboxPaths[i] = (mWorkingDir / skyboxes[i].asString()).string();
+                std::array<std::string, 6> skyboxPaths{};
+                for(uint32_t i = 0; i < 6; ++i)
+                {
+                    skyboxPaths[i] = (mWorkingDir / skyboxes[i].asString()).string();
+                }
+
+                std::vector<unsigned char> skyboxData{};
+
+                uint32_t width, height;
+                for(const std::string& file : skyboxPaths)
+                {
+                    int x, y, comp;
+                    auto* data = stbi_load(file.c_str(), &x, &y, &comp, 4);
+                    width = x;
+                    height = y;
+
+                    skyboxData.insert(skyboxData.end(), data, data + (x * y * 4));
+                }
+
+                // create CPU skybox.
+                Core::ImageExtent extent = {width, height, 6};
+                unsigned char* data = new unsigned char[skyboxData.size()];
+                std::memcpy(data, skyboxData.data(), skyboxData.size());
+                mSkybox = std::make_unique<Core::ImageCube>(data, extent, Core::Format::kRBGA_8UNorm);
             }
-
-            std::vector<unsigned char> skyboxData{};
-
-            uint32_t width, height;
-            for(const std::string& file : skyboxPaths)
+            // using a hdri
+            else if(skyboxes.isString())
             {
-                int x, y, comp;
-                auto* data = stbi_load(file.c_str(), &x, &y, &comp, 4);
-                width = x;
-                height = y;
+                const std::string sky_box_path = m_file_mapper->resolve_path(skyboxes.asString());
 
-                skyboxData.insert(skyboxData.end(), data, data + (x * y * 4));
+                int width, height, comp;
+                auto* data = stbi_loadf(sky_box_path.c_str(), &width, &height, &comp, 4);
+
+                Core::ImageExtent extent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1};
+                mSkybox = std::make_unique<Core::ImageCube>(reinterpret_cast<unsigned char*>(data), extent, Core::Format::kRGBA_F);
             }
-
-            // create CPU skybox.
-            Core::ImageExtent extent = {width, height, 6};
-            unsigned char* data = new unsigned char[skyboxData.size()];
-            std::memcpy(data, skyboxData.data(), skyboxData.size());
-            mSkybox = std::make_unique<Core::ImageCube>(data, extent, Core::Format::kRBGA_8UNorm);
         }
         else
         {

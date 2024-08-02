@@ -104,6 +104,7 @@ namespace Core
     private:
 
         void resolve_cubemap_UV(const glm::vec3& v, uint32_t& faceIndex, glm::vec2& uvOut) const;
+        void resolve_cubemap_UV(const glm::vec3& v, glm::vec2& uvOut) const;
 
     };
 }
