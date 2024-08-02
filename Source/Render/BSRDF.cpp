@@ -225,7 +225,7 @@ namespace Render
         const glm::mat3x3 tangent_to_world_transform = glm::inverse(world_to_tangent_transform);
 
         const glm::vec3 view_tangent = glm::normalize(world_to_tangent_transform * V);
-        const bool enter_object = Core::TangentSpace::cos_theta(view_tangent) > 0.0f;
+        const bool enter_object = Core::TangentSpace::cos_theta(view_tangent) >= 0.0f;
 
         PICO_ASSERT(glm::dot(V, position.mNormal) >= 0.0f || !enter_object);
 
@@ -237,28 +237,18 @@ namespace Render
 
         PICO_ASSERT_VALID(H);
 
-        float eta;
+        float eta = 1.0f / m_index_of_refraction;
         if(enter_object)
         {
-            const float current_IoR = ray.get_current_index_of_refraction();
-            const float etaI = current_IoR;
-            const float etaT = m_index_of_refraction;
-            eta = etaI / etaT;
-
             ray.push_index_of_refraction(m_index_of_refraction);
         }
         else
         {
             ray.pop_index_of_refraction();
-
-            const float current_IoR = ray.get_current_index_of_refraction();
-            const float etaI = m_index_of_refraction;
-            const float etaT = current_IoR;
-            eta = etaI / etaT;
         }
 
         glm::vec3 L;
-        if(refract(-view_tangent, H, eta, L))
+        if(refract(view_tangent, H, eta, L))
         {
             PICO_ASSERT_VALID(L);
 
@@ -296,7 +286,7 @@ namespace Render
     float Transparent_BTDF::pdf(const glm::vec3& wo, const glm::vec3& H, const float roughness, const float)
     {
         glm::vec3 L;
-        const float eta = 1.0f / m_index_of_refraction; // TODO
+        const float eta = 1.0f / m_index_of_refraction;
         if(refract(wo, H, eta, L))
         {
             const float pdf = m_distribution->pdf(wo, H, roughness);
@@ -334,7 +324,8 @@ namespace Render
         return true;
 #else
 
-        wt = glm::refract(-wi, n, eta);
+        wt = glm::refract(wi, n, eta);
+        PICO_ASSERT_VALID(wt);
         return true;
 
 #endif
