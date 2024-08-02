@@ -32,7 +32,6 @@ namespace Util
     FrameBuffer::FrameBuffer(uint32_t width, const uint32_t height) :
         m_width(width),
         m_height(height),
-        m_buffer(m_width * m_height),
         m_texture{0},
         m_vertexShader{0},
         m_fragmentShader{0},
@@ -92,10 +91,7 @@ namespace Util
 
     void FrameBuffer::set_image(glm::vec4* data)
     {
-        std::transform(data, data + m_width * m_height, m_buffer.begin(), [](glm::vec4& pixel) { return Core::pack_colour(pixel); });
-
-
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_width, m_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, m_buffer.data());
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_width, m_height, 0, GL_RGBA,  GL_FLOAT, data);
 
         glUseProgram(m_pipeline);
 

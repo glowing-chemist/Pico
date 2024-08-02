@@ -24,7 +24,6 @@ namespace Util
     private:
 
         uint32_t m_width, m_height;
-        std::vector<uint32_t> m_buffer;
 
         GLuint m_texture;
         GLuint m_vertexShader;
