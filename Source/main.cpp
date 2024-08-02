@@ -60,7 +60,7 @@ int main(int argc, const char **argv)
                                                      aiProcess_FlipUVs |
                                                      aiProcess_GenBoundingBoxes);
 
-            scene = std::make_unique<Scene::Scene>(threadPool, scene_file.parent_path(),  assimp_scene);
+            scene = std::make_unique<Scene::Scene>(threadPool, scene_file.parent_path(),  assimp_scene, options);
         }
 
         uint32_t sample_count = 256;

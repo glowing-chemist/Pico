@@ -39,7 +39,7 @@ namespace Util
     struct option_map<Option::kCameraName> { using Type = std::string; };
 
     template<>
-    struct option_map<Option::kSkybox> { using Type = std::array<std::string, 6>; };
+    struct option_map<Option::kSkybox> { using Type = std::string; };
 
     template<>
     struct option_map<Option::kSceneFile> { using Type = std::string; };
@@ -62,9 +62,9 @@ namespace Util
 
         Options(const char** cmd, const uint32_t argCount);
 
-        using Value = std::variant<std::monostate, glm::ivec2, glm::vec3, std::string, std::array<std::string, 6>, uint32_t>;
+        using Value = std::variant<std::monostate, glm::ivec2, glm::vec3, std::string, uint32_t>;
 
-        bool has_option(const Option o)
+        bool has_option(const Option o) const
         {
             for(uint32_t i = 0; i < m_values.size(); ++i)
             {

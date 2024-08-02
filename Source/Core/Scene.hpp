@@ -11,6 +11,7 @@
 #include "Core/UpperLevelBVH.hpp"
 #include "Core/MaterialManager.hpp"
 #include "Core/FileMappings.hpp"
+#include "Util/Options.hpp"
 #include "Camera.hpp"
 
 #include <filesystem>
@@ -49,7 +50,7 @@ namespace Scene
     public:
 
         Scene(ThreadPool&, const std::filesystem::path& sceneFile);
-        Scene(ThreadPool&, const std::filesystem::path& working_dir, const aiScene *scene);
+        Scene(ThreadPool&, const std::filesystem::path& working_dir, const aiScene *scene, const Util::Options& options);
         ~Scene() = default;
 
         void render_scene_to_memory(const Camera&, const RenderParams&, const bool* should_quit);

@@ -72,7 +72,7 @@ namespace Scene
         m_bvh.build();
     }
 
-    Scene::Scene(ThreadPool& pool, const std::filesystem::path& working_dir, const aiScene* scene) :
+    Scene::Scene(ThreadPool& pool, const std::filesystem::path& working_dir, const aiScene* scene, const Util::Options& options) :
         mWorkingDir(working_dir),
         m_threadPool(pool)
     {
@@ -80,14 +80,27 @@ namespace Scene
 
         m_file_mapper = std::make_unique<Core::File_System_Mappings>(working_dir);
 
-        // Create a white cubemap.
-        float* white_cube_map = static_cast<float*>(malloc(sizeof(float) * 24));
-        for(uint32_t i = 0; i < 24; ++i)
+        if(options.has_option(Util::Option::kSkybox))
         {
-            white_cube_map[i] = 1;
+            const std::string sky_box_path = m_file_mapper->resolve_path(options.get_option<Util::Option::kSkybox>());
+
+            int width, height, comp;
+            auto* data = stbi_loadf(sky_box_path.c_str(), &width, &height, &comp, 4);
+
+            Core::ImageExtent extent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1};
+            mSkybox = std::make_unique<Core::ImageCube>(reinterpret_cast<unsigned char*>(data), extent, Core::Format::kRGBA_F);
         }
-        Core::ImageExtent extent{1, 1, 1};
-        mSkybox = std::make_unique<Core::ImageCube>(reinterpret_cast<unsigned char*>(white_cube_map), extent, Core::Format::kRGBA_F);
+        else
+        {
+            // Create a black cubemap.
+            float* white_cube_map = static_cast<float*>(malloc(sizeof(float) * 24));
+            for(uint32_t i = 0; i < 24; ++i)
+            {
+                white_cube_map[i] = 0;
+            }
+            Core::ImageExtent extent{1, 1, 1};
+            mSkybox = std::make_unique<Core::ImageCube>(reinterpret_cast<unsigned char*>(white_cube_map), extent, Core::Format::kRGBA_F);
+        }
 
         std::vector<std::future<void>> material_loading_task_handles{};
         for(uint32_t i_mat = 0; i_mat < scene->mNumMaterials; ++i_mat)
