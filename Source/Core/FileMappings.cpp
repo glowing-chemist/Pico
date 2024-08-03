@@ -61,7 +61,7 @@ namespace Core
         if(auto it = m_mappings.find(std::hash<std::string>{}(lower_path)); it != m_mappings.end())
             return m_root / it->second;
         else
-            return {};
+            return lower_path;
     }
 
 }
