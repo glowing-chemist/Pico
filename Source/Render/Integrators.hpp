@@ -51,6 +51,8 @@ namespace Render
 
         Core::Rand::Hammersley_Generator m_hammersley_generator;
 
+        uint32_t m_max_depth;
+
         Core::ImageCube* m_skybox;
     };
 }

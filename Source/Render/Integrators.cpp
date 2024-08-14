@@ -116,6 +116,7 @@ namespace Render
 
     glm::vec3 Monte_Carlo_Integrator::integrate_ray(const Scene::Camera& camera, const glm::uvec2& pixel, const uint32_t maxDepth, const uint32_t rayCount)
     {
+        m_max_depth = maxDepth;
         Core::Ray ray = camera.generate_ray(glm::vec2(0.5f, 0.5f), pixel);
 
         Core::Acceleration_Structures::InterpolatedVertex vertex;
@@ -128,7 +129,7 @@ namespace Render
             for(uint32_t i_ray = 0; i_ray < rayCount; ++i_ray)
             {
                 ray = camera.generate_ray(m_hammersley_generator.next(), pixel);
-                trace_ray(vertex, ray, maxDepth);
+                trace_ray(vertex, ray, 0);
 
                 result += ray.m_payload;
             }
@@ -149,7 +150,7 @@ namespace Render
 
     void Monte_Carlo_Integrator::trace_ray(const Core::Acceleration_Structures::InterpolatedVertex& frag, Core::Ray& ray, const uint32_t depth)
     {
-        if(depth == 0)
+        if(depth == m_max_depth)
         {
             return;
         }
@@ -170,13 +171,25 @@ namespace Render
         PICO_ASSERT_NORMALISED(sample.L);
         ray.m_throughput *= sample.P * sample.energy;
 
+        // kill off random rays here for russian roulette sampling.
+        if(depth > 2)
+        {
+            const float inverse_kill_rate = std::max(std::max(ray.m_throughput.x, ray.m_throughput.y), ray.m_throughput.y);
+            if(mDistribution(mGenerator) > inverse_kill_rate)
+            {
+                return;
+            }
+
+            ray.m_throughput *= 1.0f / inverse_kill_rate;
+        }
+
         ray.mOrigin = frag.mPosition + glm::vec4(0.01f * sample.L, 0.0f);
         ray.mDirection = sample.L;
 
         Core::Acceleration_Structures::InterpolatedVertex intersection;
         if(m_bvh.get_closest_intersection(ray, &intersection))
         {
-            trace_ray(intersection, ray, depth - 1);
+            trace_ray(intersection, ray, depth + 1);
         }
         else
             ray.m_payload += ray.m_throughput * glm::vec3(m_skybox->sample4(sample.L));
