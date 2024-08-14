@@ -166,21 +166,45 @@ namespace Render
 
     }
 
-    Sample Light_BRDF::sample(Core::Rand::Hammersley_Generator&, const Core::Acceleration_Structures::InterpolatedVertex &position, Core::Ray&)
+    Light_BRDF::Light_BRDF(Core::MaterialManager& mat_manager, Core::MaterialManager::MaterialID id) :
+        BSRDF(mat_manager, id),
+        m_distribution(std::make_unique<Render::Cos_Weighted_Hemisphere_Distribution>())
+    {}
+
+    Sample Light_BRDF::sample(Core::Rand::Hammersley_Generator& rand, const Core::Acceleration_Structures::InterpolatedVertex &position, Core::Ray& ray)
     {
+        const glm::vec3 V = -ray.mDirection;
+
+        PICO_ASSERT_VALID(position.mNormal);
+        PICO_ASSERT_VALID(V);
+
+        const glm::mat3x3 world_to_tangent_transform = Core::TangentSpace::construct_world_to_tangent_transform(V, position.mNormal);
+        const glm::mat3x3 tangent_to_world_transform = glm::inverse(world_to_tangent_transform);
+
+        const glm::vec3 view_tangent = glm::normalize(world_to_tangent_transform * V);
+
         Core::EvaluatedMaterial material = m_material_manager.evaluate_material(m_mat_id, position.mUV);
 
+        const glm::vec2 xi = rand.next();
+        const glm::vec3 H = m_distribution->sample(xi, view_tangent, material.roughness);
+        PICO_ASSERT_VALID(H);
+        const float pdf = m_distribution->pdf(view_tangent, H, material.roughness);
+        PICO_ASSERT(!std::isinf(pdf) && !std::isnan(pdf));
+
+        const glm::vec3 world_space_L = glm::normalize(tangent_to_world_transform * H);
+        PICO_ASSERT_VALID(world_space_L);
+
         Sample samp{};
+        samp.L = world_space_L;
+        samp.P = pdf;
         samp.energy = material.emissive;
-        samp.L = glm::vec3(0.0f);
-        samp.P = 1.0f;
 
         return samp;
     }
 
-    float Light_BRDF::pdf(const glm::vec3&, const glm::vec3&, const float, const float)
+    float Light_BRDF::pdf(const glm::vec3& wo, const glm::vec3& H, const float, const float roughness)
     {
-        return 1.0f;
+        return m_distribution->pdf(wo, H, roughness);
     }
 
     glm::vec3 Light_BRDF::energy(const Core::Acceleration_Structures::InterpolatedVertex& position, const glm::vec3&, const glm::vec3&)

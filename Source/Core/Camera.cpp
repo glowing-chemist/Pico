@@ -20,8 +20,8 @@ namespace Scene
         ray.mOrigin = glm::vec4(getPosition(), 1.0f);
         ray.mLenght = getFarPlane();
         ray.push_index_of_refraction(1.0f);
-        ray.m_payload = glm::vec4(1.0f);
-        ray.m_weight = 0.0f;
+        ray.m_payload = glm::vec3(0.0f, 0.0f, 0.0f);
+        ray.m_throughput = glm::vec3(1.0f, 1.0f, 1.0f);
 
         return ray;
     }

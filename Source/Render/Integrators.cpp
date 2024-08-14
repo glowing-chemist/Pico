@@ -28,7 +28,7 @@ namespace Render
     Render::Sample Monte_Carlo_Integrator::generate_next_event(const Core::Acceleration_Structures::InterpolatedVertex& frag, Core::Ray& ray)
     {
         const auto bsrdf_type = frag.m_bsrdf->get_type();
-        if(bsrdf_type == Render::BSRDF_Type::kDiffuse_BRDF || bsrdf_type == Render::BSRDF_Type::kSpecular_BRDF || bsrdf_type == Render::BSRDF_Type::kDielectric_BRDF)
+        if(bsrdf_type == Render::BSRDF_Type::kDiffuse_BRDF || bsrdf_type == Render::BSRDF_Type::kDielectric_BRDF)
         {
             constexpr float random_sample_rate = 0.5f;
             if(mDistribution(mGenerator) <= random_sample_rate)
@@ -114,7 +114,7 @@ namespace Render
         }
     }
 
-    glm::vec4 Monte_Carlo_Integrator::integrate_ray(const Scene::Camera& camera, const glm::uvec2& pixel, const uint32_t maxDepth, const uint32_t rayCount)
+    glm::vec3 Monte_Carlo_Integrator::integrate_ray(const Scene::Camera& camera, const glm::uvec2& pixel, const uint32_t maxDepth, const uint32_t rayCount)
     {
         Core::Ray ray = camera.generate_ray(glm::vec2(0.5f, 0.5f), pixel);
 
@@ -124,18 +124,16 @@ namespace Render
             //return glm::vec4(vertex.mNormal * 0.5f + 0.5f, 1.0f);
             //return glm::vec4(m_material_manager.evaluate_material(vertex.m_bsrdf->get_material_id(), vertex.mUV).diffuse, 1.0f);
 
-            glm::vec4 result{0.0f, 0.0f, 0.0f, 0.0f};
-            float weight = 0.f;
+            glm::vec3 result{0.0f, 0.0f, 0.0f};
             for(uint32_t i_ray = 0; i_ray < rayCount; ++i_ray)
             {
                 ray = camera.generate_ray(m_hammersley_generator.next(), pixel);
                 trace_ray(vertex, ray, maxDepth);
 
-                result += ray.m_payload * ray.m_weight;
-                weight += ray.m_weight;
+                result += ray.m_payload;
             }
 
-            result /= weight;
+            result /= rayCount;
 
             if(glm::any(glm::isinf(result)) || glm::any(glm::isnan(result)))
                 result = glm::vec4(0.0f);
@@ -153,35 +151,24 @@ namespace Render
     {
         if(depth == 0)
         {
-            ray.m_payload = glm::vec4(0.0f, 0.f, 0.0f, 1.0f);
-            ray.m_weight = 1.0f;
             return;
         }
 
         if(frag.m_bsrdf->get_type() == BSRDF_Type::kLight)
         {
             Sample samp = frag.m_bsrdf->sample(m_hammersley_generator, frag, ray);
-            ray.m_payload *= glm::vec4(samp.energy, 1.0f);
-            ray.m_weight = ray.m_weight == 0.0f ? 1.0f : ray.m_weight;
-            return;
+            ray.m_payload += ray.m_throughput * samp.energy;
         }
 
         Render::Sample sample = generate_next_event(frag, ray);
         // Sample does not contribute, so early out.
         if(sample.P == 0.0f)
         {
-            ray.m_payload = glm::vec4(0.0f, 0.f, 0.0f, 1.0f);
             return;
         }
         PICO_ASSERT_VALID(sample.L);
         PICO_ASSERT_NORMALISED(sample.L);
-        ray.m_weight += sample.P;
-
-        const glm::vec4 energy_factor = glm::vec4(sample.energy, 1.0f);
-
-        //ray.m_payload *= glm::vec4(glm::vec3(sample.P), 1.0f);
-        //ray.m_weight = 1.0f;
-        //return;
+        ray.m_throughput *= sample.P * sample.energy;
 
         ray.mOrigin = frag.mPosition + glm::vec4(0.01f * sample.L, 0.0f);
         ray.mDirection = sample.L;
@@ -189,12 +176,10 @@ namespace Render
         Core::Acceleration_Structures::InterpolatedVertex intersection;
         if(m_bvh.get_closest_intersection(ray, &intersection))
         {
-            ray.m_payload *= energy_factor;
-
             trace_ray(intersection, ray, depth - 1);
         }
         else
-            ray.m_payload *= energy_factor * m_skybox->sample4(sample.L);
+            ray.m_payload += ray.m_throughput * glm::vec3(m_skybox->sample4(sample.L));
     }
 
     bool Monte_Carlo_Integrator::weighted_random_ray_type(const Core::EvaluatedMaterial& mat)

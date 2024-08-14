@@ -122,7 +122,7 @@ namespace Scene
 
     void Scene::render_scene_to_memory(const Camera& camera, const RenderParams& params, const bool* should_quit)
     {
-        auto trace_ray = [&](const Camera& camera, const uint32_t pix, const uint32_t piy, const uint64_t seed) -> glm::vec4
+        auto trace_ray = [&](const Camera& camera, const uint32_t pix, const uint32_t piy, const uint64_t seed) -> glm::vec3
         {
             Render::Monte_Carlo_Integrator integrator(m_bvh, m_material_manager, m_lights, mSkybox.get(), seed);
 
@@ -156,7 +156,7 @@ namespace Scene
                 const glm::uvec2 pixel_location = glm::uvec2(flat_location % params.m_Width, flat_location / params.m_Width);
 
                 uint32_t prev_sample_count = params.m_SampleCount[flat_location];
-                glm::vec4 pixel_result =  trace_ray(camera, pixel_location.x, pixel_location.y, random_generator());
+                glm::vec3 pixel_result =  trace_ray(camera, pixel_location.x, pixel_location.y, random_generator());
                 pixel_result = glm::clamp(pixel_result, 0.0f, 1.0f);
 
                 if(prev_sample_count < 1)
@@ -166,9 +166,9 @@ namespace Scene
                 }
                 else
                 {
-                    const glm::vec4& previous_pixle = params.m_Pixels[flat_location];
-                    const glm::vec4& previous_variance = params.m_variance[flat_location];
-                    const glm::vec4 new_pixel_result = previous_pixle + ((pixel_result - previous_pixle) * (1.0f / prev_sample_count));
+                    const glm::vec3& previous_pixle = params.m_Pixels[flat_location];
+                    const glm::vec3& previous_variance = params.m_variance[flat_location];
+                    const glm::vec3 new_pixel_result = previous_pixle + ((pixel_result - previous_pixle) * (1.0f / prev_sample_count));
 
                     params.m_variance[flat_location] = ((previous_variance * prev_sample_count) + ((pixel_result - previous_pixle) * (pixel_result - new_pixel_result))) / (prev_sample_count + 1);
                     params.m_SampleCount[flat_location] += 1;

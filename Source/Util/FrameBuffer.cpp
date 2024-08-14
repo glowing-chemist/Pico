@@ -89,9 +89,9 @@ namespace Util
     }
 
 
-    void FrameBuffer::set_image(glm::vec4* data)
+    void FrameBuffer::set_image(glm::vec3* data)
     {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_width, m_height, 0, GL_RGBA,  GL_FLOAT, data);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_width, m_height, 0, GL_RGB,  GL_FLOAT, data);
 
         glUseProgram(m_pipeline);
 

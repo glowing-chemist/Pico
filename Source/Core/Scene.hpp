@@ -33,9 +33,9 @@ namespace Scene
         uint32_t m_Height;
         uint32_t m_Width;
 
-        glm::vec4* m_Pixels;
+        glm::vec3* m_Pixels;
         uint32_t*  m_SampleCount;
-        glm::vec4* m_variance;
+        glm::vec3* m_variance;
     };
 
     struct Light

@@ -19,7 +19,7 @@ namespace Util
         FrameBuffer(uint32_t width, const uint32_t height);
         ~FrameBuffer();
 
-        void set_image(glm::vec4* data);
+        void set_image(glm::vec3* data);
 
     private:
 

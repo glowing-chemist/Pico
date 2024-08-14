@@ -22,23 +22,23 @@ void error_callback(int, const char* description)
 
 int main(int argc, const char **argv)
 {
-    glm::vec4* frame_memory;
+    glm::vec3* frame_memory;
     uint32_t* sample_count_buffer;
-    glm::vec4* variance;
+    glm::vec3* variance;
 
     {
         Util::Options options(argv, argc);
 
         glm::ivec2 resolution = options.get_option<Util::Option::kResolution>();
 
-        frame_memory = new glm::vec4[resolution.x * resolution.y];
-        memset(frame_memory, ~0, resolution.x * resolution.y * 4 * 4);
+        frame_memory = new glm::vec3[resolution.x * resolution.y];
+        memset(frame_memory, ~0, resolution.x * resolution.y * 4 * 3);
 
         sample_count_buffer = new uint32_t[resolution.x * resolution.y];
         memset(sample_count_buffer, 0, resolution.x * resolution.y * 4);
 
-        variance = new glm::vec4[resolution.x * resolution.y];
-        memset(variance, 0, resolution.x * resolution.y * 4 * 4);
+        variance = new glm::vec3[resolution.x * resolution.y];
+        memset(variance, 0, resolution.x * resolution.y * 4 * 3);
 
         std::filesystem::path scene_file = options.get_option<Util::Option::kSceneFile>();
         ThreadPool threadPool{};

@@ -147,8 +147,7 @@ namespace Render
     {
     public:
 
-        Light_BRDF(Core::MaterialManager& mat_manager, Core::MaterialManager::MaterialID id) :
-            BSRDF(mat_manager, id) {}
+        Light_BRDF(Core::MaterialManager& mat_manager, Core::MaterialManager::MaterialID id);
 
         virtual Sample sample(Core::Rand::Hammersley_Generator& rand, const Core::Acceleration_Structures::InterpolatedVertex &position, Core::Ray& ray) final;
 
@@ -160,6 +159,11 @@ namespace Render
         {
             return BSRDF_Type::kLight;
         }
+
+    private:
+
+        std::unique_ptr<Render::Distribution> m_distribution;
+
     };
 
     class Specular_Delta_BRDF : public BSRDF

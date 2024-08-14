@@ -4,7 +4,7 @@
 #include <array>
 #include <vector>
 
-#include "glm/vec4.hpp"
+#include "glm/vec3.hpp"
 #include "glm/mat4x4.hpp"
 
 #ifndef M_PI
@@ -27,8 +27,8 @@ namespace Core
         glm::vec3 mDirection;
         float     mLenght;
 
-        glm::vec4 m_payload;
-        float     m_weight;
+        glm::vec3 m_payload;
+        glm::vec3 m_throughput;
 
         void push_index_of_refraction(const float);
         float pop_index_of_refraction();
