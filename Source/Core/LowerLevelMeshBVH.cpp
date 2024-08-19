@@ -173,19 +173,19 @@ namespace Core
             const glm::vec3& firstPosition = m_positions[firstIndex];
             const glm::vec2& firstuv = !m_uvs ? glm::vec2(0.0f) : m_uvs[firstIndex];
             const glm::vec3& firstNormal = m_normals[firstIndex];
-            const glm::vec4 firstColour = !m_colours ? glm::vec4(0, 0, 0, 0) : m_colours[firstIndex];
+            const glm::vec4 firstColour = !m_colours ? glm::vec4(1, 1, 1, 1) : m_colours[firstIndex];
 
             const uint32_t secondIndex = m_indicies[baseIndiciesIndex + 1];
             const glm::vec3& secondPosition = m_positions[secondIndex];
             const glm::vec2& seconduv = !m_uvs ? glm::vec2(0.0f) : m_uvs[secondIndex];
             const glm::vec3& secondNormal = m_normals[secondIndex];
-            const glm::vec4& secondColour = !m_colours ? glm::vec4(0, 0, 0, 0) : m_colours[secondIndex];
+            const glm::vec4& secondColour = !m_colours ? glm::vec4(1, 1, 1, 1) : m_colours[secondIndex];
 
             const uint32_t thirdIndex = m_indicies[baseIndiciesIndex + 2];
             const glm::vec3& thirdPosition = m_positions[thirdIndex];
             const glm::vec2& thirduv = !m_uvs ? glm::vec2(0.0f) : m_uvs[thirdIndex];
             const glm::vec3& thirdNormal = m_normals[thirdIndex];
-            const glm::vec4& thirdColour = !m_colours ? glm::vec4(0, 0, 0, 0) : m_colours[thirdIndex];
+            const glm::vec4& thirdColour = !m_colours ? glm::vec4(1, 1, 1, 1) : m_colours[thirdIndex];
 
             InterpolatedVertex frag{};
             frag.mPosition = glm::vec4(((1.0f - v - u) * firstPosition) + (u * secondPosition) + (v * thirdPosition), 1.0f);

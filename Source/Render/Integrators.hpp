@@ -40,7 +40,7 @@ namespace Render
 
     private:
 
-        Render::Sample generate_next_event(const Core::Acceleration_Structures::InterpolatedVertex& frag, Core::Ray& ray);
+        bool sample_direct_lighting(const Core::Acceleration_Structures::InterpolatedVertex& frag, glm::vec3& radiance, float& pdf);
 
         void trace_ray(const Core::Acceleration_Structures::InterpolatedVertex& frag, Core::Ray& ray, const uint32_t depth);
 
