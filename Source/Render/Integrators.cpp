@@ -29,44 +29,25 @@ namespace Render
     {
         const auto bsrdf_type = frag.m_bsrdf->get_type();
         if(bsrdf_type == Render::BSRDF_Type::kDiffuse_BRDF || bsrdf_type == Render::BSRDF_Type::kDielectric_BRDF)
-        {            
-            // calculate aproximate solid angles of all lights above the points hemisphere
-            // and pick one at random weighted by it's solid angle.
-            float total_solid_angle = 0.0f;
-
-            for(uint32_t i_light = 0; i_light < m_lights.size(); ++i_light)
-            {
-                total_solid_angle += Render::solid_angle_from_bounds(m_lights[i_light].m_geometry->get_bounds(), frag.mPosition);
-            }
+        {
+            uint32_t light_index = mDistribution(mGenerator) * m_lights.size();
+            if(light_index == m_lights.size())
+                --light_index;
 
             glm::vec3 sample_position;
             float selected_solid_angle;
 
-            const float rand = mDistribution(mGenerator) * total_solid_angle;
+            const glm::vec3 light_space_pos = m_lights[light_index].m_inverse_transform * frag.mPosition;
+            const glm::vec3 light_space_normal = glm::normalize(glm::mat3x3(m_lights[light_index].m_inverse_transform) * frag.mNormal);
+            auto& geometrty = m_lights[light_index].m_geometry;
 
-            float accumilated_solid_angle = 0.0f;
-            bool found_light = false;
-            uint32_t i_light;
-            for(i_light = 0; i_light < m_lights.size(); ++i_light)
+            const bool found_sample = geometrty->sample_geometry(m_hammersley_generator, light_space_pos, light_space_normal, sample_position, selected_solid_angle);
+            if(found_sample)
             {
-                accumilated_solid_angle += Render::solid_angle_from_bounds(m_lights[i_light].m_geometry->get_bounds(), frag.mPosition);
-
-                if(rand <= accumilated_solid_angle)
-                {
-                    const glm::vec3 light_space_pos = m_lights[i_light].m_inverse_transform * frag.mPosition;
-                    const glm::vec3 light_space_normal = glm::normalize(glm::mat3x3(m_lights[i_light].m_inverse_transform) * frag.mNormal);
-                    auto& geometrty = m_lights[i_light].m_geometry;
-                    const bool found_sample = geometrty->sample_geometry(m_hammersley_generator, light_space_pos, light_space_normal, sample_position, selected_solid_angle);
-                    if(found_sample)
-                    {
-                        sample_position = m_lights[i_light].m_transform * glm::vec4(sample_position, 1.0f);
-                        found_light = true;
-                        break;
-                    }
-                }
+                sample_position = m_lights[light_index].m_transform * glm::vec4(sample_position, 1.0f);
             }
 
-            if(!found_light)
+            if(!found_sample)
             {
                 return false;
             }
@@ -88,20 +69,8 @@ namespace Render
                     if(point_hit.m_bsrdf->get_type() == Render::BSRDF_Type::kLight)
                     {
                         const Core::EvaluatedMaterial light_material = m_material_manager.evaluate_material(point_hit.m_bsrdf->get_material_id(), point_hit.mUV);
-                        const Core::EvaluatedMaterial material = m_material_manager.evaluate_material(frag.m_bsrdf->get_material_id(), frag.mUV);
 
-                        const glm::vec3 V = direct_lighting_ray.mDirection;
-                        PICO_ASSERT_NORMALISED(V);
-                        const glm::mat3x3 world_to_tangent_transform = Core::TangentSpace::construct_world_to_tangent_transform(V, frag.mNormal);
-                        const glm::vec3 view_tangent = glm::normalize(world_to_tangent_transform * V);
-
-                        glm::vec3 H = glm::normalize(to_light + V);
-                        if(glm::any(glm::isnan(H)))
-                            H = V;
-
-                        const glm::vec3 H_tangent = glm::normalize(world_to_tangent_transform * H);
-                        PICO_ASSERT_VALID(H_tangent);
-                        pdf = frag.m_bsrdf->pdf(view_tangent, H_tangent, material.roughness, material.get_reflectance());
+                        pdf = 1.0f / m_lights.size();
                         radiance = light_material.emissive;
 
                         return true;
