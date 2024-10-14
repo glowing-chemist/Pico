@@ -114,7 +114,7 @@ namespace Render
     glm::vec3 Monte_Carlo_Integrator::integrate_ray(const Scene::Camera& camera, const glm::uvec2& pixel, const uint32_t maxDepth, const uint32_t rayCount)
     {
         m_max_depth = maxDepth;
-        Core::Ray ray = camera.generate_ray(glm::vec2(0.5f, 0.5f), pixel);
+        Core::Ray ray = camera.generate_ray(m_hammersley_generator.next(), pixel);
 
         Core::Acceleration_Structures::InterpolatedVertex vertex;
         if(m_bvh.get_closest_intersection(ray, &vertex))

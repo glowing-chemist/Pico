@@ -8,11 +8,12 @@
 namespace Scene
 {
 
-    Core::Ray Camera::generate_ray(const glm::vec2&, const glm::uvec2& pix) const
+    Core::Ray Camera::generate_ray(const glm::vec2& rand, const glm::uvec2& pix) const
     {
         const glm::vec2 offset = glm::vec2(0.5f, 0.5f);
+        const glm::vec2 remapped_rand = rand / 2.0f;
 
-        glm::vec3 dir = {((float(pix.x) / float(mResolution.x)) - offset.x) * mAspect, (float(pix.y) / float(mResolution.y)) - offset.y, 1.0f};
+        glm::vec3 dir = {((float(pix.x + remapped_rand.x) / float(mResolution.x)) - offset.x) * mAspect, (float(pix.y + remapped_rand.y) / float(mResolution.y)) - offset.y, 1.0f};
         dir = glm::normalize((dir.z * getDirection()) + (dir.y * getUp()) + (dir.x * getRight()));
 
         Core::Ray ray;
