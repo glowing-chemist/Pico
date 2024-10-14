@@ -22,6 +22,8 @@ namespace Util
         kOutputFile,
         kResolution,
         kSampleCount,
+        kSunDirection,
+        kSunColour,
 
         kCount
     };
@@ -52,6 +54,12 @@ namespace Util
 
     template<>
     struct option_map<Option::kSampleCount> { using Type = uint32_t; };
+
+    template<>
+    struct option_map<Option::kSunDirection> { using Type = glm::vec3; };
+
+    template<>
+    struct option_map<Option::kSunColour> { using Type = glm::vec3; };
 
     template<Option O>
     using option_type = typename option_map<O>::Type;

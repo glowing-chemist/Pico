@@ -102,6 +102,15 @@ namespace Scene
             mSkybox = std::make_unique<Core::ImageCube>(reinterpret_cast<unsigned char*>(white_cube_map), extent, Core::Format::kRGBA_F);
         }
 
+        m_sky_desc.m_sky_box = mSkybox.get();
+        m_sky_desc.m_use_sun = false;
+        if(options.has_option(Util::Option::kSunDirection) && options.has_option(Util::Option::kSunColour))
+        {
+            m_sky_desc.m_use_sun = true;
+            m_sky_desc.m_sun_direction = options.get_option<Util::Option::kSunDirection>();
+            m_sky_desc.m_sun_colour = options.get_option<Util::Option::kSunColour>();
+        }
+
         std::vector<std::future<void>> material_loading_task_handles{};
         for(uint32_t i_mat = 0; i_mat < scene->mNumMaterials; ++i_mat)
         {
@@ -124,7 +133,7 @@ namespace Scene
     {
         auto trace_ray = [&](const Camera& camera, const uint32_t pix, const uint32_t piy, const uint64_t seed) -> glm::vec3
         {
-            Render::Monte_Carlo_Integrator integrator(m_bvh, m_material_manager, m_lights, mSkybox.get(), seed);
+            Render::Monte_Carlo_Integrator integrator(m_bvh, m_material_manager, m_lights, m_sky_desc, seed);
 
             return integrator.integrate_ray(camera, glm::uvec2(pix, piy), params.m_maxRayDepth, params.m_maxSamples);
         };
@@ -627,6 +636,35 @@ namespace Scene
             Core::ImageExtent extent{1, 1, 1};
             mSkybox = std::make_unique<Core::ImageCube>(black_cube_map, extent, Core::Format::kRBGA_8UNorm);
         }
+
+        if(entry.isMember("SunDirection"))
+        {
+            const Json::Value direction = entry["SunDirection"];
+            m_sky_desc.m_sun_direction[0] = direction[0].asFloat();
+            m_sky_desc.m_sun_direction[1] = direction[1].asFloat();
+            m_sky_desc.m_sun_direction[2] = direction[2].asFloat();
+
+            m_sky_desc.m_sun_direction = glm::normalize(m_sky_desc.m_sun_direction);
+        }
+        else
+        {
+            m_sky_desc.m_sun_direction = glm::vec3(0.0f, -1.0f, 0.0f);
+        }
+
+        if(entry.isMember("SunColour"))
+        {
+            const Json::Value colour = entry["SunColour"];
+            m_sky_desc.m_sun_colour[0] = colour[0].asFloat();
+            m_sky_desc.m_sun_colour[1] = colour[1].asFloat();
+            m_sky_desc.m_sun_colour[2] = colour[2].asFloat();
+        }
+        else
+        {
+            m_sky_desc.m_sun_colour = glm::vec3(1.0f, 1.0f, 1.0f);
+        }
+
+        m_sky_desc.m_sky_box = mSkybox.get();
+        m_sky_desc.m_use_sun = entry.isMember("SunDirection") && entry.isMember("SunColour");
     }
 
     void Scene::parse_node(const aiScene* scene,

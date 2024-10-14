@@ -3,6 +3,7 @@
 #include "Core/vectorUtils.hpp"
 #include "Core/Image.hpp"
 #include "Core/Asserts.hpp"
+#include "glm/ext.hpp"
 
 namespace Render
 {
@@ -16,23 +17,44 @@ namespace Render
 
 
     Monte_Carlo_Integrator::Monte_Carlo_Integrator(const Core::Acceleration_Structures::UpperLevelBVH& bvh,  Core::MaterialManager& material_manager, const std::vector<Scene::Light>& lights,
-                                                   Core::ImageCube *skybox, const uint64_t seed) :
+                                                   const Scene::Sun &sun, const uint64_t seed) :
         Integrator(bvh, material_manager, lights),
         mGenerator{seed},
         mDistribution(0.0f, 1.0f),
         m_hammersley_generator(seed),
-        m_skybox{skybox}
+        m_sky_desc{sun}
     {
     }
 
     bool Monte_Carlo_Integrator::sample_direct_lighting(const Core::Acceleration_Structures::InterpolatedVertex& frag, glm::vec3& radiance, float& pdf)
     {
         const auto bsrdf_type = frag.m_bsrdf->get_type();
-        if(bsrdf_type == Render::BSRDF_Type::kDiffuse_BRDF || bsrdf_type == Render::BSRDF_Type::kDielectric_BRDF)
+        if(bsrdf_type != Render::BSRDF_Type::kBTDF && bsrdf_type != Render::BSRDF_Type::kLight)
         {
-            uint32_t light_index = mDistribution(mGenerator) * m_lights.size();
-            if(light_index == m_lights.size())
-                --light_index;
+            // account for a special cased sunlight
+            const uint32_t light_count = m_lights.size() + (m_sky_desc.m_use_sun ? 1 : 0);
+            uint32_t light_index = mDistribution(mGenerator) * light_count;
+
+            // handle sunlight contribution
+            if(light_index >= (light_count - 1) && m_sky_desc.m_use_sun)
+            {
+                Core::Ray direct_lighting_ray{};
+                direct_lighting_ray.mDirection = -m_sky_desc.m_sun_direction;
+                direct_lighting_ray.mOrigin = frag.mPosition + glm::vec4((0.01f * direct_lighting_ray.mDirection), 0.0f);
+                direct_lighting_ray.mLenght = 10000.0f;
+
+                Core::Acceleration_Structures::InterpolatedVertex point_hit;
+                if(!m_bvh.get_closest_intersection(direct_lighting_ray, &point_hit))
+                {
+                    const float cos_theta = glm::saturate<float, glm::packed_highp>(glm::dot(frag.mNormal, -m_sky_desc.m_sun_direction));
+
+                    pdf = (1.0f / light_count) * cos_theta;
+                    radiance = m_sky_desc.m_sun_colour;
+                    return true;
+                }
+
+                return false;
+            }
 
             glm::vec3 sample_position;
             float selected_solid_angle;
@@ -70,7 +92,9 @@ namespace Render
                     {
                         const Core::EvaluatedMaterial light_material = m_material_manager.evaluate_material(point_hit.m_bsrdf->get_material_id(), point_hit.mUV);
 
-                        pdf = 1.0f / m_lights.size();
+                        const float cos_theta = glm::dot(frag.mNormal, to_light);
+
+                        pdf = (1.0f / light_count) * cos_theta;
                         radiance = light_material.emissive;
 
                         return true;
@@ -116,7 +140,7 @@ namespace Render
         }
         else
         {
-            return m_skybox->sample4(ray.mDirection);
+            return m_sky_desc.m_sky_box->sample4(ray.mDirection);
         }
 }
 
@@ -172,7 +196,7 @@ namespace Render
             trace_ray(intersection, ray, depth + 1);
         }
         else
-            ray.m_payload += ray.m_throughput * glm::vec3(m_skybox->sample4(sample.L));
+            ray.m_payload += ray.m_throughput * glm::vec3(m_sky_desc.m_sky_box->sample4(sample.L));
     }
 
     bool Monte_Carlo_Integrator::weighted_random_ray_type(const Core::EvaluatedMaterial& mat)

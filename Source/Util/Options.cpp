@@ -52,6 +52,22 @@ namespace Util
                 const uint32_t sample_count = std::atoi(cmd[++i]);
                 m_values.push_back({Option::kSampleCount, sample_count});
             }
+            else if(strcmp(cmd[i], "-SunDirection") == 0)
+            {
+                const float x = std::atof(cmd[++i]);
+                const float y = std::atof(cmd[++i]);
+                const float z = std::atof(cmd[++i]);
+
+                m_values.push_back({Option::kSunDirection, glm::vec3(x, y, z)});
+            }
+            else if(strcmp(cmd[i], "-SunColour") == 0)
+            {
+                const float x = std::atof(cmd[++i]);
+                const float y = std::atof(cmd[++i]);
+                const float z = std::atof(cmd[++i]);
+
+                m_values.push_back({Option::kSunColour, glm::vec3(x, y, z)});
+            }
             else
             {
                 printf("Unrecognised command %s \n", cmd[i]);

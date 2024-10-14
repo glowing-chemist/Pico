@@ -45,6 +45,14 @@ namespace Scene
         Core::Acceleration_Structures::LowerLevelBVH* m_geometry;
     };
 
+    struct Sun
+    {
+        Core::ImageCube* m_sky_box;
+        bool m_use_sun;
+        glm::vec3 m_sun_direction;
+        glm::vec3 m_sun_colour;
+    };
+
     class Scene
     {
     public:
@@ -97,6 +105,8 @@ namespace Scene
         std::unique_ptr<Core::File_System_Mappings> m_file_mapper;
 
         std::unique_ptr<Core::ImageCube> mSkybox;
+
+        Sun m_sky_desc;
     };
 
 }

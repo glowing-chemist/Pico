@@ -34,7 +34,7 @@ namespace Render
     {
     public:
 
-        Monte_Carlo_Integrator(const Core::Acceleration_Structures::UpperLevelBVH&,  Core::MaterialManager&, const std::vector<Scene::Light> &light_bounds, Core::ImageCube* skybox,const uint64_t seed);
+        Monte_Carlo_Integrator(const Core::Acceleration_Structures::UpperLevelBVH&,  Core::MaterialManager&, const std::vector<Scene::Light> &light_bounds, const Scene::Sun& sun, const uint64_t seed);
 
         virtual glm::vec3 integrate_ray(const Scene::Camera& camera, const glm::uvec2& pixel, const uint32_t maxDepth, const uint32_t rayCount) final;
 
@@ -53,7 +53,7 @@ namespace Render
 
         uint32_t m_max_depth;
 
-        Core::ImageCube* m_skybox;
+        Scene::Sun m_sky_desc;
     };
 }
 
