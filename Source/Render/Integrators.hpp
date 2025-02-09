@@ -46,7 +46,7 @@ namespace Render
 
         bool weighted_random_ray_type(const Core::EvaluatedMaterial& mat);
 
-        std::mt19937 mGenerator;
+        std::mt19937_64 mGenerator;
         std::uniform_real_distribution<float> mDistribution;
 
         Core::Rand::Hammersley_Generator m_hammersley_generator;
