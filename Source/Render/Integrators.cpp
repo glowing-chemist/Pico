@@ -57,13 +57,13 @@ namespace Render
             }
 
             glm::vec3 sample_position;
-            float selected_solid_angle;
+            float selected_pdf;
 
             const glm::vec3 light_space_pos = m_lights[light_index].m_inverse_transform * frag.mPosition;
             const glm::vec3 light_space_normal = glm::normalize(glm::mat3x3(m_lights[light_index].m_inverse_transform) * frag.mNormal);
             auto& geometrty = m_lights[light_index].m_geometry;
 
-            const bool found_sample = geometrty->sample_geometry(m_hammersley_generator, light_space_pos, light_space_normal, sample_position, selected_solid_angle);
+            const bool found_sample = geometrty->sample_geometry(m_hammersley_generator, light_space_pos, light_space_normal, sample_position, selected_pdf);
             if(found_sample)
             {
                 sample_position = m_lights[light_index].m_transform * glm::vec4(sample_position, 1.0f);
@@ -94,7 +94,7 @@ namespace Render
 
                         const float cos_theta = glm::dot(frag.mNormal, to_light);
 
-                        pdf = (1.0f / light_count) * cos_theta;
+                        pdf = (1.0f / light_count) * cos_theta * selected_pdf;
                         radiance = light_material.emissive;
 
                         return true;

@@ -55,7 +55,7 @@ namespace Core
             return AABB{{-mRadius, -mRadius, -mRadius, 1.0f}, {mRadius, mRadius, mRadius, 1.0f}};
         }
 
-        bool LowerLevelSphereBVH::sample_geometry(Core::Rand::Hammersley_Generator& rand, const glm::vec3& point, const glm::vec3& N, glm::vec3& sample_point, float& solid_angle)
+        bool LowerLevelSphereBVH::sample_geometry(Core::Rand::Hammersley_Generator& rand, const glm::vec3& point, const glm::vec3& N, glm::vec3& sample_point, float& pdf)
         {
             const glm::vec3 unit_sphere_point = Core::Rand::uniform_sample_sphere(rand.next());
             const glm::vec3 sphere_point = mRadius * unit_sphere_point;
@@ -66,8 +66,7 @@ namespace Core
             else
                 sample_point = -sphere_point;
 
-            const float surface_area = (M_PI * mRadius * mRadius) / 2.0f;
-            solid_angle = Render::solid_angle(point, sample_point, -to_point, surface_area);
+            pdf = 1.0f;
 
             return true;
         }

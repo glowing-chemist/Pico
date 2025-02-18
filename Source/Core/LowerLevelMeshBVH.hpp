@@ -49,12 +49,8 @@ namespace Core
             std::vector<uint32_t>  mIndicies;
 
             // Data used for light sampling.
-            struct TriangleFace
-            {
-                glm::vec3 m_normal;
-                float m_area;
-            };
-            std::vector<TriangleFace> m_triangle_faces;
+            std::vector<float> m_triangle_area;
+            float m_total_surface_area;
 
             class Mesh_Intersector : public Intersector<uint32_t>
             {
