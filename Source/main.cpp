@@ -55,7 +55,6 @@ int main(int argc, const char **argv)
                                                      aiProcess_Triangulate |
                                                      aiProcess_JoinIdenticalVertices |
                                                      aiProcess_GenNormals |
-                                                     aiProcess_CalcTangentSpace |
                                                      aiProcess_GlobalScale |
                                                      aiProcess_FlipUVs |
                                                      aiProcess_GenBoundingBoxes);
