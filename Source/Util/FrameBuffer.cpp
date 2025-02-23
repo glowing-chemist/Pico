@@ -24,7 +24,8 @@ namespace Util
            "uniform sampler2D tex;\n"
             "void main()\n"
             "{\n"
-                "fragColour = texture(tex, UV);\n"
+                "const float gamma = 2.2f;\n"
+                "fragColour = vec4(pow(texture(tex, UV).xyz, vec3(1.0f / gamma)), 1.0f);\n"
             "}\n";
 
 
