@@ -43,7 +43,7 @@ namespace Core
             BVH(BVH&&) = default;
             BVH& operator=(BVH&&) = default;
 
-            bool get_first_intersection(const Ray& ray, Acceleration_Structures::InterpolatedVertex&) const;
+            bool get_first_intersection(Ray& ray, Acceleration_Structures::InterpolatedVertex&) const;
 
             struct BoundedValue
             {

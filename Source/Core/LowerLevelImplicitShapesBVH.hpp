@@ -16,7 +16,7 @@ namespace Core
             LowerLevelSphereBVH(const float radius);
 
 
-            virtual bool calculate_intersection(const Ray&, InterpolatedVertex* result) const final;
+            virtual bool calculate_intersection(Ray&, InterpolatedVertex* result) const final;
 
             virtual AABB get_bounds() const final;
 

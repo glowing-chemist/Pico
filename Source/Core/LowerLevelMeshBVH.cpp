@@ -78,7 +78,7 @@ namespace Core
 #endif
         }
 
-        bool LowerLevelMeshBVH::calculate_intersection(const Ray& ray, InterpolatedVertex* result) const
+        bool LowerLevelMeshBVH::calculate_intersection(Ray& ray, InterpolatedVertex* result) const
         {
             InterpolatedVertex vertex{};
             const bool intersects = m_acceleration_structure->get_first_intersection(ray, vertex);

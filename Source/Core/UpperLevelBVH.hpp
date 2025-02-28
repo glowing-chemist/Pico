@@ -37,9 +37,7 @@ namespace Core
 
             UpperLevelBVH() = default;
 
-            bool get_closest_intersection(const Ray&, InterpolatedVertex* vertex) const;
-
-            void get_all_intersections(const Ray&, std::vector<InterpolatedVertex>& vertex) const;
+            bool get_closest_intersection(Ray&, InterpolatedVertex* vertex) const;
 
             void add_lower_level_bvh(Acceleration_Structures::LowerLevelBVH* bvh, const glm::mat4x4& transform, std::unique_ptr<Render::BSRDF>& bsrdf);
 

@@ -27,7 +27,7 @@ namespace Core
             LowerLevelBVH() = default;
             virtual ~LowerLevelBVH() = default;
 
-            virtual bool calculate_intersection(const Ray&, InterpolatedVertex* result) const = 0;
+            virtual bool calculate_intersection(Ray&, InterpolatedVertex* result) const = 0;
 
             virtual AABB get_bounds() const = 0;
 

@@ -16,9 +16,10 @@ namespace Core
     {
 
         template<typename T, uint32_t C>
-        bool BVH<T, C>::get_first_intersection(const Ray& ray, Acceleration_Structures::InterpolatedVertex &val) const
+        bool BVH<T, C>::get_first_intersection(Ray& ray, Acceleration_Structures::InterpolatedVertex &val) const
         {
             float intersection_distance = INFINITY;
+            ray.mInverseDirection = glm::vec3(1.0f, 1.0f, 1.0f) / ray.mDirection;
 
             get_closest_intersections(ray, get_node(m_root), val, intersection_distance);
 

@@ -27,7 +27,7 @@ namespace Core
 
             LowerLevelMeshBVH(const aiMesh*);
 
-            virtual bool calculate_intersection(const Ray&, InterpolatedVertex* result) const;
+            virtual bool calculate_intersection(Ray&, InterpolatedVertex* result) const;
 
             virtual AABB get_bounds() const final
             {

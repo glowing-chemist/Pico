@@ -19,7 +19,7 @@ namespace Core
         }
 
 
-        bool LowerLevelSphereBVH::calculate_intersection(const Ray& ray, InterpolatedVertex* result) const
+        bool LowerLevelSphereBVH::calculate_intersection(Ray& ray, InterpolatedVertex* result) const
         {
             // sphere center is always at (0, 0).
             const glm::vec3 m = ray.mOrigin;

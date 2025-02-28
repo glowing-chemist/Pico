@@ -7,34 +7,25 @@ namespace Core
     // Return a vector constructed from the minimum of each component.
     glm::vec3 component_wise_min(const glm::vec3& lhs, const glm::vec3& rhs)
     {
-        return glm::vec3{std::min(lhs.x, rhs.x),
-                      std::min(lhs.y, rhs.y),
-                      std::min(lhs.z, rhs.z)};
+        return glm::min(lhs, rhs);
     }
 
 
     glm::vec4 component_wise_min(const glm::vec4& lhs, const glm::vec4& rhs)
     {
-        return glm::vec4{std::min(lhs.x, rhs.x),
-                      std::min(lhs.y, rhs.y),
-                      std::min(lhs.z, rhs.z),
-                      std::min(lhs.w, rhs.w)};
+        return glm::min(lhs, rhs);
     }
+
 
     glm::vec3 component_wise_max(const glm::vec3& lhs, const glm::vec3& rhs)
     {
-        return glm::vec3{std::max(lhs.x, rhs.x),
-                      std::max(lhs.y, rhs.y),
-                      std::max(lhs.z, rhs.z)};
+        return glm::max(lhs, rhs);
     }
 
 
     glm::vec4 component_wise_max(const glm::vec4& lhs, const glm::vec4& rhs)
     {
-        return glm::vec4{std::max(lhs.x, rhs.x),
-                      std::max(lhs.y, rhs.y),
-                      std::max(lhs.z, rhs.z),
-                      std::max(lhs.w, rhs.w)};
+        return glm::max(lhs, rhs);
     }
 
     uint32_t maximum_component_index(const glm::vec3& v)
@@ -108,20 +99,34 @@ namespace Core
 
     float AABB::intersection_distance(const Ray& ray) const
     {
-        glm::vec3 rayDirection = ray.mDirection;
-        glm::vec3 rayOrigin = ray.mOrigin;
-        glm::vec3 inverseDirection{1.0f / rayDirection.x, 1.0f / rayDirection.y, 1.0f / rayDirection.z};
+        struct MinMaxResult
+        {
+            float min;
+            float max;
+        };
+        auto min_max = [](const float a, const float b) -> MinMaxResult
+        {
+            return a > b ? MinMaxResult{b, a} : MinMaxResult{a, b};
+        };
 
         // mTopFrontLeft is the corner of AABB with minimal coordinates - left top.
-        float t1 = (mMinimum.x - rayOrigin.x) * inverseDirection.x;
-        float t2 = (mMaximum.x - rayOrigin.x) * inverseDirection.x;
-        float t3 = (mMinimum.y - rayOrigin.y) * inverseDirection.y;
-        float t4 = (mMaximum.y - rayOrigin.y) * inverseDirection.y;
-        float t5 = (mMinimum.z - rayOrigin.z) * inverseDirection.z;
-        float t6 = (mMaximum.z - rayOrigin.z) * inverseDirection.z;
+        const float t1 = (mMinimum.x - ray.mOrigin.x) * ray.mInverseDirection.x;
+        const float t2 = (mMaximum.x - ray.mOrigin.x) * ray.mInverseDirection.x;
+        const float t3 = (mMinimum.y - ray.mOrigin.y) * ray.mInverseDirection.y;
+        const float t4 = (mMaximum.y - ray.mOrigin.y) * ray.mInverseDirection.y;
+        const float t5 = (mMinimum.z - ray.mOrigin.z) * ray.mInverseDirection.z;
+        const float t6 = (mMaximum.z - ray.mOrigin.z) * ray.mInverseDirection.z;
 
-        float tmin = std::max(std::max(std::min(t1, t2), std::min(t3, t4)), std::min(t5, t6));
-        float tmax = std::min(std::min(std::max(t1, t2), std::max(t3, t4)), std::max(t5, t6));
+        // Keeping the old code here commented out as it's much easier to read than the newer optimised version.
+        //float tmin = std::max(std::max(std::min(t1, t2), std::min(t3, t4)), std::min(t5, t6));
+        //float tmax = std::min(std::min(std::max(t1, t2), std::max(t3, t4)), std::max(t5, t6));
+
+        const auto [a1, b1] = min_max(t1, t2);
+        const auto [a2, b2] = min_max(t3, t4);
+        const auto [a3, b3] = min_max(t5, t6);
+
+        const float tmin = std::max(std::max(a1, a2), a3);
+        const float tmax = std::min(std::min(b1, b2), b3);
 
         // if tmax < 0, ray the ray intersects AABB, but the AABB is behind the ray (direction faces away)
         // or no intersection at all.

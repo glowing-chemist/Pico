@@ -25,6 +25,7 @@ namespace Core
     {
         glm::vec4 mOrigin;
         glm::vec3 mDirection;
+        glm::vec3 mInverseDirection;
         float     mLenght;
 
         glm::vec3 m_payload;

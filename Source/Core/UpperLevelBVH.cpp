@@ -9,7 +9,7 @@ namespace Core
 {
     namespace Acceleration_Structures
     {
-        bool UpperLevelBVH::get_closest_intersection(const Ray& ray, InterpolatedVertex* vertex) const
+        bool UpperLevelBVH::get_closest_intersection(Ray& ray, InterpolatedVertex* vertex) const
         {
             InterpolatedVertex intersected_vertex{};
             const bool found = m_acceleration_structure->get_first_intersection(ray, intersected_vertex);
@@ -59,7 +59,7 @@ namespace Core
         bool UpperLevelBVH::lower_level_intersector::intersects(const Ray& ray, const Entry* entry, float& intersect_distance, InterpolatedVertex& vertex) const
         {
             // Move the ray in to the local space of the lower level bvh.
-            const Ray object_space_ray = Core::transform_ray(ray, entry->mInverseTransform);
+            Ray object_space_ray = Core::transform_ray(ray, entry->mInverseTransform);
 
             InterpolatedVertex found_vertex;
             if(entry->mBVH->calculate_intersection(object_space_ray, &found_vertex))
