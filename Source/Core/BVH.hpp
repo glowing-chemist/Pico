@@ -22,6 +22,8 @@ namespace Core
         {
         public:
 
+            virtual ~Intersector() {}
+
             virtual bool intersects(const Ray& ray, T, float& intersect_distance, Core::Acceleration_Structures::InterpolatedVertex& intersection_data) const = 0;
         };
 
@@ -58,6 +60,11 @@ namespace Core
                 std::vector<BoundedValue> m_values;
 
                 NodeIndex m_children[C];
+
+                bool is_leaf() const
+                {
+                    return !m_values.empty();
+                }
             };
 
         protected:
@@ -67,11 +74,7 @@ namespace Core
                 return m_nodes[n];
             }
 
-            void    get_closest_intersections(const Ray& ray, const typename BVH<T, C>::Node& node, Core::Acceleration_Structures::InterpolatedVertex& intersection, float& intersection_distance
-#ifdef BVH_PROFILE
-                                           , uint32_t& tests_performed
-#endif
-                                           ) const;
+            void    get_closest_intersections(const Ray& ray, const typename BVH<T, C>::Node& node, Core::Acceleration_Structures::InterpolatedVertex& intersection, float& intersection_distance) const;
 
             NodeIndex m_root;
 

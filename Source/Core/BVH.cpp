@@ -20,60 +20,44 @@ namespace Core
         {
             float intersection_distance = INFINITY;
 
-        #ifdef BVH_PROFILE
-            uint32_t tests_performed = 0;
-            get_closest_intersections(ray, get_node(m_root), val, intersection_distance, tests_performed);
-            PICO_LOG("intersection tests performed %d\n", tests_performed);
-        #else
             get_closest_intersections(ray, get_node(m_root), val, intersection_distance);
-        #endif
 
             return intersection_distance != INFINITY;
         }
 
         template<typename T, uint32_t C>
-        void    BVH<T, C>::get_closest_intersections(const Ray& ray, const typename BVH<T, C>::Node& node, Core::Acceleration_Structures::InterpolatedVertex& intersection, float& intersection_distance
-        #ifdef BVH_PROFILE
-                                                   ,uint32_t &tests_performed
-        #endif
-                                                   ) const
+        void    BVH<T, C>::get_closest_intersections(const Ray& ray, const typename BVH<T, C>::Node& node, Core::Acceleration_Structures::InterpolatedVertex& intersection, float& intersection_distance) const
         {
-        #ifdef BVH_PROFILE
-            ++tests_performed;
-        #endif
             if(node.m_bounding_box.intersection_distance(ray) < intersection_distance)
             {
-                for(auto& value : node.m_values)
+                if (node.is_leaf())
                 {
-        // If we intersect the bounds then invoke the intersector to check if the contained entity is also intersected
-        #ifdef BVH_PROFILE
-                    ++tests_performed;
-        #endif
-                    if(value.m_bounds.intersection_distance(ray) < intersection_distance)
+                    for (auto& value : node.m_values)
                     {
-                        float fine_intersected_distance = INFINITY;
-                        Acceleration_Structures::InterpolatedVertex vertex;
-        #ifdef BVH_PROFILE
-                        ++tests_performed;
-        #endif
-                        if(m_intersector->intersects(ray, value.m_value, fine_intersected_distance, vertex) && fine_intersected_distance < intersection_distance)
+                        // If we intersect the bounds then invoke the intersector to check if the contained entity is also intersected
+                        //if(value.m_bounds.intersection_distance(ray) < intersection_distance)
                         {
-                            intersection = vertex;
-                            intersection_distance = fine_intersected_distance;
+                            float fine_intersected_distance = INFINITY;
+                            Acceleration_Structures::InterpolatedVertex vertex;
+
+                            if (m_intersector->intersects(ray, value.m_value, fine_intersected_distance, vertex) && fine_intersected_distance < intersection_distance)
+                            {
+                                intersection = vertex;
+                                intersection_distance = fine_intersected_distance;
+                            }
                         }
                     }
                 }
-
-                for (NodeIndex child_index : node.m_children)
+                else
                 {
-                    if (child_index != kInvalidNodeIndex)
+                    for (NodeIndex child_index : node.m_children)
                     {
-                        const Node& childNode = get_node(child_index);
-        #ifdef BVH_PROFILE
-                        get_closest_intersections(ray, childNode, intersection, intersection_distance, tests_performed);
-        #else
-                        get_closest_intersections(ray, childNode, intersection, intersection_distance);
-        #endif
+                        if (child_index != kInvalidNodeIndex)
+                        {
+                            const Node& childNode = get_node(child_index);
+
+                            get_closest_intersections(ray, childNode, intersection, intersection_distance);
+                        }
                     }
                 }
             }
