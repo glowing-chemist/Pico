@@ -135,7 +135,7 @@ namespace Scene
         {
             Render::Monte_Carlo_Integrator integrator(m_bvh, m_material_manager, m_lights, m_sky_desc, seed);
 
-            return integrator.integrate_ray(camera, glm::uvec2(pix, piy), params.m_maxRayDepth, params.m_maxSamples);
+            return integrator.integrate_ray(camera, glm::uvec2(pix, piy), params.m_maxRayDepth);
         };
 
         auto trace_rays_for_tile = [&](const Camera& camera, const glm::uvec2 start, const glm::uvec2& tile_size, const size_t random_seed) -> bool
@@ -164,27 +164,31 @@ namespace Scene
 
                 const glm::uvec2 pixel_location = glm::uvec2(flat_location % params.m_Width, flat_location / params.m_Width);
 
-                uint32_t prev_sample_count = params.m_SampleCount[flat_location];
-                glm::vec3 pixel_result =  trace_ray(camera, pixel_location.x, pixel_location.y, random_generator());
-                pixel_result = glm::clamp(pixel_result, 0.0f, 1.0f);
+                Render::Monte_Carlo_Integrator integrator(m_bvh, m_material_manager, m_lights, m_sky_desc, random_generator());
 
-                if(prev_sample_count < 1)
+                for (uint32_t i = 0; i < params.m_maxSamples; ++i)
                 {
-                    params.m_SampleCount[flat_location] = 1;
-                    params.m_variance[flat_location] = glm::vec4(0, 0, 0, 0);
-                }
-                else
-                {
-                    const glm::vec3& previous_pixle = params.m_Pixels[flat_location];
-                    const glm::vec3& previous_variance = params.m_variance[flat_location];
-                    const glm::vec3 new_pixel_result = previous_pixle + ((pixel_result - previous_pixle) * (1.0f / prev_sample_count));
+                    uint32_t prev_sample_count = params.m_SampleCount[flat_location];
+                    glm::vec3 pixel_result = integrator.integrate_ray(camera, glm::uvec2(pixel_location.x, pixel_location.y), params.m_maxRayDepth);
 
-                    params.m_variance[flat_location] = ((previous_variance * prev_sample_count) + ((pixel_result - previous_pixle) * (pixel_result - new_pixel_result))) / (prev_sample_count + 1);
-                    params.m_SampleCount[flat_location] += 1;
-                    pixel_result = new_pixel_result;
-                }
+                    if (prev_sample_count < 1)
+                    {
+                        params.m_SampleCount[flat_location] = 1;
+                        params.m_variance[flat_location] =  glm::vec4(0, 0, 0, 0);
+                    }
+                    else
+                    {
+                        const glm::vec3& previous_pixle = params.m_Pixels[flat_location];
+                        const glm::vec3& previous_variance = params.m_variance[flat_location];
+                        const glm::vec3 new_pixel_result = previous_pixle + ((pixel_result - previous_pixle) * (1.0f / static_cast<float>(prev_sample_count)));
 
-                params.m_Pixels[flat_location] = pixel_result;
+                        params.m_variance[flat_location] = ((previous_variance * prev_sample_count) + ((pixel_result - previous_pixle) * (pixel_result - new_pixel_result))) / (prev_sample_count + 1);
+                        params.m_SampleCount[flat_location] = prev_sample_count + 1;
+                        pixel_result = new_pixel_result;
+                    }
+
+                    params.m_Pixels[flat_location] = pixel_result;
+                }
             }
 
             return false;

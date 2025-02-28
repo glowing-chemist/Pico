@@ -111,7 +111,7 @@ namespace Render
         }
     }
 
-    glm::vec3 Monte_Carlo_Integrator::integrate_ray(const Scene::Camera& camera, const glm::uvec2& pixel, const uint32_t maxDepth, const uint32_t rayCount)
+    glm::vec3 Monte_Carlo_Integrator::integrate_ray(const Scene::Camera& camera, const glm::uvec2& pixel, const uint32_t maxDepth)
     {
         m_max_depth = maxDepth;
         Core::Ray ray = camera.generate_ray(m_hammersley_generator.next(), pixel);
@@ -122,16 +122,9 @@ namespace Render
             //return glm::vec4(vertex.mNormal * 0.5f + 0.5f, 1.0f);
             //return glm::vec4(m_material_manager.evaluate_material(vertex.m_bsrdf->get_material_id(), vertex.mUV).diffuse, 1.0f);
 
-            glm::vec3 result{0.0f, 0.0f, 0.0f};
-            for(uint32_t i_ray = 0; i_ray < rayCount; ++i_ray)
-            {
-                ray = camera.generate_ray(m_hammersley_generator.next(), pixel);
-                trace_ray(vertex, ray, 0);
+            trace_ray(vertex, ray, 0);
 
-                result += ray.m_payload;
-            }
-
-            result /= rayCount;
+            glm::vec3 result = ray.m_payload;
 
             if(glm::any(glm::isinf(result)) || glm::any(glm::isnan(result)))
                 result = glm::vec4(0.0f);
