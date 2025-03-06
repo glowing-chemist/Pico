@@ -127,7 +127,7 @@ namespace Render
             glm::vec3 result = ray.m_payload;
 
             if(glm::any(glm::isinf(result)) || glm::any(glm::isnan(result)))
-                result = glm::vec4(0.0f);
+                result = glm::vec3(1.0f, 0.4, 0.7);
 
             return result;
         }
@@ -180,7 +180,7 @@ namespace Render
             ray.m_throughput *= 1.0f / inverse_kill_rate;
         }
 
-        ray.mOrigin = frag.mPosition + glm::vec4(0.01f * sample.L, 0.0f);
+        ray.mOrigin = frag.mPosition + glm::vec4(0.01f * frag.mNormal, 0.0f);
         ray.mDirection = sample.L;
 
         Core::Acceleration_Structures::InterpolatedVertex intersection;
