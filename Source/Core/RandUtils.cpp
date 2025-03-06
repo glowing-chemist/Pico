@@ -47,14 +47,37 @@ namespace Core
             return glm::vec3(r * std::cos(phi), r * std::sin(phi), z);
         }
 
-        Hammersley_Generator::Hammersley_Generator(const size_t seed) :
-            m_generator(seed),
-            m_random_sample_distribution(0, kMaxSamples)
+        // Written in 2018 by David Blackman and Sebastiano Vigna (vigna@acm.org)
+        uint32_t xorshift_random::rotl(const uint32_t x, int k)
+        {
+            return (x << k) | (x >> (32 - k));
+        }
+
+        uint32_t xorshift_random::next()
+        {
+            const uint32_t result = rotl(m_state[0] + m_state[3], 7) + m_state[0];;
+
+            const uint32_t t = m_state[1] << 9;
+
+            m_state[2] ^= m_state[0];
+            m_state[3] ^= m_state[1];
+            m_state[1] ^= m_state[2];
+            m_state[0] ^= m_state[3];
+
+            m_state[2] ^= t;
+
+            m_state[3] = rotl(m_state[3], 11);
+
+            return result;
+        }
+
+        Hammersley_Generator::Hammersley_Generator(const uint32_t seed) :
+            m_random_sample_distribution(seed)
         {}
 
         glm::vec2 Hammersley_Generator::next()
         {
-            return hammersley(m_random_sample_distribution(m_generator), kMaxSamples);
+            return hammersley(m_random_sample_distribution.next(), kMaxSamples);
         }
 
     }

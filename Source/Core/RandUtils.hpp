@@ -37,19 +37,39 @@ namespace Core
             return UINT_MAX;
         }
 
+        class xorshift_random
+        {
+            public:
+
+                xorshift_random(const uint32_t seed1)
+                {
+                    m_state[0] = seed1;
+                    m_state[1] = 0;
+                    m_state[2] = 0;
+                    m_state[3] = 0;
+                }
+
+                uint32_t next();
+
+            private:
+
+                uint32_t rotl(const uint32_t x, int k);
+
+                uint32_t m_state[4];
+        };
+
         class Hammersley_Generator
         {
         public:
-            Hammersley_Generator(const size_t seed);
+            Hammersley_Generator(const uint32_t seed);
 
             glm::vec2 next();
 
         private:
 
-            constexpr static size_t kMaxSamples = 10000;
+            constexpr static size_t kMaxSamples = std::numeric_limits<uint32_t>::max();
 
-            std::mt19937 m_generator;
-            std::uniform_int_distribution<> m_random_sample_distribution;
+            xorshift_random m_random_sample_distribution;
 
         };
 
