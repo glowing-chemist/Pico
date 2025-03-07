@@ -121,7 +121,10 @@ namespace Core
         bool LowerLevelMeshBVH::sample_geometry(Rand::Hammersley_Generator& rand, const glm::vec3&, const glm::vec3&, glm::vec3& sample_point, float& pdf)
         {
             const glm::vec2 xi = rand.next();
-            const uint32_t triangle_index = xi.y * m_triangle_area.size();
+            uint32_t triangle_index = xi.y * m_triangle_area.size();
+            
+            if (triangle_index == m_triangle_area.size())
+                --triangle_index;
 
             const glm::vec2 Xi = rand.next();
             const glm::vec2 barycentrics = Core::Rand::uniform_sample_triangle(Xi);
