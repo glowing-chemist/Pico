@@ -76,6 +76,7 @@ int main(int argc, const char **argv)
         params.m_Pixels = frame_memory;
         params.m_SampleCount = sample_count_buffer;
         params.m_variance = variance;
+        params.m_maxVariance = 0.0f;
 
         const glm::vec3 camera_pos = options.get_option<Util::Option::kCameraPosition>();
         const glm::vec3 camera_dir = options.get_option<Util::Option::kCameraDirection>();

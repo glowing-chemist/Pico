@@ -188,6 +188,9 @@ namespace Scene
                     }
 
                     params.m_Pixels[flat_location] = pixel_result;
+
+                    if (prev_sample_count > 4 && glm::all(glm::lessThanEqual(params.m_variance[flat_location], glm::vec3(params.m_maxVariance))))
+                        break;
                 }
             }
 
