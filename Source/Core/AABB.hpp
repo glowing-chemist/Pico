@@ -34,6 +34,7 @@ namespace Core
         void push_index_of_refraction(const float);
         float pop_index_of_refraction();
         float get_current_index_of_refraction() const;
+        bool inside_geometry() const;
 
     private:
 

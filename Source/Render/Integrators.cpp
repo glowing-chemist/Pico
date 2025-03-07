@@ -180,7 +180,7 @@ namespace Render
             ray.m_throughput *= 1.0f / inverse_kill_rate;
         }
 
-        ray.mOrigin = frag.mPosition + glm::vec4(0.01f * frag.mNormal, 0.0f);
+        ray.mOrigin = frag.mPosition + glm::vec4(0.01f * (ray.inside_geometry() ? -frag.mNormal : frag.mNormal), 0.0f);
         ray.mDirection = sample.L;
 
         Core::Acceleration_Structures::InterpolatedVertex intersection;

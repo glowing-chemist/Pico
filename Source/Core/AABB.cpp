@@ -70,6 +70,11 @@ namespace Core
         return m_index_or_refraction_stack.back();
     }
 
+    bool Ray::inside_geometry() const
+    {
+        return m_index_or_refraction_stack.size() > 1; 
+    }
+
     std::array<glm::vec4, 8> AABB::get_cube_as_vertex_array() const
     {
         glm::vec4 upper1{mMinimum};
