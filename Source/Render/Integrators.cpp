@@ -171,7 +171,7 @@ namespace Render
         // kill off random rays here for russian roulette sampling.
         if(depth > 2)
         {
-            const float inverse_kill_rate = std::max(std::max(ray.m_throughput.x, ray.m_throughput.y), ray.m_throughput.y);
+            const float inverse_kill_rate = std::max(std::max(ray.m_throughput.x, ray.m_throughput.y), ray.m_throughput.z);
             if(mDistribution(mGenerator) > inverse_kill_rate)
             {
                 return;
