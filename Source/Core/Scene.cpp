@@ -1,5 +1,6 @@
 #include "Core/Scene.hpp"
 #include "Core/Camera.hpp"
+#include "Core/RandUtils.hpp"
 #include "Core/vectorUtils.hpp"
 #include "Core/Asserts.hpp"
 #include "Render/Integrators.hpp"
@@ -12,6 +13,7 @@
 #include <numeric>
 #include <memory>
 #include <fstream>
+#include <random>
 
 #include "stbi_image_write.h"
 #include "stb_image.h"
@@ -131,16 +133,9 @@ namespace Scene
 
     void Scene::render_scene_to_memory(const Camera& camera, const RenderParams& params, const bool* should_quit)
     {
-        auto trace_ray = [&](const Camera& camera, const uint32_t pix, const uint32_t piy, const uint64_t seed) -> glm::vec3
+        auto trace_rays_for_tile = [&](const Camera& camera, const glm::uvec2 start, const glm::uvec2& tile_size, const uint32_t random_seed) -> bool
         {
-            Render::Monte_Carlo_Integrator integrator(m_bvh, m_material_manager, m_lights, m_sky_desc, seed);
-
-            return integrator.integrate_ray(camera, glm::uvec2(pix, piy), params.m_maxRayDepth);
-        };
-
-        auto trace_rays_for_tile = [&](const Camera& camera, const glm::uvec2 start, const glm::uvec2& tile_size, const size_t random_seed) -> bool
-        {
-            std::mt19937 random_generator(random_seed);
+            Core::Rand::xorshift_random random_generator(random_seed);
 
             std::vector<uint32_t> pixel_indicies(tile_size.x * tile_size.y);
             for(uint32_t tile_row = 0; tile_row < tile_size.y; ++tile_row)
@@ -164,7 +159,7 @@ namespace Scene
 
                 const glm::uvec2 pixel_location = glm::uvec2(flat_location % params.m_Width, flat_location / params.m_Width);
 
-                Render::Monte_Carlo_Integrator integrator(m_bvh, m_material_manager, m_lights, m_sky_desc, random_generator());
+                Render::Monte_Carlo_Integrator integrator(m_bvh, m_material_manager, m_lights, m_sky_desc, random_generator.next());
 
                 for (uint32_t i = 0; i < params.m_maxSamples; ++i)
                 {
@@ -197,29 +192,22 @@ namespace Scene
             return false;
         };
 
-        auto trace_rays = [&](const Camera& camera, const glm::uvec2 start, const glm::uvec2& tile_size, const size_t random_seed)
-        {
-            std::mt19937 random_generator(random_seed);
-
-            trace_rays_for_tile(camera, start, tile_size, random_generator());
-        };
-
         std::random_device random_device{};
-        std::mt19937 random_generator(random_device());
+        Core::Rand::xorshift_random random_generator(random_device());
 
         const glm::vec2 tile_size = {64, 64};
         const uint32_t tile_count_x = params.m_Width / tile_size.x;
         const uint32_t tile_count_y = params.m_Height / tile_size.y;
         const uint32_t tile_count = tile_count_x * tile_count_y;
 
-        std::vector<std::future<void>> handles{};
+        std::vector<std::future<bool>> handles{};
         handles.reserve(tile_count);
 
         for(uint32_t x = 0; x < params.m_Width; x += tile_size.x)
         {
             for(uint32_t y = 0; y < params.m_Height; y += tile_size.y)
             {
-                glm::vec2 clamped_tile_size = tile_size;
+                glm::uvec2 clamped_tile_size = tile_size;
                 if((x + tile_size.x) > params.m_Width)
                 {
                     clamped_tile_size.x -= (x + tile_size.x) - params.m_Width;
@@ -228,7 +216,7 @@ namespace Scene
                 {
                     clamped_tile_size.y -= (y + tile_size.y) - params.m_Height;
                 }
-                handles.push_back(m_threadPool.add_task(trace_rays, camera, glm::vec2(x, y), clamped_tile_size, random_generator()));
+                handles.push_back(m_threadPool.add_task(trace_rays_for_tile, camera, glm::uvec2(x, y), clamped_tile_size, random_generator.next()));
             }
         }
 

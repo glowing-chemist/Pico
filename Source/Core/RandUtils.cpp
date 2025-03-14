@@ -1,3 +1,4 @@
+#include <sys/types.h>
 #define _USE_MATH_DEFINES
 
 #include "RandUtils.hpp"
@@ -53,6 +54,14 @@ namespace Core
             return (x << k) | (x >> (32 - k));
         }
 
+        xorshift_random::xorshift_random(const uint32_t seed)
+        {
+            m_state[0] = rotl(seed, 3);
+            m_state[1] = rotl(seed, 7);
+            m_state[2] = rotl(seed, 11);
+            m_state[3] = rotl(seed, 13);
+        }
+
         uint32_t xorshift_random::next()
         {
             const uint32_t result = rotl(m_state[0] + m_state[3], 7) + m_state[0];;
@@ -77,7 +86,7 @@ namespace Core
 
         glm::vec2 Hammersley_Generator::next()
         {
-            return hammersley(m_random_sample_distribution.next(), kMaxSamples);
+            return hammersley(m_random_sample_distribution.next() , kMaxSamples);
         }
 
     }

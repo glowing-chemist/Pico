@@ -1,6 +1,7 @@
 #ifndef RAND_UTILS_HPP
 #define RAND_UTILS_HPP
 
+#include <limits>
 #include <random>
 
 #include "glm/glm.hpp"
@@ -41,15 +42,22 @@ namespace Core
         {
             public:
 
-                xorshift_random(const uint32_t seed1)
-                {
-                    m_state[0] = seed1;
-                    m_state[1] = 0;
-                    m_state[2] = 0;
-                    m_state[3] = 0;
-                }
+                xorshift_random(const uint32_t seed1);
 
                 uint32_t next();
+
+                // Operator to match the std random number generators.
+                uint32_t operator()() 
+                {
+                    return next();
+                }
+    
+                using result_type = uint32_t;
+
+                static constexpr result_type min() { return 0; }
+                static constexpr result_type max() { return std::numeric_limits<uint32_t>::max(); }
+
+                result_type g() { return next(); }
 
             private:
 
