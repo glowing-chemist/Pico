@@ -8,6 +8,7 @@
 #include "Core/LowerLevelImplicitShapesBVH.hpp"
 #include "Core/LowerLevelMeshBVH.hpp"
 #include "Render/BasicMaterials.hpp"
+#include "Util/ToneMappers.hpp"
 
 #include <algorithm>
 #include <numeric>
@@ -188,7 +189,6 @@ namespace Scene
                         break;
                 }
             }
-
             return false;
         };
 
@@ -222,6 +222,9 @@ namespace Scene
 
         for(auto& thread : handles)
             thread.wait();
+
+        // Apply denoising (TODO) and tonemapping
+        Util::reinhard_tone_mapping(params.m_Pixels, params.m_Height * params.m_Width);
     }
 
 
