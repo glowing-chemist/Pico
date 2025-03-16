@@ -2,6 +2,7 @@
 #define PICO_ASSERTS_HPP
 
 #include "glm/glm.hpp"
+#include <cstdio>
 
 #define PICO_LOG(f, ...) printf(f, __VA_ARGS__)
 
