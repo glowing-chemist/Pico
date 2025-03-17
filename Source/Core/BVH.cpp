@@ -4,8 +4,6 @@
 #include <algorithm>
 #include <array>
 
-#include "OctTree.hpp"
-
 #include "Core/Asserts.hpp"
 #include "LowerLevelBVH.hpp"
 
@@ -206,19 +204,7 @@ namespace Core
 #include "Core/UpperLevelBVH.hpp"
 
 template
-    class Core::Acceleration_Structures::OctTreeFactory<const Core::Acceleration_Structures::UpperLevelBVH::Entry*>;
-
-template
-    class Core::Acceleration_Structures::BVH<const Core::Acceleration_Structures::UpperLevelBVH::Entry*, 8>;
-
-template
     class Core::Acceleration_Structures::BVH<const Core::Acceleration_Structures::UpperLevelBVH::Entry*, 2>;
-
-template
-    class Core::Acceleration_Structures::OctTreeFactory<uint32_t>;
-
-template
-    class Core::Acceleration_Structures::BVH<uint32_t, 8>;
 
 template
     class Core::Acceleration_Structures::BVH<uint32_t, 2>;

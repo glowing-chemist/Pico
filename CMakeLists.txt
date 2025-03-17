@@ -19,7 +19,6 @@ set(SOURCE
 	Source/Core/LowerLevelMeshBVH.cpp
 	Source/Core/LowerLevelImplicitShapesBVH.cpp
 	Source/Core/AABB.cpp
-	Source/Core/OctTree.cpp
 	Source/Core/BVH.cpp
 	Source/Core/MaterialManager.cpp
 	Source/Core/vectorUtils.cpp

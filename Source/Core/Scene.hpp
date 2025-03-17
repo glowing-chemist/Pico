@@ -6,6 +6,7 @@
 #include "assimp/scene.h"
 
 #include "Image.hpp"
+#include "Core/BVH.hpp"
 #include "Core/ThreadPool.hpp"
 #include "Core/LowerLevelBVH.hpp"
 #include "Core/UpperLevelBVH.hpp"

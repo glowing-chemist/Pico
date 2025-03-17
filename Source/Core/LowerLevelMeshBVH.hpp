@@ -3,17 +3,12 @@
 
 #include "LowerLevelBVH.hpp"
 #include "Core/BVH.hpp"
-#include "Core/OctTree.hpp"
 
 #include "assimp/mesh.h"
 
 #include <vector>
 
-#ifdef USE_OCTTREE
-#define LOWER_ACCELERATION_STRUCTURE OctTree<uint32_t>
-#else
 #define LOWER_ACCELERATION_STRUCTURE BVH<uint32_t, 2>
-#endif
 
 namespace Core
 {
@@ -76,7 +71,6 @@ namespace Core
                 uint32_t* m_indicies;
             };
 
-            // Just store the triangle index in the octtree and let the intersector do the rest.
             LOWER_ACCELERATION_STRUCTURE* m_acceleration_structure;
 
             AABB mAABB;

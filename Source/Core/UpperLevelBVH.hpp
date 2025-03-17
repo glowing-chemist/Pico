@@ -2,8 +2,8 @@
 #define UPPER_LEVEL_BVH_HPP
 
 #include "AABB.hpp"
+#include "BVH.hpp"
 #include "LowerLevelBVH.hpp"
-#include "OctTree.hpp"
 #include "Render/BSRDF.hpp"
 
 #include "glm/mat4x4.hpp"
@@ -11,11 +11,7 @@
 #include <memory>
 #include <vector>
 
-#ifdef USE_OCTTREE
-#define UPPER_ACCELERATION_STRUCTURE OctTree<const Entry*>
-#else
 #define UPPER_ACCELERATION_STRUCTURE BVH<const Entry*, 2>
-#endif
 
 namespace Core
 {

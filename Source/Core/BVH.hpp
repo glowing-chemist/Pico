@@ -6,8 +6,6 @@
 
 #include "AABB.hpp"
 
-//#define USE_OCTTREE
-
 namespace Core
 {
     namespace Acceleration_Structures
