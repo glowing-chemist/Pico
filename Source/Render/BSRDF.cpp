@@ -5,7 +5,6 @@
 #include "Core/Asserts.hpp"
 #include "Core/LowerLevelBVH.hpp"
 
-
 namespace Render
 {
 

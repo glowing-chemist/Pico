@@ -2,6 +2,7 @@
 #define LOWER_LEVEL_BVH_HPP
 
 #include "AABB.hpp"
+#include "Core/MaterialManager.hpp"
 #include "Core/RandUtils.hpp"
 #include "Render/BSRDF.hpp"
 
@@ -18,6 +19,8 @@ namespace Core
             glm::vec3 mNormal;
             glm::vec4 mVertexColour;
             Render::BSRDF* m_bsrdf;
+
+            float direct_lighting_pdf(const glm::vec3& wi, const glm::vec3& wo, const EvaluatedMaterial&) const;
         };
 
         class LowerLevelBVH

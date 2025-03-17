@@ -1,9 +1,30 @@
 #include "Integrators.hpp"
+#include "Core/LowerLevelBVH.hpp"
+#include "Core/MaterialManager.hpp"
 #include "Render/SolidAngle.hpp"
 #include "Core/vectorUtils.hpp"
 #include "Core/Image.hpp"
 #include "Core/Asserts.hpp"
 #include "glm/ext.hpp"
+#include "glm/geometric.hpp"
+
+// Goes here for now, but should probably find somwhere better....
+namespace Core
+{
+    namespace Acceleration_Structures
+    {
+        float InterpolatedVertex::direct_lighting_pdf(const glm::vec3& wi, const glm::vec3& wo, const EvaluatedMaterial& mat) const
+        {
+            const glm::mat3x3 tangent_transform = Core::TangentSpace::construct_world_to_tangent_transform(wi, mNormal);
+    
+            const glm::vec3 tangent_wo = tangent_transform * wo;
+            glm::vec3 H = glm::normalize(wi + wo);
+            H = tangent_transform * H;
+
+            return m_bsrdf->pdf(tangent_wo, H, mat.roughness, mat.get_reflectance());
+        }
+    }
+}
 
 namespace Render
 {
@@ -26,11 +47,14 @@ namespace Render
     {
     }
 
-    bool Monte_Carlo_Integrator::sample_direct_lighting(const Core::Acceleration_Structures::InterpolatedVertex& frag, glm::vec3& radiance, float& pdf)
+    bool Monte_Carlo_Integrator::sample_direct_lighting(const Core::Acceleration_Structures::InterpolatedVertex& frag, const glm::vec3& wi, glm::vec3& radiance, float& pdf)
     {
         const auto bsrdf_type = frag.m_bsrdf->get_type();
         if(bsrdf_type != Render::BSRDF_Type::kBTDF && bsrdf_type != Render::BSRDF_Type::kLight)
         {
+
+            const Core::EvaluatedMaterial mat = m_material_manager.evaluate_material(frag.m_bsrdf->get_material_id(), frag.mUV);
+
             // account for a special cased sunlight
             const uint32_t light_count = m_lights.size() + (m_sky_desc.m_use_sun ? 1 : 0);
             uint32_t light_index = mDistribution(mGenerator) * light_count;
@@ -46,9 +70,7 @@ namespace Render
                 Core::Acceleration_Structures::InterpolatedVertex point_hit;
                 if(!m_bvh.get_closest_intersection(direct_lighting_ray, &point_hit))
                 {
-                    const float cos_theta = glm::saturate<float, glm::packed_highp>(glm::dot(frag.mNormal, -m_sky_desc.m_sun_direction));
-
-                    pdf = (1.0f / light_count) * cos_theta;
+                    pdf = frag.direct_lighting_pdf(wi, -m_sky_desc.m_sun_direction, mat);
                     radiance = m_sky_desc.m_sun_colour;
                     return true;
                 }
@@ -92,9 +114,7 @@ namespace Render
                     {
                         const Core::EvaluatedMaterial light_material = m_material_manager.evaluate_material(point_hit.m_bsrdf->get_material_id(), point_hit.mUV);
 
-                        const float cos_theta = glm::dot(frag.mNormal, to_light);
-
-                        pdf = (1.0f / light_count) * cos_theta * selected_pdf;
+                        pdf =  frag.direct_lighting_pdf(wi, to_light, mat);
                         radiance = light_material.emissive;
 
                         return true;
@@ -154,7 +174,7 @@ namespace Render
         // Add direct lighting contribution(s)
         glm::vec3 direct_radiance;
         float direct_pdf;
-        if(sample_direct_lighting(frag, direct_radiance, direct_pdf))
+        if(sample_direct_lighting(frag, -ray.mDirection, direct_radiance, direct_pdf))
         {
             ray.m_payload += ray.m_throughput * direct_pdf * direct_radiance * sample.energy;
         }
