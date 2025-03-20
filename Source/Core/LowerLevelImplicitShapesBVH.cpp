@@ -104,9 +104,8 @@ namespace Core
 
             face_offset[zero_axis] = 0.0f;
             face_offset[(zero_axis + 1) % 3] = Xk.x;
-            face_offset[(zero_axis + 1) % 3] = Xk.y;
+            face_offset[(zero_axis + 2) % 3] = Xk.y;
 
-            // Incorrect, TODO fix this
             sample_point = (corner * 0.5f)  + (-corner * face_offset);
             pdf = 1.0f;
 
