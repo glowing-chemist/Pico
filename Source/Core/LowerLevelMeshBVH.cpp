@@ -118,7 +118,7 @@ namespace Core
             PICO_LOG("Generating sampling data for %s. %zu faces generated\n", m_name.c_str(), m_triangle_area.size());
         }
 
-        bool LowerLevelMeshBVH::sample_geometry(Rand::Hammersley_Generator& rand, const glm::vec3&, const glm::vec3&, glm::vec3& sample_point, float& pdf)
+        bool LowerLevelMeshBVH::sample_geometry(Rand::Hammersley_Generator& rand, glm::vec3& sample_point, float& pdf)
         {
             const glm::vec2 xi = rand.next();
             uint32_t triangle_index = xi.y * m_triangle_area.size();

@@ -31,7 +31,7 @@ namespace Core
 
             virtual void generate_sampling_data() final;
 
-            virtual bool sample_geometry(Core::Rand::Hammersley_Generator& Xi, const glm::vec3& point, const glm::vec3& N,  glm::vec3&, float&) final;
+            virtual bool sample_geometry(Core::Rand::Hammersley_Generator& Xi, glm::vec3&, float&) final;
 
         private:
 

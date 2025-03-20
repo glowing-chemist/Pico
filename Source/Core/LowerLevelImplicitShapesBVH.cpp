@@ -56,17 +56,12 @@ namespace Core
             return AABB{{-mRadius, -mRadius, -mRadius, 1.0f}, {mRadius, mRadius, mRadius, 1.0f}};
         }
 
-        bool LowerLevelSphereBVH::sample_geometry(Core::Rand::Hammersley_Generator& rand, const glm::vec3& point, const glm::vec3& N, glm::vec3& sample_point, float& pdf)
+        bool LowerLevelSphereBVH::sample_geometry(Core::Rand::Hammersley_Generator& rand, glm::vec3& sample_point, float& pdf)
         {
             const glm::vec3 unit_sphere_point = Core::Rand::uniform_sample_sphere(rand.next());
             const glm::vec3 sphere_point = mRadius * unit_sphere_point;
 
-            const glm::vec3 to_point = glm::normalize(sphere_point - point);
-            if(glm::dot(to_point, N) >= 0.0f)
-                sample_point = sphere_point;
-            else
-                sample_point = -sphere_point;
-
+            sample_point = sphere_point;
             pdf = 1.0f;
 
             return true;
@@ -95,7 +90,7 @@ namespace Core
             return true;
         }
 
-        bool LowerLevelCube::sample_geometry(Core::Rand::Hammersley_Generator& rand, const glm::vec3&, const glm::vec3&, glm::vec3& sample_point, float& pdf)
+        bool LowerLevelCube::sample_geometry(Core::Rand::Hammersley_Generator& rand, glm::vec3& sample_point, float& pdf)
         {
             const glm::vec2 Xi = rand.next();
             const glm::vec2 Xj = rand.next();

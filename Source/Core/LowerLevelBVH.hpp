@@ -37,7 +37,7 @@ namespace Core
             // Light sampling methods.
             virtual void generate_sampling_data() = 0;
 
-            virtual bool sample_geometry(Core::Rand::Hammersley_Generator&, const glm::vec3& point, const glm::vec3& N, glm::vec3& sample_point, float& pdf) = 0;
+            virtual bool sample_geometry(Core::Rand::Hammersley_Generator&, glm::vec3& sample_point, float& pdf) = 0;
         };
 
     }
