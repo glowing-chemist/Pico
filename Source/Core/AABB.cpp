@@ -30,9 +30,11 @@ namespace Core
 
     uint32_t maximum_component_index(const glm::vec3& v)
     {
-        if((v.x >= v.y) && (v.x >= v.z))
+        const glm::vec3 vec = glm::abs(v);
+
+        if((vec.x >= vec.y) && (vec.x >= vec.z))
             return 0;
-        else if((v.y >= v.x) && (v.y >= v.z))
+        else if((vec.y >= vec.x) && (vec.y >= vec.z))
             return 1;
         else
             return 2;
@@ -43,6 +45,7 @@ namespace Core
         Ray newRay{};
         newRay.mOrigin = transform * ray.mOrigin;
         newRay.mDirection = glm::mat3x3(transform) * ray.mDirection;
+        newRay.mInverseDirection = glm::vec3(1.0f, 1.0f, 1.0f) / newRay.mDirection;
         newRay.mLenght = ray.mLenght;
 
         return newRay;

@@ -43,10 +43,15 @@ namespace Scene
         Json::Value sceneRoot;
         sceneFile >> sceneRoot;
 
-        std::unique_ptr<Core::Acceleration_Structures::LowerLevelBVH> sphere = std::make_unique<Core::Acceleration_Structures::LowerLevelSphereBVH>(1.0f);
-        mInstanceIDs["Sphere"] = m_lowerLevelBVhs.size();
-        m_lowerLevelBVhs.push_back(std::move(sphere));
+        {
+            std::unique_ptr<Core::Acceleration_Structures::LowerLevelBVH> sphere = std::make_unique<Core::Acceleration_Structures::LowerLevelSphereBVH>(0.5f);
+            mInstanceIDs["Sphere"] = m_lowerLevelBVhs.size();
+            m_lowerLevelBVhs.push_back(std::move(sphere));
 
+            std::unique_ptr<Core::Acceleration_Structures::LowerLevelCube> cube = std::make_unique<Core::Acceleration_Structures::LowerLevelCube>();
+            mInstanceIDs["Cube"] = m_lowerLevelBVhs.size();
+            m_lowerLevelBVhs.push_back(std::move(cube));
+        }
         std::array<std::string, 5> sections{"GLOBALS", "MESH", "MATERIALS", "INSTANCE",
                                             "CAMERA"};
         std::array<void(Scene::*)(const std::string&, const Json::Value&), 5> sectionFunctions

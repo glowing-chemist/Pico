@@ -29,6 +29,26 @@ namespace Core
             float mRadius;
         };
 
+        class LowerLevelCube : public LowerLevelBVH
+        {
+        public:
+
+            LowerLevelCube();      
+
+            virtual bool calculate_intersection(Ray&, InterpolatedVertex* result) const final;
+
+            virtual AABB get_bounds() const final { return m_box; }
+
+            virtual void generate_sampling_data() final {}
+
+            virtual bool sample_geometry(Core::Rand::Hammersley_Generator&, const glm::vec3&, const glm::vec3&, glm::vec3&, float&) final;
+
+
+        private:
+
+            AABB m_box;
+
+        };
 
     }
 
