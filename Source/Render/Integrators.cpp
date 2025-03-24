@@ -182,12 +182,8 @@ namespace Render
         {
             return;
         }
-        PICO_ASSERT_VALID(sample.L);
-        PICO_ASSERT_NORMALISED(sample.L);
-        ray.m_throughput *= sample.P * sample.energy;
 
         // kill off random rays here for russian roulette sampling.
-        if(depth > 2)
         {
             const float inverse_kill_rate = std::max(std::max(ray.m_throughput.x, ray.m_throughput.y), ray.m_throughput.z);
             if(mDistribution(mGenerator) > inverse_kill_rate)
@@ -197,6 +193,11 @@ namespace Render
 
             ray.m_throughput *= 1.0f / inverse_kill_rate;
         }
+        
+        PICO_ASSERT_VALID(sample.L);
+        PICO_ASSERT_NORMALISED(sample.L);
+        ray.m_throughput *= sample.P * sample.energy;
+
 
         ray.mOrigin = frag.mPosition + glm::vec4(0.01f * (ray.inside_geometry() ? -frag.mNormal : frag.mNormal), 0.0f);
         ray.mDirection = sample.L;
