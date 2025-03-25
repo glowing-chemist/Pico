@@ -108,7 +108,7 @@ namespace Render
                     {
                         const Core::EvaluatedMaterial light_material = m_material_manager.evaluate_material(point_hit.m_bsrdf->get_material_id(), point_hit.mUV);
 
-                        pdf =  frag.direct_lighting_pdf(wi, to_light, mat);
+                        pdf =  direct_lighting_pdf(frag, wi, to_light, mat);
                         radiance = light_material.emissive;
 
                         return true;
