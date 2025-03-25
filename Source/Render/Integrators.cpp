@@ -8,21 +8,17 @@
 #include "glm/ext.hpp"
 #include "glm/geometric.hpp"
 
-// Goes here for now, but should probably find somwhere better....
-namespace Core
+namespace 
 {
-    namespace Acceleration_Structures
+    float direct_lighting_pdf(const Core::Acceleration_Structures::InterpolatedVertex& frag, const glm::vec3& wi, const glm::vec3& wo, const Core::EvaluatedMaterial& mat)
     {
-        float InterpolatedVertex::direct_lighting_pdf(const glm::vec3& wi, const glm::vec3& wo, const EvaluatedMaterial& mat) const
-        {
-            const glm::mat3x3 tangent_transform = Core::TangentSpace::construct_world_to_tangent_transform(wi, mNormal);
+        const glm::mat3x3 tangent_transform = Core::TangentSpace::construct_world_to_tangent_transform(wi, frag.mNormal);
     
-            const glm::vec3 tangent_wo = tangent_transform * wo;
-            glm::vec3 H = glm::normalize(wi + wo);
-            H = tangent_transform * H;
+        const glm::vec3 tangent_wo = tangent_transform * wo;
+        glm::vec3 H = glm::normalize(wi + wo);
+        H = tangent_transform * H;
 
-            return m_bsrdf->pdf(tangent_wo, H, mat.roughness, mat.get_reflectance());
-        }
+        return frag.m_bsrdf->pdf(tangent_wo, H, mat.roughness, mat.get_reflectance());
     }
 }
 
@@ -70,7 +66,7 @@ namespace Render
                 Core::Acceleration_Structures::InterpolatedVertex point_hit;
                 if(!m_bvh.get_closest_intersection(direct_lighting_ray, &point_hit))
                 {
-                    pdf = frag.direct_lighting_pdf(wi, -m_sky_desc.m_sun_direction, mat);
+                    pdf = direct_lighting_pdf(frag, wi, -m_sky_desc.m_sun_direction, mat);
                     radiance = m_sky_desc.m_sun_colour;
                     return true;
                 }
