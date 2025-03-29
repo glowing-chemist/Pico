@@ -142,7 +142,7 @@ namespace Render
 
             if(glm::any(glm::isinf(result)) || glm::any(glm::isnan(result)))
                 result = glm::vec3(1.0f, 0.4, 0.7);
-
+            
             return result;
         }
         else
@@ -189,11 +189,10 @@ namespace Render
 
             ray.m_throughput *= 1.0f / inverse_kill_rate;
         }
-        
+
         PICO_ASSERT_VALID(sample.L);
         PICO_ASSERT_NORMALISED(sample.L);
         ray.m_throughput *= sample.P * sample.energy;
-
 
         ray.mOrigin = frag.mPosition + glm::vec4(0.01f * (ray.inside_geometry() ? -frag.mNormal : frag.mNormal), 0.0f);
         ray.mDirection = sample.L;
@@ -206,15 +205,4 @@ namespace Render
         else
             ray.m_payload += ray.m_throughput * glm::vec3(m_sky_desc.m_sky_box->sample4(sample.L));
     }
-
-    bool Monte_Carlo_Integrator::weighted_random_ray_type(const Core::EvaluatedMaterial& mat)
-    {
-        const float diffuse_weight = mat.diffuse_magnitude();
-        const float specular_weight = mat.specular_magnitude();
-
-        const float rand = mDistribution(mGenerator);
-
-        return rand <= (specular_weight / (specular_weight + diffuse_weight));
-    }
-
 }
