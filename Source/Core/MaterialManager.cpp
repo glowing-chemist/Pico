@@ -25,9 +25,9 @@ namespace Core
         return newID;
     }
 
-    EvaluatedMaterial MaterialManager::evaluate_material(const MaterialID id, const glm::vec2& uv)
+    EvaluatedMaterial MaterialManager::evaluate_material(const MaterialID id, const glm::vec2& uv) const
     {
-        std::unique_ptr<Material>& mat = mMaterials[id];
+        const std::unique_ptr<Material>& mat = mMaterials[id];
 
         return mat->evaluate_material(uv);
     }

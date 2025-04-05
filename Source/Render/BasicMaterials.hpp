@@ -72,7 +72,7 @@ namespace Render
         SmoothMetalMaterial(const glm::vec3 colour) :
             m_colour(colour) {}
 
-        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2& uv) final;
+        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2& uv) const final;
 
         virtual bool              is_light() const final
         {
@@ -92,7 +92,7 @@ namespace Render
         RoughMetalMaterial(const glm::vec3 colour) :
             m_colour(colour) {}
 
-        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2& uv) final;
+        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2& uv) const final;
 
         virtual bool              is_light() const final
         {
@@ -111,7 +111,7 @@ namespace Render
         MattPlasticMaterial(const glm::vec3 colour) :
             m_colour(colour) {}
 
-        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2& uv) final;
+        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2& uv) const final;
 
         virtual bool              is_light() const final
         {
@@ -130,7 +130,7 @@ namespace Render
 
         EmmissiveMaterial() = default;
 
-        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2& uv) final;
+        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2& uv) const final;
 
         virtual bool              is_light() const final
         {
@@ -143,7 +143,7 @@ namespace Render
     public:
         ConstantMetalnessRoughnessMaterial(const glm::vec3& albedo, const float metalness, const float roughness, const glm::vec3& emissive);
 
-        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2&) final
+        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2&) const final
         {
             return mMaterial;
         }
@@ -163,7 +163,7 @@ namespace Render
     public:
         ConstantDiffuseSpecularMaterial(const glm::vec3& diffuse, const glm::vec3& specular, const float gloss, const glm::vec3& emissive);
 
-        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2&) final
+        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2&) const final
         {
             return mMaterial;
         }
@@ -184,7 +184,7 @@ namespace Render
     public:
         ConstantTransparentDiffuseSpecularMaterial(const glm::vec3& diffuse, const glm::vec3& specular, const float gloss, const float transparency, const float IoR);
 
-        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2&) final
+        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2&) const final
         {
             return mMaterial;
         }
@@ -205,7 +205,7 @@ namespace Render
     public:
         ConstantTransparentMetalnessRoughnessMaterial(const glm::vec3& albedo, const float metalness, const float roughness, const float transparency, const float IoR);
 
-        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2&) final
+        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2&) const final
         {
             return mMaterial;
         }
@@ -243,7 +243,7 @@ namespace Render
 
         virtual void make_nonresident() final;
 
-        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2& uv) final;
+        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2& uv) const final;
 
         virtual bool              is_light() const final
         {
@@ -278,7 +278,7 @@ namespace Render
 
         virtual void make_nonresident() final;
 
-        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2& uv) final;
+        virtual Core::EvaluatedMaterial evaluate_material(const glm::vec2& uv) const final;
 
         virtual bool              is_light() const final
         {

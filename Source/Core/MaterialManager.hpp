@@ -54,7 +54,7 @@ namespace Core
         Material() = default;
         virtual ~Material() = default;
 
-        virtual EvaluatedMaterial evaluate_material(const glm::vec2& uv) = 0;
+        virtual EvaluatedMaterial evaluate_material(const glm::vec2& uv) const = 0;
 
         virtual bool              is_light() const = 0;
     };
@@ -73,7 +73,7 @@ namespace Core
 
         MaterialID add_material(std::unique_ptr<Material>&);
 
-        EvaluatedMaterial evaluate_material(const MaterialID id, const glm::vec2& uv);
+        EvaluatedMaterial evaluate_material(const MaterialID id, const glm::vec2& uv) const;
 
         const std::unique_ptr<Material>& get_material(const MaterialID id) const
         {

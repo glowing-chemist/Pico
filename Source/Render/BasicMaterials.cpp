@@ -5,22 +5,22 @@
 namespace Render
 {
 
-    Core::EvaluatedMaterial SmoothMetalMaterial::evaluate_material(const glm::vec2&)
+    Core::EvaluatedMaterial SmoothMetalMaterial::evaluate_material(const glm::vec2&) const
     {
         return {{0.04f, 0.04f, 0.04f}, {m_colour}, 0.05f, {0.f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
     }
 
-    Core::EvaluatedMaterial RoughMetalMaterial::evaluate_material(const glm::vec2&)
+    Core::EvaluatedMaterial RoughMetalMaterial::evaluate_material(const glm::vec2&) const
     {
         return {{0.04f, 0.04f, 0.04f}, {m_colour}, 0.8f, {0.f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
     }
 
-    Core::EvaluatedMaterial MattPlasticMaterial::evaluate_material(const glm::vec2&)
+    Core::EvaluatedMaterial MattPlasticMaterial::evaluate_material(const glm::vec2&) const
     {
         return {m_colour, {0.04f, 0.04f, 0.04f}, 0.8f, {0.f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
     }
 
-    Core::EvaluatedMaterial EmmissiveMaterial::evaluate_material(const glm::vec2&)
+    Core::EvaluatedMaterial EmmissiveMaterial::evaluate_material(const glm::vec2&) const
     {
         return {{0.8f, 0.8f, 0.8f}, {0.0f, 0.0f, 0.0f}, 0.8f, {0.f, 1.0f, 0.0f}, {0.5f, 0.5f, 0.5f}};
     }
@@ -149,7 +149,7 @@ namespace Render
             mEmmissiveTexture->make_nonresident();
     }
 
-    Core::EvaluatedMaterial MetalnessRoughnessMaterial::evaluate_material(const glm::vec2& uv)
+    Core::EvaluatedMaterial MetalnessRoughnessMaterial::evaluate_material(const glm::vec2& uv) const
     {
         Core::EvaluatedMaterial material{{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, 1.0f, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
 
@@ -255,7 +255,7 @@ namespace Render
             mEmmissiveTexture->make_nonresident();
     }
 
-    Core::EvaluatedMaterial SpecularGlossMaterial::evaluate_material(const glm::vec2& uv)
+    Core::EvaluatedMaterial SpecularGlossMaterial::evaluate_material(const glm::vec2& uv) const
     {
         Core::EvaluatedMaterial material{{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, 1.0f, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
 
