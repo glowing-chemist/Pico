@@ -34,6 +34,8 @@ set(SOURCE
 	Source/Util/Options.cpp
 	Source/Util/FrameBuffer.cpp
 	Source/Util/ToneMappers.cpp
+	Source/Util/Denoisers.cpp
+	Source/Util/Tiler.hpp
 
 	# used for texture loading
 	ThirdParty/stb_image/stb_image.cpp
