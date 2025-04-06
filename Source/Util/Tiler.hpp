@@ -40,7 +40,7 @@ namespace Util
                     {
                         clamped_tile_size.y -= (y + m_tile_size.y) - m_resolution.y;
                     }
-                    handles.push_back(m_thread_pool.add_task(f, glm::uvec2(x, y), clamped_tile_size, m_rng.next(), a...));
+                    handles.push_back(m_thread_pool.add_task(f, glm::uvec2(x, y), clamped_tile_size, m_resolution, m_rng.next(), a...));
                 }
             }
 

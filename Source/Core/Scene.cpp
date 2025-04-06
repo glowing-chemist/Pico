@@ -142,7 +142,7 @@ namespace Scene
 
     void Scene::render_scene_to_memory(const Camera& camera, const RenderParams& params, const bool* should_quit)
     {
-        auto trace_rays_for_tile = [&](const glm::uvec2 start, const glm::uvec2& tile_size, const uint32_t random_seed, const Camera& camera) -> bool
+        auto trace_rays_for_tile = [&](const glm::uvec2 start, const glm::uvec2& tile_size, const glm::uvec2& resolution, const uint32_t random_seed, const Camera& camera) -> bool
         {
             Core::Rand::xorshift_random random_generator(random_seed);
 
@@ -150,7 +150,7 @@ namespace Scene
             for(uint32_t tile_row = 0; tile_row < tile_size.y; ++tile_row)
             {
                 auto row_start = std::begin(pixel_indicies) + (tile_row * tile_size.x);
-                std::iota(row_start, row_start + tile_size.x, ((start.y + tile_row) * params.m_Width) + start.x);
+                std::iota(row_start, row_start + tile_size.x, ((start.y + tile_row) * resolution.x) + start.x);
             }
             std::shuffle(std::begin(pixel_indicies), std::end(pixel_indicies), random_generator);
 
@@ -166,7 +166,7 @@ namespace Scene
                     continue;
                 }
 
-                const glm::uvec2 pixel_location = glm::uvec2(flat_location % params.m_Width, flat_location / params.m_Width);
+                const glm::uvec2 pixel_location = glm::uvec2(flat_location % resolution.x, flat_location / resolution.x);
 
                 Render::Monte_Carlo_Integrator integrator(m_bvh, m_material_manager, m_lights, m_sky_desc, random_generator.next());
 
@@ -249,13 +249,13 @@ namespace Scene
         results.diffuse = new glm::vec3[res.x * res.y];
 
         auto trace_rays_for_tile = [this](const glm::uvec2 start, 
-                                       const glm::uvec2& tile_size, 
-                                       const uint32_t, 
-                                       const Camera& camera, 
-                                       const glm::uvec2& res,
-                                       glm::vec3* normal,
-                                       glm::vec3* position,
-                                       glm::vec3* diffuse) -> bool
+                                        const glm::uvec2& tile_size,
+                                        const glm::uvec2& res,
+                                        const uint32_t, 
+                                        const Camera& camera, 
+                                        glm::vec3* normal,
+                                        glm::vec3* position,
+                                        glm::vec3* diffuse) -> bool
         {
             for(uint32_t x = start.x; x < start.x + tile_size.x; ++x)
             {
@@ -284,7 +284,7 @@ namespace Scene
             return true;
         };
         Util::Tiler tiler(m_threadPool, random_generator, res, glm::uvec2(64, 64));
-        tiler.execute_over_surface(trace_rays_for_tile, cam, res, results.normals, results.positions, results.diffuse);
+        tiler.execute_over_surface(trace_rays_for_tile, cam, results.normals, results.positions, results.diffuse);
 
         return results;
     }

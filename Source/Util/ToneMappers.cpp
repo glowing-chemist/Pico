@@ -20,9 +20,9 @@ namespace Util
 
         const auto apply_tonemap = [](  const glm::uvec2 start, 
                                         const glm::uvec2& tile_size, 
+                                        const glm::uvec2& resolution,
                                         const uint32_t,
                                         glm::vec3* pixels,
-                                        const glm::uvec2& resolution,
                                         const float white_point)
         {
             for(uint32_t x = start.x; x < start.x + tile_size.x; ++x)
@@ -40,6 +40,6 @@ namespace Util
             return true;
         };
 
-        tiler.execute_over_surface(apply_tonemap, pixels, resolution, white_point);
+        tiler.execute_over_surface(apply_tonemap, pixels, white_point);
     }
 }
