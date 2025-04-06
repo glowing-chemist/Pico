@@ -1,15 +1,13 @@
 #include "ToneMappers.hpp"
 #include "Core/AABB.hpp"
 
-namespace 
+namespace Util
 {
     float get_luminance(const glm::vec3& colour)
     {
         return glm::dot(colour, glm::vec3(0.2126f, 0.587f, 0.114f));    
     }
-}
-namespace Util
-{
+
     void reinhard_tone_mapping(glm::vec3* pixels, const uint32_t pixel_count)
     {
         float white_point = 0.0f;

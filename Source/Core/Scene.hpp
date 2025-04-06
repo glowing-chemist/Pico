@@ -2,6 +2,7 @@
 #define RAY_TRACING_SCENE_HPP
 
 #include "json/json.h"
+#include "Core/RandUtils.hpp"
 #include "assimp/Importer.hpp"
 #include "assimp/scene.h"
 
@@ -33,6 +34,8 @@ namespace Scene
         float    m_maxVariance;
         uint32_t m_Height;
         uint32_t m_Width;
+        bool     m_tonemap;
+        bool     m_denoise;
 
         glm::vec3* m_Pixels;
         uint32_t*  m_SampleCount;
@@ -76,6 +79,15 @@ namespace Scene
         }
 
     private:
+
+        struct denoiser_inputs
+        {
+            glm::vec3* normals;
+            glm::vec3* positions;
+            glm::vec3* diffuse;
+        };
+
+        denoiser_inputs generate_denoiser_inputs(const Camera&, Core::Rand::xorshift_random random_generator, const glm::uvec2&) const;
 
         // Scene loading functions
         void add_mesh(const std::string& name, const Json::Value& entry);

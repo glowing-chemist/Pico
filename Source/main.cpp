@@ -9,6 +9,7 @@
 
 #include "assimp/Importer.hpp"
 #include "assimp/postprocess.h"
+#include <execution>
 
 void framebuffer_size_callback(GLFWwindow*, int width, int height)
 {
@@ -32,7 +33,7 @@ int main(int argc, const char **argv)
         glm::ivec2 resolution = options.get_option<Util::Option::kResolution>();
 
         frame_memory = new glm::vec3[resolution.x * resolution.y];
-        memset(frame_memory, ~0, resolution.x * resolution.y * 4 * 3);
+        memset(frame_memory, 0, resolution.x * resolution.y * 4 * 3);
 
         sample_count_buffer = new uint32_t[resolution.x * resolution.y];
         memset(sample_count_buffer, 0, resolution.x * resolution.y * 4);
@@ -71,12 +72,14 @@ int main(int argc, const char **argv)
         Scene::RenderParams params{};
         params.m_Height = resolution.y;
         params.m_Width = resolution.x;
-        params.m_maxRayDepth = 10;
+        params.m_maxRayDepth = 32;
         params.m_maxSamples = sample_count;
         params.m_Pixels = frame_memory;
         params.m_SampleCount = sample_count_buffer;
         params.m_variance = variance;
         params.m_maxVariance = 0.0f;
+        params.m_denoise = true;
+        params.m_tonemap = false;
 
         const glm::vec3 camera_pos = options.get_option<Util::Option::kCameraPosition>();
         const glm::vec3 camera_dir = options.get_option<Util::Option::kCameraDirection>();

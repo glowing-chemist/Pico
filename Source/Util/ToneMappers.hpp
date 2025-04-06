@@ -6,6 +6,8 @@
 
 namespace Util
 {
+    float get_luminance(const glm::vec3&);
+
     void reinhard_tone_mapping(glm::vec3* pixels, const uint32_t pixel_count);
 }
 

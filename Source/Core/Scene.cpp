@@ -1,7 +1,8 @@
 #include "Core/Scene.hpp"
+#include "Core/AABB.hpp"
 #include "Core/Camera.hpp"
+#include "Core/LowerLevelBVH.hpp"
 #include "Core/RandUtils.hpp"
-#include "Core/vectorUtils.hpp"
 #include "Core/Asserts.hpp"
 #include "Render/Integrators.hpp"
 #include "Render/BasicMaterials.hpp"
@@ -9,6 +10,8 @@
 #include "Core/LowerLevelMeshBVH.hpp"
 #include "Render/BasicMaterials.hpp"
 #include "Util/ToneMappers.hpp"
+#include "Util/Denoisers.hpp"
+#include "Util/Tiler.hpp"
 
 #include <algorithm>
 #include <numeric>
@@ -139,7 +142,7 @@ namespace Scene
 
     void Scene::render_scene_to_memory(const Camera& camera, const RenderParams& params, const bool* should_quit)
     {
-        auto trace_rays_for_tile = [&](const Camera& camera, const glm::uvec2 start, const glm::uvec2& tile_size, const uint32_t random_seed) -> bool
+        auto trace_rays_for_tile = [&](const glm::uvec2 start, const glm::uvec2& tile_size, const uint32_t random_seed, const Camera& camera) -> bool
         {
             Core::Rand::xorshift_random random_generator(random_seed);
 
@@ -200,36 +203,31 @@ namespace Scene
         std::random_device random_device{};
         Core::Rand::xorshift_random random_generator(random_device());
 
-        const glm::vec2 tile_size = {64, 64};
-        const uint32_t tile_count_x = params.m_Width / tile_size.x;
-        const uint32_t tile_count_y = params.m_Height / tile_size.y;
-        const uint32_t tile_count = tile_count_x * tile_count_y;
+        Util::Tiler tiler(m_threadPool, random_generator, glm::uvec2(params.m_Width, params.m_Height), glm::uvec2(64, 64));
+        tiler.execute_over_surface(trace_rays_for_tile, camera);
 
-        std::vector<std::future<bool>> handles{};
-        handles.reserve(tile_count);
-
-        for(uint32_t x = 0; x < params.m_Width; x += tile_size.x)
+        // Apply denoising and tonemapping
+        glm::vec3* tone_mapping_input = params.m_Pixels;
+        if(params.m_denoise)
         {
-            for(uint32_t y = 0; y < params.m_Height; y += tile_size.y)
-            {
-                glm::uvec2 clamped_tile_size = tile_size;
-                if((x + tile_size.x) > params.m_Width)
-                {
-                    clamped_tile_size.x -= (x + tile_size.x) - params.m_Width;
-                }
-                if((y + tile_size.y) > params.m_Height)
-                {
-                    clamped_tile_size.y -= (y + tile_size.y) - params.m_Height;
-                }
-                handles.push_back(m_threadPool.add_task(trace_rays_for_tile, camera, glm::uvec2(x, y), clamped_tile_size, random_generator.next()));
-            }
+            denoiser_inputs denoising = generate_denoiser_inputs(camera, random_generator, glm::uvec2(params.m_Width, params.m_Height));
+            tone_mapping_input = Util::atrous_denoise(  params.m_Pixels,
+                                                        denoising.normals,
+                                                        denoising.positions,
+                                                        denoising.diffuse,
+                                                        glm::uvec2(params.m_Width, params.m_Height));
         }
 
-        for(auto& thread : handles)
-            thread.wait();
+        if(params.m_tonemap)
+        {
+            Util::reinhard_tone_mapping(tone_mapping_input, params.m_Height * params.m_Width);
+        }
 
-        // Apply denoising (TODO) and tonemapping
-        Util::reinhard_tone_mapping(params.m_Pixels, params.m_Height * params.m_Width);
+        if(params.m_denoise)
+        {
+            std::memcpy(params.m_Pixels, tone_mapping_input, sizeof(glm::vec3) * params.m_Width * params.m_Height);
+            delete[] tone_mapping_input;
+        }
     }
 
 
@@ -243,6 +241,53 @@ namespace Scene
         stbi_write_hdr(path, params.m_Width, params.m_Height, 4, reinterpret_cast<const float*>(params.m_Pixels));
     }
 
+    Scene::denoiser_inputs Scene::generate_denoiser_inputs(const Camera& cam, Core::Rand::xorshift_random random_generator, const glm::uvec2& res) const
+    {
+        denoiser_inputs results{};
+        results.normals = new glm::vec3[res.x * res.y];
+        results.positions = new glm::vec3[res.x * res.y];
+        results.diffuse = new glm::vec3[res.x * res.y];
+
+        auto trace_rays_for_tile = [this](const glm::uvec2 start, 
+                                       const glm::uvec2& tile_size, 
+                                       const uint32_t, 
+                                       const Camera& camera, 
+                                       const glm::uvec2& res,
+                                       glm::vec3* normal,
+                                       glm::vec3* position,
+                                       glm::vec3* diffuse) -> bool
+        {
+            for(uint32_t x = start.x; x < start.x + tile_size.x; ++x)
+            {
+                for(uint32_t y = start.y; y < start.y + tile_size.y; ++y)
+                {
+                    const uint32_t flat_location = (y * res.x) + x;
+                    const glm::uvec2 pixel_location = glm::uvec2(x, y);
+
+                    Core::Ray ray = camera.generate_ray(glm::vec2(0.0f, 0.0f), pixel_location);
+                    Core::Acceleration_Structures::InterpolatedVertex frag{}; 
+                    if(m_bvh.get_closest_intersection(ray, &frag))
+                    {
+                        normal[flat_location] = frag.mNormal;
+                        position[flat_location] = frag.mPosition;
+                        diffuse[flat_location] = m_material_manager.evaluate_material(frag.m_bsrdf->get_material_id(), frag.mUV).diffuse;
+                    }
+                    else
+                    {
+                        normal[flat_location] = -ray.mDirection;
+                        position[flat_location] = glm::vec3(ray.mOrigin) + (ray.mDirection * ray.mLenght);
+                        diffuse[flat_location] = m_sky_desc.m_sky_box->sample4(ray.mDirection);
+                    }
+                }
+            }
+
+            return false;
+        };
+        Util::Tiler tiler(m_threadPool, random_generator, res, glm::uvec2(64, 64));
+        tiler.execute_over_surface(trace_rays_for_tile, cam, res, results.normals, results.positions, results.diffuse);
+
+        return results;
+    }
 
     // Scene loading functions.
     void Scene::add_mesh(const std::string& name, const Json::Value& entry)
