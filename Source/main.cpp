@@ -78,8 +78,8 @@ int main(int argc, const char **argv)
         params.m_SampleCount = sample_count_buffer;
         params.m_variance = variance;
         params.m_maxVariance = 0.0f;
-        params.m_denoise = true;
-        params.m_tonemap = false;
+        params.m_denoise = false;
+        params.m_tonemap = true;
 
         const glm::vec3 camera_pos = options.get_option<Util::Option::kCameraPosition>();
         const glm::vec3 camera_dir = options.get_option<Util::Option::kCameraDirection>();

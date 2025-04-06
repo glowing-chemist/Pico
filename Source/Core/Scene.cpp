@@ -220,7 +220,7 @@ namespace Scene
 
         if(params.m_tonemap)
         {
-            Util::reinhard_tone_mapping(tone_mapping_input, params.m_Height * params.m_Width);
+            Util::reinhard_tone_mapping(tone_mapping_input, glm::uvec2(params.m_Width, params.m_Height), tiler);
         }
 
         if(params.m_denoise)
@@ -281,7 +281,7 @@ namespace Scene
                 }
             }
 
-            return false;
+            return true;
         };
         Util::Tiler tiler(m_threadPool, random_generator, res, glm::uvec2(64, 64));
         tiler.execute_over_surface(trace_rays_for_tile, cam, res, results.normals, results.positions, results.diffuse);
