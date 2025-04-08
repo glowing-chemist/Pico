@@ -215,7 +215,7 @@ namespace Scene
                                                         denoising.normals,
                                                         denoising.positions,
                                                         denoising.diffuse,
-                                                        glm::uvec2(params.m_Width, params.m_Height));
+                                                        tiler);
         }
 
         if(params.m_tonemap)

@@ -48,6 +48,8 @@ namespace Util
                 thread.wait();
         }
 
+        const glm::uvec2& get_resolution() const { return m_resolution; }
+
         private:
 
         ThreadPool& m_thread_pool;
