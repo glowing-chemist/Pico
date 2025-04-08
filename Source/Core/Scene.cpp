@@ -216,6 +216,10 @@ namespace Scene
                                                         denoising.positions,
                                                         denoising.diffuse,
                                                         tiler);
+
+            delete[] denoising.diffuse;
+            delete[] denoising.normals;
+            delete[] denoising.positions;
         }
 
         if(params.m_tonemap)
@@ -269,13 +273,13 @@ namespace Scene
                     if(m_bvh.get_closest_intersection(ray, &frag))
                     {
                         normal[flat_location] = frag.mNormal;
-                        position[flat_location] = frag.mPosition;
+                        position[flat_location] = camera.getViewMatrix() * frag.mPosition;
                         diffuse[flat_location] = m_material_manager.evaluate_material(frag.m_bsrdf->get_material_id(), frag.mUV).diffuse;
                     }
                     else
                     {
                         normal[flat_location] = -ray.mDirection;
-                        position[flat_location] = glm::vec3(ray.mOrigin) + (ray.mDirection * ray.mLenght);
+                        position[flat_location] = ray.mDirection * ray.mLenght;
                         diffuse[flat_location] = m_sky_desc.m_sky_box->sample4(ray.mDirection);
                     }
                 }

@@ -9,11 +9,17 @@
 
 namespace
 {
+    float get_luminance(const glm::vec3& colour)
+    {
+        return glm::dot(colour, glm::vec3(0.2126f, 0.587f, 0.114f));    
+    }
+
+
     bool blend_pixel(   const glm::uvec2 start, 
                         const glm::uvec2& tile_size, 
                         const glm::uvec2& resolution, 
                         const uint32_t,
-                        const uint32_t atrous_level,  
+                        const uint32_t atrous_level,
                         const glm::vec3* pixels, 
                         const glm::vec3* normals,
                         const glm::vec3* position, 
@@ -34,7 +40,27 @@ namespace
                                         {-2, 2},  {-1, 2},  {0, 2},  {1, 2},  {2, 2}};
 
         const int atrous_scale = std::pow(2, atrous_level);
-       
+
+        // calculate local denoising range constants
+        float white_point = 0.0f;
+        float min_distance = INFINITY;
+        float max_distance = -INFINITY;
+         for(uint32_t x = start.x; x < start.x + tile_size.x; ++x)
+        {
+            for(uint32_t y = start.y; y < start.y + tile_size.y; ++y)
+            {
+                const glm::uvec2 pixel{x, y};
+                for(uint32_t u = 0; u < 25; ++u)
+                {
+                    const glm::uvec2 index = glm::clamp(glm::ivec2(pixel) + (offsets[u] * atrous_scale), glm::ivec2(0, 0), glm::ivec2(resolution) - glm::ivec2(1, 1));
+                    const size_t flat_index = (index.y * resolution.x) + index.x;
+                    white_point = std::max(white_point, get_luminance(pixels[flat_index]));
+                    min_distance = std::min(min_distance, glm::length(position[flat_index]));
+                    max_distance = std::max(max_distance, glm::length(position[flat_index]));
+                }
+            }
+        }
+        const float position_range = max_distance - min_distance;
 
         for(uint32_t x = start.x; x < start.x + tile_size.x; ++x)
         {
@@ -50,19 +76,17 @@ namespace
                     const glm::uvec2 index = glm::clamp(glm::ivec2(pixel) + (offsets[u] * atrous_scale), glm::ivec2(0, 0), glm::ivec2(resolution) - glm::ivec2(1, 1));
                     const size_t flat_index = (index.y * resolution.x) + index.x; 
 
-                    const float v = 0.3f; 
-
                     glm::vec3 t = normals[center_flat_index] - normals[flat_index];
                     float dist = glm::dot(t, t);
-                    const float normal_weight = std::min(std::exp(- dist / v), 1.0f);
+                    const float normal_weight = std::min(std::exp(- dist / 0.25f), 1.0f);
 
                     t = position[center_flat_index] - position[flat_index];
-                    dist = std::max(glm::dot(t, t) / (float(atrous_scale) * float(atrous_scale)), 0.0f);
-                    const float position_weight = std::min(std::exp(-dist / v), 1.0f);
+                    dist = glm::dot(t, t);
+                    const float position_weight = std::min(std::exp(-dist / (position_range * position_range)), 1.0f);
 
                     t = diffuse[center_flat_index] - diffuse[flat_index];
                     dist = glm::dot(t, t);
-                    const float diffuse_weight = std::min(std::exp(-dist / v), 1.0f);
+                    const float diffuse_weight = std::min(std::exp(-dist / (white_point * white_point)), 1.0f);
 
                     const float tap_weight = weights[u] * normal_weight * position_weight * diffuse_weight;
 
