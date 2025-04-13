@@ -93,7 +93,7 @@ namespace Scene
 
         if(options.has_option(Util::Option::kSkybox))
         {
-            const std::string sky_box_path = m_file_mapper->resolve_path(options.get_option<Util::Option::kSkybox>()).string();
+            const std::string sky_box_path = m_file_mapper->resolve_path(options.m_skybox).string();
 
             int width, height, comp;
             auto* data = stbi_loadf(sky_box_path.c_str(), &width, &height, &comp, 4);
@@ -118,8 +118,8 @@ namespace Scene
         if(options.has_option(Util::Option::kSunDirection) && options.has_option(Util::Option::kSunColour))
         {
             m_sky_desc.m_use_sun = true;
-            m_sky_desc.m_sun_direction = options.get_option<Util::Option::kSunDirection>();
-            m_sky_desc.m_sun_colour = options.get_option<Util::Option::kSunColour>();
+            m_sky_desc.m_sun_direction = options.m_sun_direction;
+            m_sky_desc.m_sun_colour = options.m_sun_colour;
         }
 
         std::vector<std::future<void>> material_loading_task_handles{};

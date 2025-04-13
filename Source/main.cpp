@@ -9,7 +9,6 @@
 
 #include "assimp/Importer.hpp"
 #include "assimp/postprocess.h"
-#include <execution>
 
 void framebuffer_size_callback(GLFWwindow*, int width, int height)
 {
@@ -30,8 +29,7 @@ int main(int argc, const char **argv)
     {
         Util::Options options(argv, argc);
 
-        glm::ivec2 resolution = options.get_option<Util::Option::kResolution>();
-
+        const glm::ivec2 resolution = options.m_resolution;
         frame_memory = new glm::vec3[resolution.x * resolution.y];
         memset(frame_memory, 0, resolution.x * resolution.y * 4 * 3);
 
@@ -41,7 +39,7 @@ int main(int argc, const char **argv)
         variance = new glm::vec3[resolution.x * resolution.y];
         memset(variance, 0, resolution.x * resolution.y * 4 * 3);
 
-        std::filesystem::path scene_file = options.get_option<Util::Option::kSceneFile>();
+        std::filesystem::path scene_file = options.m_scene_file;
         ThreadPool threadPool{};
         std::unique_ptr<Scene::Scene> scene{};
         if(scene_file.extension() == ".json")
@@ -66,7 +64,7 @@ int main(int argc, const char **argv)
         uint32_t sample_count = 256;
         if(options.has_option(Util::Option::kSampleCount))
         {
-            sample_count = options.get_option<Util::Option::kSampleCount>();
+            sample_count = options.m_sample_count;
         }
 
         Scene::RenderParams params{};
@@ -81,20 +79,20 @@ int main(int argc, const char **argv)
         params.m_denoise = false;
         params.m_tonemap = true;
 
-        const glm::vec3 camera_pos = options.get_option<Util::Option::kCameraPosition>();
-        const glm::vec3 camera_dir = options.get_option<Util::Option::kCameraDirection>();
+        const glm::vec3 camera_pos = options.m_camera_position;
+        const glm::vec3 camera_dir = options.m_camera_direction;
 
         Scene::Camera camera(camera_pos, camera_dir, resolution.x / resolution.y, 0.1f, 10000.0f);
 
         if(options.has_option(Util::Option::kCameraName))
         {
-            camera = *scene->get_camera(options.get_option<Util::Option::kCameraName>());
+            camera = *scene->get_camera(options.m_camera_name);
         }
         camera.set_resolution(glm::uvec2(resolution));
 
         if(options.has_option(Util::Option::kOutputFile))
         {
-            const std::string output_file_path = options.get_option<Util::Option::kOutputFile>();
+            const std::string output_file_path = options.m_output_file;
 
             scene->render_scene_to_file(camera, params, output_file_path.c_str());
         }

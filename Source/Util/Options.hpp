@@ -11,58 +11,22 @@
 namespace Util
 {
 
-    enum class Option
+    enum Option : uint32_t
     {
-        kNone = 0,
-        kCameraPosition,
-        kCameraDirection,
-        kCameraName,
-        kSkybox,
-        kSceneFile,
-        kOutputFile,
-        kResolution,
-        kSampleCount,
-        kSunDirection,
-        kSunColour,
+        kCameraPosition = 1,
+        kCameraDirection = 1 << 1,
+        kCameraName = 1 << 2,
+        kSkybox = 1 << 3,
+        kSceneFile = 1 << 4,
+        kOutputFile = 1 << 5,
+        kResolution = 1 << 6,
+        kSampleCount = 1 << 7,
+        kSunDirection = 1 << 8,
+        kSunColour = 1 << 9,
 
-        kCount
+        kCount = 10
     };
 
-    template<Option O>
-    struct option_map { using Type = void; };
-
-    template<>
-    struct option_map<Option::kCameraPosition> { using Type = glm::vec3; };
-
-    template<>
-    struct option_map<Option::kCameraDirection> { using Type = glm::vec3; };
-
-    template<>
-    struct option_map<Option::kCameraName> { using Type = std::string; };
-
-    template<>
-    struct option_map<Option::kSkybox> { using Type = std::string; };
-
-    template<>
-    struct option_map<Option::kSceneFile> { using Type = std::string; };
-
-    template<>
-    struct option_map<Option::kOutputFile> { using Type = std::string; };
-
-    template<>
-    struct option_map<Option::kResolution> { using Type = glm::ivec2; };
-
-    template<>
-    struct option_map<Option::kSampleCount> { using Type = uint32_t; };
-
-    template<>
-    struct option_map<Option::kSunDirection> { using Type = glm::vec3; };
-
-    template<>
-    struct option_map<Option::kSunColour> { using Type = glm::vec3; };
-
-    template<Option O>
-    using option_type = typename option_map<O>::Type;
 
     class Options
     {
@@ -70,41 +34,24 @@ namespace Util
 
         Options(const char** cmd, const uint32_t argCount);
 
-        using Value = std::variant<std::monostate, glm::ivec2, glm::vec3, std::string, uint32_t>;
-
         bool has_option(const Option o) const
         {
-            for(uint32_t i = 0; i < m_values.size(); ++i)
-            {
-                if(m_values[i].m_type == o)
-                    return true;
-            }
-
-            return false;
+            return (static_cast<uint32_t>(o) & m_option_bitset) > 0;
         }
 
-        template<Option O>
-        option_type<O> get_option() const
-        {
-
-            for(uint32_t i = 0; i < m_values.size(); ++i)
-            {
-                if(m_values[i].m_type == O)
-                    return std::get<option_type<O>>(m_values[i].m_value);
-            }
-
-            return option_type<O>{};
-        }
+    glm::vec3 m_camera_position;
+    glm::vec3 m_camera_direction; 
+    std::string m_camera_name;
+    std::string m_skybox;
+    std::string m_scene_file;
+    std::string m_output_file;
+    glm::uvec2 m_resolution;
+    uint32_t m_sample_count;
+    glm::vec3 m_sun_direction;
+    glm::vec3  m_sun_colour;
 
     private:
-
-        struct OptionValue
-        {
-            Option m_type;
-            Value m_value;
-        };
-
-        std::vector<OptionValue> m_values;
+    uint32_t m_option_bitset;
 
     };
 
