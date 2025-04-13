@@ -4,6 +4,18 @@ namespace Util
 {
 
     Options::Options(const char** cmd, const uint32_t argCount) :
+        m_camera_position(0.0f, 0.0f, 0.0f),
+        m_camera_direction(1.0f, 0.0f, 0.0f),
+        m_camera_name("MainCamera"),
+        m_skybox("skybox"),
+        m_scene_file("./scene.json"),
+        m_output_file("./output.hdr"),
+        m_resolution(1920, 1080),
+        m_sample_count(256),
+        m_sun_direction(0.0f, -1.0f, 0.0f),
+        m_sun_colour(1.0f, 1.0f, 1.0f),
+        m_denoise(false),
+        m_tonemap(false),
         m_option_bitset{0}
     {
         for(uint32_t i = 1; i < argCount; ++i)
@@ -78,6 +90,16 @@ namespace Util
 
                 m_option_bitset |= Option::kSunColour;
                 m_sun_colour = glm::vec3(x, y, z);
+            }
+            else if(strcmp(cmd[i], "-Denoise") == 0)
+            {
+                m_option_bitset |= Option::kDenoise;
+                m_denoise = true;
+            }
+            else if(strcmp(cmd[i], "-Tonemap") == 0)
+            {
+                m_option_bitset |= Option::kToneMap;
+                m_tonemap = true;
             }
             else
             {

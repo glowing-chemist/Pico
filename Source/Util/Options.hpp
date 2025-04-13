@@ -23,6 +23,8 @@ namespace Util
         kSampleCount = 1 << 7,
         kSunDirection = 1 << 8,
         kSunColour = 1 << 9,
+        kDenoise = 1 << 10,
+        kToneMap = 1 << 11,
 
         kCount = 10
     };
@@ -39,16 +41,18 @@ namespace Util
             return (static_cast<uint32_t>(o) & m_option_bitset) > 0;
         }
 
-    glm::vec3 m_camera_position;
-    glm::vec3 m_camera_direction; 
+    glm::vec3   m_camera_position;
+    glm::vec3   m_camera_direction; 
     std::string m_camera_name;
     std::string m_skybox;
     std::string m_scene_file;
     std::string m_output_file;
-    glm::uvec2 m_resolution;
-    uint32_t m_sample_count;
-    glm::vec3 m_sun_direction;
-    glm::vec3  m_sun_colour;
+    glm::uvec2  m_resolution;
+    uint32_t    m_sample_count;
+    glm::vec3   m_sun_direction;
+    glm::vec3   m_sun_colour;
+    bool        m_denoise;
+    bool        m_tonemap;
 
     private:
     uint32_t m_option_bitset;
