@@ -242,7 +242,7 @@ namespace Scene
 
         // Flip the image right side up.
         std::reverse(params.m_Pixels, params.m_Pixels + (params.m_Width * params.m_Height));
-        stbi_write_hdr(path, params.m_Width, params.m_Height, 4, reinterpret_cast<const float*>(params.m_Pixels));
+        stbi_write_hdr(path, params.m_Width, params.m_Height, 3, reinterpret_cast<const float*>(params.m_Pixels));
     }
 
     Scene::denoiser_inputs Scene::generate_denoiser_inputs(const Camera& cam, Core::Rand::xorshift_random random_generator, const glm::uvec2& res) const
