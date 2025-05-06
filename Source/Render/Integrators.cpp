@@ -52,8 +52,10 @@ namespace Render
             const Core::EvaluatedMaterial mat = m_material_manager.evaluate_material(frag.m_bsrdf->get_material_id(), frag.mUV);
 
             // account for a special cased sunlight
-            const uint32_t light_count = m_lights.size() + (m_sky_desc.m_use_sun ? 1 : 0);
-            uint32_t light_index = mDistribution(mGenerator) * light_count;
+            uint32_t light_count = m_lights.size() + (m_sky_desc.m_use_sun ? 1 : 0);
+            const uint32_t light_index = mDistribution(mGenerator) * light_count;
+            if(light_index == light_count)
+                light_count--;
 
             // handle sunlight contribution
             if(light_index >= (light_count - 1) && m_sky_desc.m_use_sun)
@@ -77,7 +79,7 @@ namespace Render
             glm::vec3 sample_position;
             float selected_pdf;
 
-            auto& geometrty = m_lights[light_index].m_geometry;
+            const auto& geometrty = m_lights[light_index].m_geometry;
 
             const bool found_sample = geometrty->sample_geometry(m_hammersley_generator, sample_position, selected_pdf);
             if(found_sample)
@@ -142,7 +144,7 @@ namespace Render
 
             if(glm::any(glm::isinf(result)) || glm::any(glm::isnan(result)))
                 result = glm::vec3(1.0f, 0.4, 0.7);
-            
+
             return result;
         }
         else
