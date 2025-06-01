@@ -91,8 +91,6 @@ namespace Core
 
         void LowerLevelMeshBVH::generate_sampling_data()
         {
-            m_total_surface_area = 0.0f;
-
             m_triangle_area.reserve(mIndicies.size() / 3);
             for(uint32_t i_index = 0; i_index < mIndicies.size(); i_index += 3)
             {
@@ -110,21 +108,17 @@ namespace Core
                 const float height = theta * bc_length;
 
                 const float triangle_area = (base * height) / 2.0f;
-                m_total_surface_area += triangle_area;
 
                 m_triangle_area.push_back(triangle_area);
             }
 
+            m_aliasTable.build_table(m_triangle_area);
             PICO_LOG("Generating sampling data for %s. %zu faces generated\n", m_name.c_str(), m_triangle_area.size());
         }
 
         bool LowerLevelMeshBVH::sample_geometry(Rand::Hammersley_Generator& rand, glm::vec3& sample_point, float& pdf)
         {
-            const glm::vec2 xi = rand.next();
-            uint32_t triangle_index = xi.y * m_triangle_area.size();
-            
-            if (triangle_index == m_triangle_area.size())
-                --triangle_index;
+            uint32_t triangle_index = m_aliasTable.sample(rand.get_xor_random_generator(), pdf);
 
             const glm::vec2 Xi = rand.next();
             const glm::vec2 barycentrics = Core::Rand::uniform_sample_triangle(Xi);
@@ -133,8 +127,6 @@ namespace Core
             sample_point = ((1.0f - barycentrics.x - barycentrics.y) * mPositions[mIndicies[index_start]] +
                 (barycentrics.x * mPositions[mIndicies[index_start + 1]])) +
                 (barycentrics.y * mPositions[mIndicies[index_start + 2]]);
-
-            pdf = m_triangle_area[triangle_index] / m_total_surface_area;
 
             return true;
         }

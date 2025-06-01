@@ -3,6 +3,7 @@
 
 #include "LowerLevelBVH.hpp"
 #include "Core/BVH.hpp"
+#include "Util/AliasTable.hpp"
 
 #include "assimp/mesh.h"
 
@@ -45,7 +46,7 @@ namespace Core
 
             // Data used for light sampling.
             std::vector<float> m_triangle_area;
-            float m_total_surface_area;
+            Util::AliasTable   m_aliasTable;
 
             class Mesh_Intersector : public Intersector<uint32_t>
             {

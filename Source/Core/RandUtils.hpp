@@ -73,6 +73,8 @@ namespace Core
 
             glm::vec2 next();
 
+            xorshift_random& get_xor_random_generator() { return m_random_sample_distribution; }
+
         private:
 
             constexpr static size_t kMaxSamples = std::numeric_limits<uint32_t>::max();
