@@ -30,7 +30,7 @@ namespace Render
 
     glm::vec3 Beckmann_All_Microfacet_Distribution::sample(const glm::vec2& Xi, const glm::vec3& V, const float R)
     {
-        const float alpha = R * R;
+        const float alpha = roughness_to_alpha(R);
         float logSample = std::log(1.0f - Xi.x);
         if (std::isinf(logSample)) logSample = 0;
         const float tan2Theta = -alpha * alpha * logSample;
@@ -50,9 +50,7 @@ namespace Render
     float Beckmann_All_Microfacet_Distribution::pdf(const glm::vec3&, const glm::vec3& H, const float R)
     {
         PICO_ASSERT_VALID(H);
-        float d = D(H, R);
-        d = std::clamp(d, 0.0f, 1.0f);
-        return d * Core::TangentSpace::abs_cos_theta(H);
+        return D(H, R) * Core::TangentSpace::abs_cos_theta(H);
     }
 
     float Beckmann_All_Microfacet_Distribution::roughness_to_alpha(float roughness) const

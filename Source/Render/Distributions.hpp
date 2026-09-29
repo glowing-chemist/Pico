@@ -42,9 +42,9 @@ namespace Render
 
         virtual float pdf(const glm::vec3&, const glm::vec3& H, const float R) final;
 
-    private:
-
         float roughness_to_alpha(float) const;
+
+    private:
 
         float D(const glm::vec3 &wh, const float R) const;
     };

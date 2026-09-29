@@ -91,33 +91,30 @@ namespace Core
 
         void LowerLevelMeshBVH::generate_sampling_data()
         {
+            m_triangle_area.clear();
             m_triangle_area.reserve(mIndicies.size() / 3);
+            m_surface_area = 0.0f;
             for(uint32_t i_index = 0; i_index < mIndicies.size(); i_index += 3)
             {
-                // calculate triangle area.
                 const glm::vec3 a = mPositions[mIndicies[i_index]];
                 const glm::vec3 b = mPositions[mIndicies[i_index + 1]];
                 const glm::vec3 c = mPositions[mIndicies[i_index + 2]];
 
-                const glm::vec3 ac = a - c;
-                const glm::vec3 bc = b - c;
-                const float bc_length = glm::length(bc);
-
-                const float base = glm::length(ac);
-                const float theta = std::sin(std::acos(glm::dot(glm::normalize(ac), glm::normalize(bc))) * (180.0f / M_PI));
-                const float height = theta * bc_length;
-
-                const float triangle_area = (base * height) / 2.0f;
-
+                const float triangle_area = 0.5f * glm::length(glm::cross(b - a, c - a));
                 m_triangle_area.push_back(triangle_area);
+                m_surface_area += triangle_area;
             }
 
-            m_aliasTable.build_table(m_triangle_area);
+            if(m_surface_area > 0.0f)
+                m_aliasTable.build_table(m_triangle_area);
             PICO_LOG("Generating sampling data for %s. %zu faces generated\n", m_name.c_str(), m_triangle_area.size());
         }
 
         bool LowerLevelMeshBVH::sample_geometry(Rand::Hammersley_Generator& rand, glm::vec3& sample_point, float& pdf)
         {
+            if(m_surface_area <= 0.0f)
+                return false;
+
             uint32_t triangle_index = m_aliasTable.sample(rand.get_xor_random_generator(), pdf);
 
             const glm::vec2 Xi = rand.next();
@@ -128,6 +125,7 @@ namespace Core
                 (barycentrics.x * mPositions[mIndicies[index_start + 1]])) +
                 (barycentrics.y * mPositions[mIndicies[index_start + 2]]);
 
+            pdf = 1.0f / m_surface_area;
             return true;
         }
 

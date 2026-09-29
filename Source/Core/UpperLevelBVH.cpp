@@ -68,7 +68,7 @@ namespace Core
 
                 // Bring vertex back to world space.
                 found_vertex.mPosition = entry->mTransform * found_vertex.mPosition;
-                found_vertex.mNormal   = glm::normalize(glm::mat3x3(entry->mTransform) * found_vertex.mNormal);
+                found_vertex.mNormal   = glm::normalize(glm::transpose(glm::mat3x3(entry->mInverseTransform)) * found_vertex.mNormal);
 
                 intersect_distance = glm::length(found_vertex.mPosition - ray.mOrigin);
                 vertex= found_vertex;
