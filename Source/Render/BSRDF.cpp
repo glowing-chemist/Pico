@@ -5,6 +5,50 @@
 #include "Core/Asserts.hpp"
 #include "Core/LowerLevelBVH.hpp"
 
+#include <algorithm>
+#include <cmath>
+
+namespace
+{
+    float beckmann_g1(const glm::vec3& direction, const float alpha)
+    {
+        const float abs_cos_theta = std::abs(direction.z);
+        if(abs_cos_theta <= 0.0f)
+            return 0.0f;
+
+        const float abs_tan_theta = std::sqrt(std::max(0.0f, 1.0f - abs_cos_theta * abs_cos_theta)) /
+                                    abs_cos_theta;
+        if(abs_tan_theta == 0.0f)
+            return 1.0f;
+
+        const float a = 1.0f / (alpha * abs_tan_theta);
+        if(a >= 1.6f)
+            return 1.0f;
+
+        const float a_squared = a * a;
+        const float lambda = (1.0f - 1.259f * a + 0.396f * a_squared) /
+                             (3.535f * a + 2.181f * a_squared);
+        return 1.0f / (1.0f + lambda);
+    }
+
+    glm::vec3 beckmann_reflection_weight(const glm::vec3& f0, const glm::vec3& view,
+                                         const glm::vec3& light, const glm::vec3& half_vector,
+                                         const float roughness)
+    {
+        if(light.z <= 0.0f || half_vector.z <= 0.0f || view.z <= 0.0f)
+            return glm::vec3(0.0f);
+
+        const float view_half_cosine = std::clamp(glm::dot(view, half_vector), 0.0f, 1.0f);
+        const float fresnel_factor = std::pow(1.0f - view_half_cosine, 5.0f);
+        const glm::vec3 fresnel = f0 + (glm::vec3(1.0f) - f0) * fresnel_factor;
+
+        Render::Beckmann_All_Microfacet_Distribution distribution;
+        const float alpha = distribution.roughness_to_alpha(roughness);
+        const float geometry = beckmann_g1(view, alpha) * beckmann_g1(light, alpha);
+        return fresnel * (geometry * view_half_cosine / (view.z * half_vector.z));
+    }
+}
+
 namespace Render
 {
 
@@ -35,6 +79,7 @@ namespace Render
         samp.L = world_space_L;
         samp.P = pdf;
         samp.energy = material.diffuse;
+        samp.diffuse = true;
 
         return samp;
     }
@@ -78,16 +123,20 @@ namespace Render
 
         Sample samp{};
         samp.L = world_space_L;
-        samp.P = pdf(view_tangent, H, material.roughness, material.get_reflectance());
-        samp.energy = material.specular;
+        samp.P = L.z > 0.0f ? pdf(view_tangent, H, material.roughness, material.get_reflectance()) : 0.0f;
+        samp.energy = beckmann_reflection_weight(material.specular, view_tangent, L, H, material.roughness);
 
         return samp;
     }
 
     float Specular_BRDF::pdf(const glm::vec3& wo, const glm::vec3& H, const float roughness, const float)
     {
+        const float half_vector_dot = glm::dot(wo, H);
+        if(half_vector_dot <= 0.0f)
+            return 0.0f;
+
         const float pdf = m_distribution->pdf(wo, H, roughness);
-        return pdf / (2.0f * glm::dot(wo, H));
+        return pdf / (4.0f * half_vector_dot);
     }
 
     glm::vec3 Specular_BRDF::energy(const Core::Acceleration_Structures::InterpolatedVertex& position, const glm::vec3&, const glm::vec3&)
@@ -126,7 +175,8 @@ namespace Render
 
             samp.L = world_space_L;
             samp.P = m_diffuse_distribution->pdf(view_tangent, H, material.roughness);
-            samp.energy = material.diffuse;
+            samp.energy = material.diffuse / (1.0f - specular_proportion);
+            samp.diffuse = true;
         }
         else
         {
@@ -141,8 +191,12 @@ namespace Render
             PICO_ASSERT_VALID(world_space_L);
 
             samp.L = world_space_L;
-            samp.P = m_specular_distribution->pdf(view_tangent, H, material.roughness) / (2.0f * glm::dot(view_tangent, H));
-            samp.energy = material.specular;
+            const float half_vector_dot = glm::dot(view_tangent, H);
+            samp.P = half_vector_dot > 0.0f && L.z > 0.0f
+                ? m_specular_distribution->pdf(view_tangent, H, material.roughness) / (4.0f * half_vector_dot)
+                : 0.0f;
+            samp.energy = beckmann_reflection_weight(material.specular, view_tangent, L, H, material.roughness) /
+                          specular_proportion;
         }
 
         return samp;
@@ -150,8 +204,12 @@ namespace Render
 
     float Dielectric_BRDF::pdf(const glm::vec3& wo, const glm::vec3& H, const float roughness, const float reflectance)
     {
+        const float half_vector_dot = glm::dot(wo, H);
+        const float specular_pdf = half_vector_dot > 0.0f
+            ? m_specular_distribution->pdf(wo, H, roughness) / (4.0f * half_vector_dot)
+            : 0.0f;
         return (m_diffuse_distribution->pdf(wo, H, roughness) * (1 - reflectance)) +
-               ((m_specular_distribution->pdf(wo, H, roughness) / (2.0f * glm::dot(wo, H))) * reflectance);
+               (specular_pdf * reflectance);
     }
 
     glm::vec3 Dielectric_BRDF::energy(const Core::Acceleration_Structures::InterpolatedVertex& position, const glm::vec3&, const glm::vec3&)

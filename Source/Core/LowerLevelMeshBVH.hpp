@@ -46,6 +46,7 @@ namespace Core
 
             // Data used for light sampling.
             std::vector<float> m_triangle_area;
+            float m_surface_area = 0.0f;
             Util::AliasTable   m_aliasTable;
 
             class Mesh_Intersector : public Intersector<uint32_t>

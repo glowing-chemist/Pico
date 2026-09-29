@@ -62,7 +62,7 @@ namespace Core
             const glm::vec3 sphere_point = mRadius * unit_sphere_point;
 
             sample_point = sphere_point;
-            pdf = 1.0f;
+            pdf = 1.0f / (4.0f * M_PI * mRadius * mRadius);
 
             return true;
         }
@@ -107,7 +107,7 @@ namespace Core
             face_offset[(zero_axis + 2) % 3] = Xk.y;
 
             sample_point = (corner * 0.5f)  + (-corner * face_offset);
-            pdf = 1.0f;
+            pdf = 1.0f / 6.0f;
 
             return true;
         }

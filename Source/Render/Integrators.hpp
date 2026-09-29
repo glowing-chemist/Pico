@@ -40,9 +40,10 @@ namespace Render
 
     private:
 
-        bool sample_direct_lighting(const Core::Acceleration_Structures::InterpolatedVertex& frag, const glm::vec3& wi, glm::vec3& radiance, float& pdf);
+        bool sample_direct_lighting(const Core::Acceleration_Structures::InterpolatedVertex& frag, glm::vec3& contribution);
 
-        void trace_ray(const Core::Acceleration_Structures::InterpolatedVertex& frag, Core::Ray& ray, const uint32_t depth);
+        void trace_ray(const Core::Acceleration_Structures::InterpolatedVertex& frag, Core::Ray& ray,
+                       const uint32_t depth, const bool previous_bounce_was_diffuse = false);
 
         bool weighted_random_ray_type(const Core::EvaluatedMaterial& mat);
 

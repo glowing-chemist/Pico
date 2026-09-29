@@ -27,6 +27,7 @@ namespace Render
         glm::vec3 L;
         float P;
         glm::vec3 energy;
+        bool diffuse = false;
     };
 
     enum class BSRDF_Type
